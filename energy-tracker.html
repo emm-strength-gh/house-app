@@ -14,6 +14,10 @@
 <link rel="apple-touch-icon" href="icons/energy-180.png">
 <title>Energy Tracker</title>
 <style>
+  /* No double-tap-to-zoom on phones (it also fires on quick repeated taps of
+     buttons). Pinch-zoom still works. Zero specificity, so any element that
+     sets its own touch-action (drag handles, drawing canvases) still wins. */
+  * { touch-action: manipulation; }
   :root {
     color-scheme: light;
     --bg: #f6f5f2;
