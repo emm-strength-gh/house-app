@@ -8,6 +8,7 @@
  *   energy-*  the Energy Tracker app tile
  *   oni-*     the Oni Orders app tile
  *   grocery-* the Grocery Planner app tile
+ *   todo-*    the To Do app tile
  *
  * Variants:
  *   *-180.png           apple-touch-icon: full-bleed square, iOS rounds it itself
@@ -59,6 +60,20 @@ var ICONS = {
       { rect: [0.615, 0.54, 0.05, 0.21, 0.025], color: "#0e8a4f", alpha: 0.35 }
     ],
     scaleAny: 0.88, scaleMask: 0.72
+  },
+  todo: {
+    // Checklist: three bullet + line rows, the top one ticked and faded.
+    bg: ["#4fb3ff", "#1f5fe0"],
+    shapes: [
+      { ring: [0.28, 0.30, 0.08, 0.08, 0.08], color: "#ffffff" },
+      { poly: [[0.235, 0.303], [0.250, 0.288], [0.271, 0.310], [0.312, 0.266], [0.327, 0.281], [0.271, 0.340]], color: "#3a8cf3" },
+      { rect: [0.42, 0.2625, 0.36, 0.075, 0.0375], color: "#ffffff", alpha: 0.55 },
+      { ring: [0.28, 0.50, 0.08, 0.08, 0.032], color: "#ffffff" },
+      { rect: [0.42, 0.4625, 0.36, 0.075, 0.0375], color: "#ffffff" },
+      { ring: [0.28, 0.70, 0.08, 0.08, 0.032], color: "#ffffff" },
+      { rect: [0.42, 0.6625, 0.36, 0.075, 0.0375], color: "#ffffff" }
+    ],
+    scaleAny: 1.0, scaleMask: 0.8
   },
   house: {
     bg: ["#5b6cff", "#9b4fe0"],
