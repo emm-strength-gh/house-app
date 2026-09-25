@@ -18,6 +18,10 @@
 <meta name="apple-mobile-web-app-title" content="Oni Orders" />
 
 <style>
+  /* No double-tap-to-zoom on phones (it also fires on quick repeated taps of
+     buttons). Pinch-zoom still works. Zero specificity, so any element that
+     sets its own touch-action (drag handles, drawing canvases) still wins. */
+  * { touch-action: manipulation; }
   :root{
     --ink:#2c2622; --muted:#8a7d6f; --bg:#f5ece0; --bg2:#efe3d3; --surface:#fffdf9; --surface-2:#faf3e8;
     --border:#ece0cf; --border-strong:#ddccb5; --accent:#d76a45; --accent-2:#e29455; --accent-ink:#fffaf5;

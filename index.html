@@ -16,6 +16,10 @@
 <link rel="apple-touch-icon" href="icons/house-180.png">
 <title>House App</title>
 <style>
+  /* No double-tap-to-zoom on phones (it also fires on quick repeated taps of
+     buttons). Pinch-zoom still works. Zero specificity, so any element that
+     sets its own touch-action (drag handles, drawing canvases) still wins. */
+  * { touch-action: manipulation; }
   :root {
     --wall-base: #5a4fd6;
     --wall-a: #ff8fc7;
