@@ -12,6 +12,16 @@ growing set of household tools:
   peso prices, and a Planner that builds a shopping list with quantities,
   line totals and a running total. Can show everything in British pounds
   using an editable exchange rate (prices are always stored in pesos).
+  Item Manager → **Import items / Export items** reads and writes a JSON list:
+
+  ```json
+  { "kind": "grocery-items", "version": 1, "currency": "PHP",
+    "items": [ { "name": "Eden Cheese 160g", "price": 55.00 } ] }
+  ```
+
+  A bare `[{ "name", "price" }]` array or `[["name", price]]` pairs also work.
+  Import adds new names and (optionally) updates prices of existing ones,
+  matched by name ignoring case; it never deletes. Undo is offered after.
 
 No build step, no backend, no external dependencies. All data lives in
 `localStorage` on the device.
