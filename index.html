@@ -226,10 +226,14 @@
   "use strict";
 
   // House App's tools. Add new ones here — each becomes an icon, in order.
-  // `color` is the tile colour the launch zoom starts from. New pages also
-  // need adding to SHELL_ASSETS in sw.js (and a CACHE_VERSION bump).
+  // `color` is the tile colour the launch zoom starts from; `bg` is the app's
+  // own page background [light, dark] so the zoom lands on the colour the app
+  // opens with. New pages also need adding to SHELL_ASSETS in sw.js (and a
+  // CACHE_VERSION bump).
   var APPS = [
-    { name: "Energy Tracker", href: "energy-tracker.html", icon: "icons/energy.svg", color: "#ff9f1a" }
+    { name: "Energy Tracker", href: "energy-tracker.html", icon: "icons/energy.svg", color: "#ff9f1a", bg: ["#f6f5f2", "#111110"] },
+    // Oni Orders keeps its own theme setting (dark by default), not the OS one.
+    { name: "Oni Orders", href: "oni-orders.html", icon: "icons/oni.svg", color: "#8a4a30", bg: ["#1a1512", "#1a1512"] }
   ];
 
   var STORE_SUMMARY = "energy.summary.v1";   // written by energy-tracker.html
@@ -261,6 +265,7 @@
       link.setAttribute("data-launch", "");
       link.setAttribute("data-color", a.color);
       link.setAttribute("data-icon", a.icon);
+      link.setAttribute("data-bg", a.bg.join(","));
       var ic = el("span", "app-icon");
       var img = el("img"); img.src = a.icon; img.alt = "";
       ic.appendChild(img);
@@ -345,7 +350,8 @@
         L.style.top = "0px"; L.style.left = "0px";
         L.style.width = window.innerWidth + "px"; L.style.height = window.innerHeight + "px";
         L.style.borderRadius = "0px";
-        L.style.backgroundColor = dark ? "#111110" : "#f6f5f2";
+        var bg = (link.getAttribute("data-bg") || "#f6f5f2,#111110").split(",");
+        L.style.backgroundColor = dark ? bg[1] : bg[0];
       });
     });
     setTimeout(function () { location.href = href; }, 360);

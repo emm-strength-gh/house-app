@@ -3,9 +3,10 @@
  *
  *   node make-icons.js
  *
- * Two icon sets, drawn from the same geometry so the PNGs and SVGs match:
+ * One icon set per app, drawn from the same geometry so the PNGs and SVGs match:
  *   house-*   the House App launcher (index.html) — the installed PWA's icon
  *   energy-*  the Energy Tracker app tile
+ *   oni-*     the Oni Orders app tile
  *
  * Variants:
  *   *-180.png           apple-touch-icon: full-bleed square, iOS rounds it itself
@@ -33,6 +34,18 @@ var ICONS = {
     shapes: [{ poly: BOLT, color: "#ffffff" }],
     scaleAny: 0.82, scaleMask: 0.72
   },
+  oni: {
+    // Same dark-brown -> burnt-orange gradient and bold "ONI" as the original
+    // Oni Order Builder icon, redrawn as shapes so no font is needed.
+    bg: ["#2e2420", "#d4623a"],
+    shapes: [
+      { ring: [0.305, 0.50, 0.150, 0.145, 0.066], color: "#fff8f2" },
+      { poly: [[0.49, 0.355], [0.555, 0.355], [0.655, 0.525], [0.655, 0.355], [0.72, 0.355],
+               [0.72, 0.645], [0.655, 0.645], [0.555, 0.475], [0.555, 0.645], [0.49, 0.645]], color: "#fff8f2" },
+      { rect: [0.775, 0.355, 0.066, 0.29, 0], color: "#fff8f2" }
+    ],
+    scaleAny: 0.92, scaleMask: 0.74
+  },
   house: {
     bg: ["#5b6cff", "#9b4fe0"],
     shapes: [
@@ -54,6 +67,12 @@ function inPoly(x, y, pts) {
     if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
   }
   return inside;
+}
+// Elliptical ring: inside the outer ellipse, outside the inner one.
+function inRing(x, y, cx, cy, rx, ry, t) {
+  var o = (x - cx) * (x - cx) / (rx * rx) + (y - cy) * (y - cy) / (ry * ry);
+  var i = (x - cx) * (x - cx) / ((rx - t) * (rx - t)) + (y - cy) * (y - cy) / ((ry - t) * (ry - t));
+  return o <= 1 && i > 1;
 }
 function inRRect(x, y, rx, ry, w, h, r) {
   if (x < rx || y < ry || x > rx + w || y > ry + h) return false;
@@ -79,7 +98,9 @@ function render(icon, size, opts) {
         // Artwork lives in its own space, scaled about the centre.
         var au = (u - 0.5) / scale + 0.5, av = (v - 0.5) / scale + 0.5;
         icon.shapes.forEach(function (s) {
-          var hit = s.poly ? inPoly(au, av, s.poly) : inRRect(au, av, s.rect[0], s.rect[1], s.rect[2], s.rect[3], s.rect[4]);
+          var hit = s.poly ? inPoly(au, av, s.poly)
+            : s.ring ? inRing(au, av, s.ring[0], s.ring[1], s.ring[2], s.ring[3], s.ring[4])
+            : inRRect(au, av, s.rect[0], s.rect[1], s.rect[2], s.rect[3], s.rect[4]);
           if (!hit) return;
           var sc = hex(s.color), a = s.alpha == null ? 1 : s.alpha;
           col = [col[0] + (sc[0] - col[0]) * a, col[1] + (sc[1] - col[1]) * a, col[2] + (sc[2] - col[2]) * a];
@@ -132,6 +153,12 @@ function svg(icon, scale) {
   var body = icon.shapes.map(function (s) {
     var op = s.alpha != null && s.alpha !== 1 ? ' fill-opacity="' + s.alpha + '"' : "";
     if (s.poly) return '<path d="M' + s.poly.map(function (p) { return k(p[0]) + " " + k(p[1]); }).join("L") + 'Z" fill="' + s.color + '"' + op + "/>";
+    if (s.ring) {
+      // Stroke centred between the outer and inner edge = the same ring.
+      var g = s.ring;
+      return '<ellipse cx="' + k(g[0]) + '" cy="' + k(g[1]) + '" rx="' + k(g[2] - g[4] / 2) + '" ry="' + k(g[3] - g[4] / 2) +
+        '" fill="none" stroke="' + s.color + '" stroke-width="' + k(g[4]) + '"/>';
+    }
     var r = s.rect;
     return '<rect x="' + k(r[0]) + '" y="' + k(r[1]) + '" width="' + k(r[2]) + '" height="' + k(r[3]) + '" rx="' + k(r[4]) + '" fill="' + s.color + '"' + op + "/>";
   }).join("");

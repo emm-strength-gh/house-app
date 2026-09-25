@@ -13,13 +13,14 @@
  * them up.
  */
 
-var CACHE_VERSION = "v1";
+var CACHE_VERSION = "v2";
 var CACHE_SHELL = "house-app-shell-" + CACHE_VERSION;
 
 var SHELL_ASSETS = [
   "./",
   "./index.html",
   "./energy-tracker.html",
+  "./oni-orders.html",
   "./manifest.webmanifest",
   "./icons/house.svg",
   "./icons/house-32.png",
@@ -30,7 +31,11 @@ var SHELL_ASSETS = [
   "./icons/energy.svg",
   "./icons/energy-32.png",
   "./icons/energy-180.png",
-  "./icons/energy-192.png"
+  "./icons/energy-192.png",
+  "./icons/oni.svg",
+  "./icons/oni-32.png",
+  "./icons/oni-180.png",
+  "./icons/oni-192.png"
 ];
 
 self.addEventListener("install", function (event) {

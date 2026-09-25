@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Oni Order Builder</title>
+<meta name="description" content="Build and email orders to ONI / Bukiya, with a saved item catalog and JSON backups." />
+
+<!-- PWA (part of House App — shares its manifest and service worker) -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#1a1512" />
+<link rel="icon" type="image/svg+xml" href="icons/oni.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/oni-32.png" />
+<link rel="apple-touch-icon" href="icons/oni-180.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Oni Orders" />
+
+<style>
+  :root{
+    --ink:#2c2622; --muted:#8a7d6f; --bg:#f5ece0; --bg2:#efe3d3; --surface:#fffdf9; --surface-2:#faf3e8;
+    --border:#ece0cf; --border-strong:#ddccb5; --accent:#d76a45; --accent-2:#e29455; --accent-ink:#fffaf5;
+    --accent-soft:rgba(215,106,69,.12); --ok:#3f8f5b; --danger:#c85a3c; --chip:#f2e8d8;
+    --shadow:0 2px 10px rgba(120,80,40,.09); --shadow-lg:0 14px 34px rgba(120,80,40,.14);
+    --r:14px; --r-lg:18px;
+  }
+  html[data-theme="dark"]{
+    --ink:#f1e7db; --muted:#ab9c89; --bg:#1a1512; --bg2:#221a15; --surface:#26201b; --surface-2:#2f2822;
+    --border:#39302a; --border-strong:#4c4139; --accent:#e8845b; --accent-2:#efa068; --accent-ink:#2a1710;
+    --accent-soft:rgba(232,132,91,.16); --ok:#5cc07f; --danger:#f0846a; --chip:#322a23;
+    --shadow:0 2px 12px rgba(0,0,0,.38); --shadow-lg:0 16px 38px rgba(0,0,0,.5);
+    --r:14px; --r-lg:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); background:var(--bg);
+    background-image:
+      radial-gradient(1100px 520px at 12% -8%, var(--accent-soft), transparent 60%),
+      radial-gradient(900px 500px at 108% 4%, var(--accent-soft), transparent 55%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+    background-attachment:fixed;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    -webkit-text-size-adjust:100%;
+  }
+  header{
+    position:sticky; top:0; z-index:20;
+    background:var(--surface);
+    background:color-mix(in srgb, var(--surface) 82%, transparent);
+    -webkit-backdrop-filter:saturate(150%) blur(12px); backdrop-filter:saturate(150%) blur(12px);
+    border-bottom:1px solid var(--border); padding:13px 16px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .logo{
+    width:36px;height:36px;border-radius:11px;color:var(--accent-ink);
+    background:linear-gradient(145deg, var(--accent-2), var(--accent));
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;letter-spacing:.5px;
+    box-shadow:0 4px 12px var(--accent-soft), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  header h1{font-size:17px;margin:0;font-weight:700;flex:1;letter-spacing:-.01em}
+  .iconbtn{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--ink);
+    border-radius:10px;padding:8px 11px;font-size:14px;cursor:pointer;transition:.15s;
+  }
+  .iconbtn:hover{border-color:var(--border-strong)}
+  .homebtn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:8px 9px}
+  nav.tabs{
+    display:flex;gap:6px;padding:9px 12px 0;
+    background:var(--surface);
+    background:color-mix(in srgb, var(--surface) 82%, transparent);
+    -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);position:sticky;top:63px;z-index:19;overflow-x:auto;
+  }
+  nav.tabs button{
+    border:none;background:transparent;color:var(--muted);font-weight:600;font-size:14px;
+    padding:9px 14px;border-radius:10px 10px 0 0;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;transition:.15s;
+  }
+  nav.tabs button:hover{color:var(--ink)}
+  nav.tabs button.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--accent-soft)}
+  main{max-width:760px;margin:0 auto;padding:16px}
+  .panel{display:none}
+  .panel.active{display:block}
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+    padding:18px;margin-bottom:16px;box-shadow:var(--shadow);
+  }
+  .card h2{margin:0 0 4px;font-size:16px;letter-spacing:-.01em}
+  .card .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+  label{display:block;font-size:13px;font-weight:600;margin:0 0 5px;color:var(--muted)}
+  input,select,textarea{
+    width:100%;font:inherit;color:var(--ink);background:var(--surface-2);
+    border:1px solid var(--border-strong);border-radius:11px;padding:11px 12px;transition:.15s;
+  }
+  input:focus,select:focus,textarea:focus{
+    outline:none;border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft);background:var(--surface);
+  }
+  textarea{resize:vertical;min-height:70px}
+  select{appearance:none;-webkit-appearance:none;
+    background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+    background-position:calc(100% - 18px) 52%,calc(100% - 13px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px;
+  }
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row > .col{flex:1;min-width:120px}
+  .field{margin-bottom:12px}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    border:1px solid var(--border-strong);background:var(--surface-2);color:var(--ink);
+    border-radius:11px;padding:11px 15px;font:inherit;font-weight:600;cursor:pointer;transition:.15s;
+  }
+  .btn:hover{border-color:var(--muted)}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{
+    background:linear-gradient(145deg, var(--accent-2), var(--accent));
+    border-color:transparent;color:var(--accent-ink);
+    box-shadow:0 6px 16px var(--accent-soft), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .btn.primary:hover{filter:brightness(1.05)}
+  .btn.block{width:100%}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:7px 11px;font-size:13px;border-radius:9px}
+  .btn.danger{color:var(--danger);border-color:color-mix(in srgb, var(--danger) 45%, var(--border-strong))}
+  .btn.danger:hover{border-color:var(--danger)}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .lines{list-style:none;margin:14px 0 0;padding:0}
+  .lines li{
+    display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-top:1px solid var(--border);
+  }
+  .lines li .grow{flex:1;min-width:0}
+  .lines .name{font-weight:600}
+  .lines .meta{color:var(--muted);font-size:13px;margin-top:2px}
+  .qtybox{font-weight:700;white-space:nowrap;color:var(--accent);
+    background:var(--accent-soft);border-radius:999px;padding:3px 11px;font-size:13px;align-self:center;}
+  .empty{color:var(--muted);font-style:italic;padding:10px 0}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;background:var(--chip);
+    border:1px solid var(--border);border-radius:999px;padding:5px 11px;font-size:13px;margin:0 6px 6px 0;
+  }
+  .chip button{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:0}
+  .catitem{border-top:1px solid var(--border);padding:12px 0}
+  .catitem:first-of-type{border-top:none}
+  .catitem .top{display:flex;align-items:center;gap:10px}
+  .catitem .top .grow{flex:1;min-width:0}
+  .catitem .catname{font-weight:700}
+  .catitem .catcat{color:var(--muted);font-size:12px}
+  .catbody{margin-top:10px;padding-left:2px}
+  .miniadd{display:flex;gap:8px;margin-top:8px}
+  .miniadd input{flex:1}
+  .savedorder{border-top:1px solid var(--border);padding:12px 0}
+  .savedorder:first-of-type{border-top:none}
+  .savedorder .top{display:flex;align-items:center;gap:10px}
+  .savedorder .top .grow{flex:1;min-width:0}
+  .savedorder .oname{font-weight:700}
+  .savedorder .ometa{color:var(--muted);font-size:13px;margin-top:2px}
+  .hidden{display:none !important}
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:10px;font-weight:600;
+    opacity:0;transition:.25s;z-index:50;box-shadow:0 6px 20px rgba(0,0,0,.3);max-width:90vw;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .note{font-size:12px;color:var(--muted);margin-top:6px}
+  .divider{height:1px;background:var(--border);margin:14px 0}
+  code.k{background:var(--chip);padding:1px 6px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <a class="iconbtn homebtn" href="index.html" aria-label="Back to House App" title="Back to House App">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L10 3l7 6.5V17a1 1 0 0 1-1 1h-3.5v-5h-5v5H4a1 1 0 0 1-1-1z"/></svg>
+  </a>
+  <div class="logo">ONI</div>
+  <h1>Order Builder</h1>
+  <button class="iconbtn" id="themeBtn" title="Toggle theme">🌓</button>
+</header>
+
+<nav class="tabs">
+  <button data-tab="order" class="active">New Order</button>
+  <button data-tab="catalog">Items</button>
+  <button data-tab="saved">Saved Orders</button>
+  <button data-tab="backup">Backup</button>
+</nav>
+
+<main>
+  <!-- ============ NEW ORDER ============ -->
+  <section class="panel active" id="tab-order">
+    <div class="card">
+      <h2>Add an item</h2>
+      <p class="sub">Pick from your saved items. Manage the list under the <b>Items</b> tab.</p>
+
+      <div class="field">
+        <label for="selItem">Item</label>
+        <select id="selItem"></select>
+      </div>
+      <div class="row">
+        <div class="col field">
+          <label for="selSize">Size / Length</label>
+          <select id="selSize"></select>
+        </div>
+        <div class="col field">
+          <label for="selColour">Colour</label>
+          <select id="selColour"></select>
+        </div>
+        <div class="col field" style="max-width:110px">
+          <label for="inQty">Qty</label>
+          <input id="inQty" type="number" min="1" step="1" value="1" inputmode="numeric" />
+        </div>
+      </div>
+      <button class="btn primary block" id="addLineBtn">+ Add to order</button>
+    </div>
+
+    <div class="card">
+      <h2>This order</h2>
+      <p class="sub">Items you're about to request.</p>
+      <ul class="lines" id="orderLines"></ul>
+
+      <div class="divider"></div>
+      <div class="field">
+        <label for="selPostage">Postage method</label>
+        <select id="selPostage">
+          <option value="Japan EMS Express Post">Japan EMS Express Post</option>
+          <option value="DHL Express">DHL Express</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="inShipTo">Shipping address (optional)</label>
+        <textarea id="inShipTo" placeholder="Name, address, country…"></textarea>
+      </div>
+      <div class="field">
+        <label for="inNotes">Notes to ONI (optional)</label>
+        <textarea id="inNotes" placeholder="Anything else… stiff variant, stock questions, etc."></textarea>
+      </div>
+
+      <div class="btnrow">
+        <button class="btn primary" id="createEmailBtn">✉️ Create order for Oni</button>
+        <button class="btn" id="saveOrderBtn">💾 Save this order</button>
+        <button class="btn ghost danger" id="clearOrderBtn">Clear</button>
+      </div>
+    </div>
+
+    <div class="card hidden" id="emailCard">
+      <h2>Email to ONI</h2>
+      <p class="sub">Review, then copy or open in your mail app.</p>
+      <div class="row">
+        <div class="col field">
+          <label for="inTo">To</label>
+          <input id="inTo" type="email" />
+        </div>
+        <div class="col field">
+          <label for="inCc">Cc</label>
+          <input id="inCc" type="email" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="inSubject">Subject</label>
+        <input id="inSubject" type="text" />
+      </div>
+      <div class="field">
+        <label for="outBody">Message</label>
+        <textarea id="outBody" style="min-height:230px"></textarea>
+      </div>
+      <div class="btnrow">
+        <button class="btn primary" id="copyEmailBtn">📋 Copy email</button>
+        <button class="btn" id="mailtoBtn">Open in mail app</button>
+      </div>
+      <p class="note">Nothing is sent automatically — "Open in mail app" just drafts it so you can review and hit send yourself.</p>
+    </div>
+  </section>
+
+  <!-- ============ CATALOG ============ -->
+  <section class="panel" id="tab-catalog">
+    <div class="card">
+      <h2>Add a new item</h2>
+      <p class="sub">Add products so they appear in the order dropdown. Sizes and colours are optional.</p>
+      <div class="field">
+        <label for="newName">Item name</label>
+        <input id="newName" type="text" placeholder="e.g. Shinobi Singlet" />
+      </div>
+      <div class="row">
+        <div class="col field">
+          <label for="newCategory">Category (optional)</label>
+          <input id="newCategory" type="text" placeholder="e.g. Singlets" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="col field">
+          <label for="newSizes">Sizes / lengths</label>
+          <input id="newSizes" type="text" placeholder="Comma separated: S, M, L, XL" />
+        </div>
+        <div class="col field">
+          <label for="newColours">Colours</label>
+          <input id="newColours" type="text" placeholder="Comma separated: Black, Red" />
+        </div>
+      </div>
+      <button class="btn primary block" id="addItemBtn">+ Add item</button>
+    </div>
+
+    <div class="card">
+      <h2>Your items</h2>
+      <p class="sub">Tap a size or colour chip's ✕ to remove it, or add new ones inline.</p>
+      <div id="catList"></div>
+    </div>
+  </section>
+
+  <!-- ============ SAVED ORDERS ============ -->
+  <section class="panel" id="tab-saved">
+    <div class="card">
+      <h2>Saved orders</h2>
+      <p class="sub">Orders you saved. Load one back into the builder, or export it as its own JSON file.</p>
+      <div class="btnrow" style="margin-bottom:6px">
+        <button class="btn" id="importOrderBtn">📂 Open an order JSON</button>
+      </div>
+      <div id="savedList"></div>
+    </div>
+  </section>
+
+  <!-- ============ BACKUP ============ -->
+  <section class="panel" id="tab-backup">
+    <div class="card">
+      <h2>Save everything to a file</h2>
+      <p class="sub">Downloads one JSON file with <b>all</b> your items, saved orders and settings. Keep it somewhere safe (iCloud, Drive, email to yourself) — this is your real backup, not just browser storage.</p>
+      <button class="btn primary block" id="exportAllBtn">💾 Save backup (.json)</button>
+      <div class="divider"></div>
+      <h2 style="font-size:15px">Restore from a file</h2>
+      <p class="sub">Load a backup JSON back into the app.</p>
+      <div class="btnrow">
+        <button class="btn" id="importAllMergeBtn">📂 Import &amp; merge</button>
+        <button class="btn danger ghost" id="importAllReplaceBtn">Import &amp; replace all</button>
+      </div>
+      <p class="note"><b>Merge</b> keeps what you have and adds anything new. <b>Replace all</b> wipes current data first. Both ask you to pick the backup file.</p>
+    </div>
+    <div class="card">
+      <h2>Reset</h2>
+      <p class="sub">Wipe everything in this app and start fresh (this does not touch your saved files).</p>
+      <button class="btn danger ghost" id="resetBtn">Delete all data</button>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- hidden file inputs -->
+<input type="file" id="fileOrder" accept="application/json,.json" class="hidden" />
+<input type="file" id="fileBackup" accept="application/json,.json" class="hidden" />
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- tiny DOM helpers (matching the house style) ---------- */
+  function $(id){ return document.getElementById(id); }
+  function el(tag, cls, txt){ var n=document.createElement(tag); if(cls)n.className=cls; if(txt!=null)n.textContent=txt; return n; }
+  function clear(n){ while(n.firstChild) n.removeChild(n.firstChild); }
+
+  /* ---------- storage (localStorage is a convenience cache only) ---------- */
+  var STORE = { catalog:"oni.catalog.v1", orders:"oni.orders.v1", settings:"oni.settings.v1" };
+  function safeRead(key, fallback){
+    try{ var v=localStorage.getItem(key); return v==null? fallback : JSON.parse(v); }
+    catch(e){ return fallback; }
+  }
+  function safeWrite(key, val){
+    try{ localStorage.setItem(key, JSON.stringify(val)); return true; }
+    catch(e){ return false; }
+  }
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  /* ---------- seed catalog (built from the real ONI/Bukiya order history) ---------- */
+  function seedCatalog(){
+    var seed = [
+      ["Shinobi Singlet","Singlets",["XS","S","M","L","XL"],["Black"]],
+      ["Bukiya Classic Singlet","Singlets",["S","M","L","XL"],["Black","Black w/ Red Stripes"]],
+      ["Japan Singlet V2","Singlets",["S","M","L","XL"],[]],
+      ["Knee Sleeves PRO","Knee Sleeves",["S","M","L","XL"],[]],
+      ["Stiff Knee Sleeves","Knee Sleeves",["S","M","L","XL"],[]],
+      ["ONI Knee Sleeve Grade S","Knee Sleeves",["M","L","XL"],[]],
+      ["ONI Knee Sleeve Grade A","Knee Sleeves",["M","L","XL"],[]],
+      ["Wrist Wraps","Wrist Wraps",["70cm","75cm","99cm"],["Red","All Black","Red/Black"]],
+      ["Homura Bench Shirt","Bench Shirt",["M","L","XL","2XL","3XL","4XL"],[]],
+      ["Figure-8 Deadlift Straps","Straps",[],[]],
+      ["Deadlift Socks","Socks",["S","M","L"],[]],
+      ["THE ONI T-shirt","Oni T-Shirt",["S","M","L","XL"],[]],
+      ["STK-1 Squat Shoes","Shoes",["24cm","25cm","26cm","27cm","28cm"],[]],
+      ["Oni Barbell Collar","Accessories",[],["Aluminum","Competition"]]
+    ];
+    return seed.map(function(r){
+      return { id:uid(), name:r[0], category:r[1], sizes:r[2].slice(), colours:r[3].slice() };
+    });
+  }
+
+  /* ---------- state ---------- */
+  var catalog = safeRead(STORE.catalog, null);
+  if(!catalog){ catalog = seedCatalog(); safeWrite(STORE.catalog, catalog); }
+  var orders   = safeRead(STORE.orders, []);
+  var settings = safeRead(STORE.settings, null) || {
+    toEmail:"bukiyaorder@gmail.com", ccEmail:"onibukiya@gmail.com", fromName:"", theme:"dark"
+  };
+
+  // current working order (draft, not saved until user saves)
+  var draft = { id:uid(), name:"", lines:[] };
+
+  function persistCatalog(){ safeWrite(STORE.catalog, catalog); }
+  function persistOrders(){ safeWrite(STORE.orders, orders); }
+  function persistSettings(){ safeWrite(STORE.settings, settings); }
+
+  /* ---------- toast ---------- */
+  var toastTimer=null;
+  function toast(msg){
+    var t=$("toast"); t.textContent=msg; t.classList.add("show");
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  /* ---------- theme ---------- */
+  function applyTheme(t){
+    document.documentElement.setAttribute("data-theme", t);
+    var m=document.querySelector('meta[name="theme-color"]');
+    if(m) m.setAttribute("content", t==="dark" ? "#1a1512" : "#f5ece0");
+    settings.theme=t; persistSettings();
+  }
+  applyTheme(settings.theme || "dark");
+  $("themeBtn").addEventListener("click", function(){
+    applyTheme(document.documentElement.getAttribute("data-theme")==="dark" ? "light":"dark");
+  });
+
+  /* ---------- tabs ---------- */
+  var tabButtons = document.querySelectorAll("nav.tabs button");
+  Array.prototype.forEach.call(tabButtons, function(btn){
+    btn.addEventListener("click", function(){
+      Array.prototype.forEach.call(tabButtons, function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      Array.prototype.forEach.call(document.querySelectorAll(".panel"), function(p){ p.classList.remove("active"); });
+      $("tab-"+btn.getAttribute("data-tab")).classList.add("active");
+      if(btn.getAttribute("data-tab")==="catalog") renderCatalog();
+      if(btn.getAttribute("data-tab")==="saved") renderSaved();
+    });
+  });
+
+  /* ---------- order builder: dropdowns ---------- */
+  function fillSelect(sel, values, placeholder){
+    clear(sel);
+    if(placeholder!=null){
+      var o=el("option", null, placeholder); o.value=""; sel.appendChild(o);
+    }
+    values.forEach(function(v){
+      var o=el("option", null, v); o.value=v; sel.appendChild(o);
+    });
+  }
+
+  function currentItem(){
+    var id=$("selItem").value;
+    for(var i=0;i<catalog.length;i++){ if(catalog[i].id===id) return catalog[i]; }
+    return null;
+  }
+
+  function renderItemSelect(){
+    var sel=$("selItem"); clear(sel);
+    if(!catalog.length){
+      var o=el("option", null, "No items yet — add some under Items"); o.value=""; sel.appendChild(o);
+      fillSelect($("selSize"), [], "—");
+      fillSelect($("selColour"), [], "—");
+      return;
+    }
+    catalog.slice().sort(function(a,b){ return a.name.localeCompare(b.name); })
+      .forEach(function(it){
+        var label = it.category ? (it.name + "  ·  " + it.category) : it.name;
+        var o=el("option", null, label); o.value=it.id; sel.appendChild(o);
+      });
+    onItemChange();
+  }
+
+  function onItemChange(){
+    var it=currentItem();
+    var sizes = it && it.sizes ? it.sizes : [];
+    var cols  = it && it.colours ? it.colours : [];
+    fillSelect($("selSize"), sizes, sizes.length ? "— select —" : "(no size)");
+    fillSelect($("selColour"), cols, cols.length ? "— select —" : "(no colour)");
+  }
+  $("selItem").addEventListener("change", onItemChange);
+
+  /* ---------- order lines ---------- */
+  function renderLines(){
+    var ul=$("orderLines"); clear(ul);
+    if(!draft.lines.length){
+      var li=el("li"); li.appendChild(el("span","empty","No items added yet.")); ul.appendChild(li);
+      return;
+    }
+    draft.lines.forEach(function(ln, idx){
+      var li=el("li");
+      var grow=el("div","grow");
+      grow.appendChild(el("div","name", ln.name));
+      var bits=[];
+      if(ln.size) bits.push("Size: "+ln.size);
+      if(ln.colour) bits.push("Colour: "+ln.colour);
+      if(bits.length) grow.appendChild(el("div","meta", bits.join("   ·   ")));
+      li.appendChild(grow);
+      li.appendChild(el("div","qtybox","×"+ln.qty));
+      var rm=el("button","btn sm ghost danger","Remove");
+      rm.addEventListener("click", function(){ draft.lines.splice(idx,1); renderLines(); });
+      li.appendChild(rm);
+      ul.appendChild(li);
+    });
+  }
+
+  $("addLineBtn").addEventListener("click", function(){
+    var it=currentItem();
+    if(!it){ toast("Add an item to your catalog first"); return; }
+    var qty=parseInt($("inQty").value,10); if(!qty||qty<1) qty=1;
+    var size=$("selSize").value || "";
+    var colour=$("selColour").value || "";
+    if(it.sizes && it.sizes.length && !size){ toast("Pick a size"); return; }
+    if(it.colours && it.colours.length && !colour){ toast("Pick a colour"); return; }
+    draft.lines.push({ name:it.name, size:size, colour:colour, qty:qty });
+    renderLines();
+    $("inQty").value="1";
+    toast("Added");
+  });
+
+  $("clearOrderBtn").addEventListener("click", function(){
+    if(!draft.lines.length && !$("inShipTo").value && !$("inNotes").value){ return; }
+    if(!confirm("Clear the current order?")) return;
+    draft = { id:uid(), name:"", lines:[] };
+    $("inShipTo").value=""; $("inNotes").value="";
+    $("emailCard").classList.add("hidden");
+    renderLines();
+  });
+
+  /* ---------- email template ---------- */
+  function buildEmail(){
+    var postage=$("selPostage").value;
+    var shipTo=$("inShipTo").value.trim();
+    var notes=$("inNotes").value.trim();
+    var today=new Date().toISOString().slice(0,10);
+
+    var lines=[];
+    lines.push("Hi Okutani-san,");
+    lines.push("");
+    lines.push("I'd like to place the following order:");
+    lines.push("");
+
+    // group consecutive/repeat items under one heading, in first-seen order,
+    // so each product appears once with its size/colour rows bulleted beneath.
+    var groups=[];
+    function groupFor(name){
+      for(var i=0;i<groups.length;i++){ if(groups[i].name===name) return groups[i]; }
+      var g={ name:name, items:[] }; groups.push(g); return g;
+    }
+    draft.lines.forEach(function(ln){ groupFor(ln.name).items.push(ln); });
+
+    groups.forEach(function(g){
+      lines.push(g.name);
+      g.items.forEach(function(ln){
+        var detail=[];
+        if(ln.size) detail.push("Size: "+ln.size);
+        if(ln.colour) detail.push("Colour: "+ln.colour);
+        detail.push("Qty: "+ln.qty);
+        lines.push("* ("+detail.join(", ")+")");
+      });
+      lines.push("");
+    });
+
+    lines.push("Preferred postage method: "+postage);
+    if(shipTo){ lines.push(""); lines.push("Shipping address:"); lines.push(shipTo); }
+    if(notes){ lines.push(""); lines.push("Notes:"); lines.push(notes); }
+    lines.push("");
+    lines.push("Kind regards,");
+    lines.push("Aimi Funayama");
+
+    var subject = "New Order — " + today;
+    return { subject:subject, body:lines.join("\n") };
+  }
+
+  $("createEmailBtn").addEventListener("click", function(){
+    if(!draft.lines.length){ toast("Add at least one item first"); return; }
+    var e=buildEmail();
+    $("inTo").value = settings.toEmail || "";
+    $("inCc").value = settings.ccEmail || "";
+    $("inSubject").value = e.subject;
+    $("outBody").value = e.body;
+    $("emailCard").classList.remove("hidden");
+    $("emailCard").scrollIntoView({ behavior:"smooth", block:"start" });
+  });
+
+  $("copyEmailBtn").addEventListener("click", function(){
+    var text = $("outBody").value;
+    // remember any edits to recipients for next time
+    settings.toEmail=$("inTo").value.trim(); settings.ccEmail=$("inCc").value.trim(); persistSettings();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast("Email copied"); },
+        function(){ legacyCopy($("outBody")); });
+    } else { legacyCopy($("outBody")); }
+  });
+  function legacyCopy(ta){
+    ta.focus(); ta.select();
+    try{ document.execCommand("copy"); toast("Email copied"); }
+    catch(e){ toast("Select the text and copy manually"); }
+  }
+
+  $("mailtoBtn").addEventListener("click", function(){
+    settings.toEmail=$("inTo").value.trim(); settings.ccEmail=$("inCc").value.trim(); persistSettings();
+    var to=encodeURIComponent($("inTo").value.trim());
+    var cc=encodeURIComponent($("inCc").value.trim());
+    var su=encodeURIComponent($("inSubject").value);
+    var bo=encodeURIComponent($("outBody").value);
+    var href="mailto:"+to+"?cc="+cc+"&subject="+su+"&body="+bo;
+    window.location.href=href;
+  });
+
+  /* ---------- save order ---------- */
+  $("saveOrderBtn").addEventListener("click", function(){
+    if(!draft.lines.length){ toast("Nothing to save yet"); return; }
+    var name = prompt("Name this order:", draft.name || ("Order " + new Date().toISOString().slice(0,10)));
+    if(name===null) return;
+    var rec = {
+      id: uid(),
+      name: name.trim() || ("Order " + new Date().toISOString().slice(0,10)),
+      date: new Date().toISOString().slice(0,10),
+      postage: $("selPostage").value,
+      shipTo: $("inShipTo").value.trim(),
+      notes: $("inNotes").value.trim(),
+      lines: draft.lines.map(function(l){ return {name:l.name,size:l.size,colour:l.colour,qty:l.qty}; }),
+      createdAt: new Date().toISOString()
+    };
+    orders.unshift(rec); persistOrders();
+    toast("Order saved");
+  });
+
+  function loadOrderIntoBuilder(rec){
+    draft = { id:uid(), name:rec.name||"", lines:(rec.lines||[]).map(function(l){
+      return {name:l.name,size:l.size||"",colour:l.colour||"",qty:l.qty||1};
+    }) };
+    if(rec.postage) $("selPostage").value = rec.postage;
+    $("inShipTo").value = rec.shipTo || "";
+    $("inNotes").value = rec.notes || "";
+    $("emailCard").classList.add("hidden");
+    renderLines();
+    // switch to order tab
+    document.querySelector('nav.tabs button[data-tab="order"]').click();
+    toast("Loaded into builder");
+  }
+
+  /* ---------- saved orders list ---------- */
+  function renderSaved(){
+    var box=$("savedList"); clear(box);
+    if(!orders.length){ box.appendChild(el("div","empty","No saved orders yet.")); return; }
+    orders.forEach(function(rec, idx){
+      var wrap=el("div","savedorder");
+      var top=el("div","top");
+      var grow=el("div","grow");
+      grow.appendChild(el("div","oname", rec.name));
+      var count=(rec.lines||[]).reduce(function(s,l){ return s+(l.qty||0); },0);
+      grow.appendChild(el("div","ometa", rec.date + "   ·   " + (rec.lines||[]).length + " line(s), " + count + " item(s)   ·   " + (rec.postage||"—")));
+      top.appendChild(grow);
+      wrap.appendChild(top);
+
+      var btns=el("div","btnrow");
+      var loadB=el("button","btn sm","Load"); loadB.addEventListener("click", function(){ loadOrderIntoBuilder(rec); });
+      var expB=el("button","btn sm","Export JSON"); expB.addEventListener("click", function(){ exportOrder(rec); });
+      var delB=el("button","btn sm ghost danger","Delete");
+      delB.addEventListener("click", function(){
+        if(!confirm("Delete \""+rec.name+"\"?")) return;
+        orders.splice(idx,1); persistOrders(); renderSaved();
+      });
+      btns.appendChild(loadB); btns.appendChild(expB); btns.appendChild(delB);
+      wrap.appendChild(btns);
+      box.appendChild(wrap);
+    });
+  }
+
+  /* ---------- catalog UI ---------- */
+  function renderCatalog(){
+    var box=$("catList"); clear(box);
+    if(!catalog.length){ box.appendChild(el("div","empty","No items yet.")); return; }
+    catalog.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(it){
+      box.appendChild(renderCatItem(it));
+    });
+  }
+
+  function chipRow(labelText, arr, onAdd, onRemove){
+    var wrap=el("div");
+    wrap.appendChild(el("label", null, labelText));
+    var chips=el("div");
+    if(!arr.length){ chips.appendChild(el("span","note","none")); }
+    arr.forEach(function(v, i){
+      var c=el("span","chip"); c.appendChild(document.createTextNode(v));
+      var x=el("button", null, "✕"); x.setAttribute("aria-label","remove "+v);
+      x.addEventListener("click", function(){ onRemove(i); });
+      c.appendChild(x); chips.appendChild(c);
+    });
+    wrap.appendChild(chips);
+    var add=el("div","miniadd");
+    var inp=el("input"); inp.type="text"; inp.placeholder="Add "+labelText.toLowerCase().replace(/s$/,"")+"…";
+    var btn=el("button","btn sm","Add");
+    function doAdd(){ var v=inp.value.trim(); if(!v) return; onAdd(v); inp.value=""; }
+    btn.addEventListener("click", doAdd);
+    inp.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); doAdd(); } });
+    add.appendChild(inp); add.appendChild(btn);
+    wrap.appendChild(add);
+    return wrap;
+  }
+
+  function renderCatItem(it){
+    var wrap=el("div","catitem");
+    var top=el("div","top");
+    var grow=el("div","grow");
+    grow.appendChild(el("div","catname", it.name));
+    if(it.category) grow.appendChild(el("div","catcat", it.category));
+    top.appendChild(grow);
+
+    var renameB=el("button","btn sm ghost","Rename");
+    renameB.addEventListener("click", function(){
+      var nm=prompt("Item name:", it.name); if(nm===null) return;
+      var cat=prompt("Category (blank for none):", it.category||""); if(cat===null) return;
+      it.name=nm.trim()||it.name; it.category=cat.trim();
+      persistCatalog(); renderCatalog(); renderItemSelect();
+    });
+    var delB=el("button","btn sm ghost danger","Delete");
+    delB.addEventListener("click", function(){
+      if(!confirm("Delete item \""+it.name+"\"?")) return;
+      var i=catalog.indexOf(it); if(i>=0) catalog.splice(i,1);
+      persistCatalog(); renderCatalog(); renderItemSelect();
+    });
+    top.appendChild(renameB); top.appendChild(delB);
+    wrap.appendChild(top);
+
+    var body=el("div","catbody");
+    body.appendChild(chipRow("Sizes", it.sizes,
+      function(v){ it.sizes.push(v); persistCatalog(); renderCatalog(); renderItemSelect(); },
+      function(i){ it.sizes.splice(i,1); persistCatalog(); renderCatalog(); renderItemSelect(); }
+    ));
+    body.appendChild(el("div","divider"));
+    body.appendChild(chipRow("Colours", it.colours,
+      function(v){ it.colours.push(v); persistCatalog(); renderCatalog(); renderItemSelect(); },
+      function(i){ it.colours.splice(i,1); persistCatalog(); renderCatalog(); renderItemSelect(); }
+    ));
+    wrap.appendChild(body);
+    return wrap;
+  }
+
+  function parseList(s){
+    return (s||"").split(",").map(function(x){ return x.trim(); }).filter(function(x){ return x.length; });
+  }
+
+  $("addItemBtn").addEventListener("click", function(){
+    var name=$("newName").value.trim();
+    if(!name){ toast("Enter an item name"); return; }
+    catalog.push({
+      id:uid(), name:name, category:$("newCategory").value.trim(),
+      sizes:parseList($("newSizes").value), colours:parseList($("newColours").value)
+    });
+    persistCatalog();
+    $("newName").value=""; $("newCategory").value=""; $("newSizes").value=""; $("newColours").value="";
+    renderCatalog(); renderItemSelect();
+    toast("Item added");
+  });
+
+  /* ---------- file download / read helpers ---------- */
+  function download(filename, obj){
+    var blob=new Blob([JSON.stringify(obj,null,2)], {type:"application/json"});
+    var url=URL.createObjectURL(blob);
+    var a=el("a"); a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  }
+  function slug(s){ return (s||"order").replace(/[^\w\-]+/g,"_").replace(/^_+|_+$/g,"").slice(0,50) || "order"; }
+
+  function exportOrder(rec){
+    download("oni-order-"+slug(rec.name)+"-"+rec.date+".json", { kind:"oni-order", version:1, order:rec });
+  }
+
+  /* single-order import */
+  $("importOrderBtn").addEventListener("click", function(){ $("fileOrder").click(); });
+  $("fileOrder").addEventListener("change", function(e){
+    var f=e.target.files[0]; if(!f) return;
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var data=JSON.parse(r.result);
+        var rec = data.order || data; // accept a bare order object too
+        if(!rec || !rec.lines){ toast("That doesn't look like an order file"); return; }
+        rec.id = rec.id || uid();
+        loadOrderIntoBuilder(rec);
+      }catch(err){ toast("Couldn't read that file"); }
+      $("fileOrder").value="";
+    };
+    r.readAsText(f);
+  });
+
+  /* ---------- full backup ---------- */
+  $("exportAllBtn").addEventListener("click", function(){
+    var payload={ kind:"oni-backup", version:1, exportedAt:new Date().toISOString(),
+      catalog:catalog, orders:orders, settings:settings };
+    download("oni-order-builder-backup-"+new Date().toISOString().slice(0,10)+".json", payload);
+    toast("Backup saved");
+  });
+
+  var pendingMode="merge";
+  $("importAllMergeBtn").addEventListener("click", function(){ pendingMode="merge"; $("fileBackup").click(); });
+  $("importAllReplaceBtn").addEventListener("click", function(){
+    if(!confirm("Replace ALL current items and orders with the backup file?")) return;
+    pendingMode="replace"; $("fileBackup").click();
+  });
+
+  $("fileBackup").addEventListener("change", function(e){
+    var f=e.target.files[0]; if(!f) return;
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var data=JSON.parse(r.result);
+        if(!data || (!data.catalog && !data.orders)){ toast("Not a valid backup file"); $("fileBackup").value=""; return; }
+        if(pendingMode==="replace"){
+          catalog = Array.isArray(data.catalog)? data.catalog : [];
+          orders  = Array.isArray(data.orders)? data.orders : [];
+          if(data.settings) settings = data.settings;
+        } else {
+          mergeCatalog(data.catalog||[]);
+          mergeOrders(data.orders||[]);
+        }
+        // ensure ids exist
+        catalog.forEach(function(c){ if(!c.id) c.id=uid(); if(!c.sizes)c.sizes=[]; if(!c.colours)c.colours=[]; });
+        orders.forEach(function(o){ if(!o.id) o.id=uid(); });
+        persistCatalog(); persistOrders(); persistSettings();
+        applyTheme(settings.theme||"dark");
+        renderItemSelect(); renderCatalog(); renderSaved();
+        toast(pendingMode==="replace" ? "Backup restored" : "Backup merged in");
+      }catch(err){ toast("Couldn't read that backup"); }
+      $("fileBackup").value="";
+    };
+    r.readAsText(f);
+  });
+
+  function mergeCatalog(incoming){
+    incoming.forEach(function(inc){
+      if(!inc || !inc.name) return;
+      var match=null;
+      for(var i=0;i<catalog.length;i++){
+        if(catalog[i].name.toLowerCase()===inc.name.toLowerCase()){ match=catalog[i]; break; }
+      }
+      if(!match){
+        catalog.push({ id:uid(), name:inc.name, category:inc.category||"",
+          sizes:(inc.sizes||[]).slice(), colours:(inc.colours||[]).slice() });
+      } else {
+        (inc.sizes||[]).forEach(function(s){ if(match.sizes.indexOf(s)<0) match.sizes.push(s); });
+        (inc.colours||[]).forEach(function(c){ if(match.colours.indexOf(c)<0) match.colours.push(c); });
+      }
+    });
+  }
+  function mergeOrders(incoming){
+    incoming.forEach(function(inc){
+      if(!inc) return;
+      var dup=false;
+      for(var i=0;i<orders.length;i++){ if(inc.id && orders[i].id===inc.id){ dup=true; break; } }
+      if(!dup) orders.unshift(inc);
+    });
+  }
+
+  /* ---------- reset ---------- */
+  $("resetBtn").addEventListener("click", function(){
+    if(!confirm("Delete ALL items and saved orders from this app? Your downloaded backup files are not affected.")) return;
+    if(!confirm("Really delete everything?")) return;
+    try{ localStorage.removeItem(STORE.catalog); localStorage.removeItem(STORE.orders); localStorage.removeItem(STORE.settings); }catch(e){}
+    catalog=seedCatalog(); orders=[]; settings={toEmail:"bukiyaorder@gmail.com",ccEmail:"onibukiya@gmail.com",fromName:"",theme:settings.theme||"dark"};
+    persistCatalog(); persistOrders(); persistSettings();
+    draft={ id:uid(), name:"", lines:[] };
+    $("inShipTo").value=""; $("inNotes").value=""; $("emailCard").classList.add("hidden");
+    renderItemSelect(); renderLines(); renderCatalog(); renderSaved();
+    toast("Reset to defaults");
+  });
+
+  /* ---------- init ---------- */
+  renderItemSelect();
+  renderLines();
+
+  /* ---------- service worker (PWA) ---------- */
+  // House App's shared worker. Only over http(s) — opened as a local file
+  // there's no worker, and that's fine.
+  if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("sw.js").catch(function(){ /* offline install optional */ });
+    });
+  }
+})();
+</script>
+</body>
+</html>
