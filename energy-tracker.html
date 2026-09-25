@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f5f2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Energy">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/energy.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/energy-32.png">
+<link rel="apple-touch-icon" href="icons/energy-180.png">
+<title>Energy Tracker</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f6f5f2;
+    --surface: #fcfcfb;
+    --surface-2: #f0efeb;
+    --border: #e4e2dc;
+    --border-strong: #cfccc4;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-3: #7c7a74;
+    --grid: #ebe9e4;
+    --accent: #2a78d6;
+    --accent-soft: #e6f0fb;
+    --s-kwh: #2a78d6;
+    --s-php: #eb6834;
+    --s-rate: #4a3aa7;
+    --up: #b3261e;
+    --down: #1d7a3a;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04);
+    --hl: #ffe45c;
+    --hl-ink: #0b0b0b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #111110;
+      --surface: #1a1a19;
+      --surface-2: #232321;
+      --border: #2e2e2b;
+      --border-strong: #45443f;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --ink-3: #8f8e86;
+      --grid: #2a2a27;
+      --accent: #3987e5;
+      --accent-soft: #1b2a3d;
+      --s-kwh: #3987e5;
+      --s-php: #d95926;
+      --s-rate: #9085e9;
+      --up: #f2827a;
+      --down: #6fcf8e;
+      --shadow: none;
+      --hl: #e8c600;
+      --hl-ink: #0b0b0b;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #111110;
+    --surface: #1a1a19;
+    --surface-2: #232321;
+    --border: #2e2e2b;
+    --border-strong: #45443f;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-3: #8f8e86;
+    --grid: #2a2a27;
+    --accent: #3987e5;
+    --accent-soft: #1b2a3d;
+    --s-kwh: #3987e5;
+    --s-php: #d95926;
+    --s-rate: #9085e9;
+    --up: #f2827a;
+    --down: #6fcf8e;
+    --shadow: none;
+    --hl: #e8c600;
+    --hl-ink: #0b0b0b;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; padding-top: max(20px, env(safe-area-inset-top)); }
+
+  /* header */
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  .sub { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+  .head-actions { display: flex; gap: 8px; align-items: center; }
+  .title-row { display: flex; align-items: center; gap: 12px; }
+  .home-btn {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 38px; height: 38px; border-radius: 10px;
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink);
+    text-decoration: none;
+  }
+  .home-btn:hover { background: var(--surface-2); }
+  @media (max-width: 560px) {
+    .head-actions { width: 100%; }
+    .head-actions .grow { flex: 1; justify-content: center; }
+  }
+  h2 { font-size: 15px; margin: 0; font-weight: 600; }
+
+  button, .btn {
+    font: inherit; font-size: 14px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--ink);
+    padding: 9px 14px; border-radius: 8px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  button:hover { background: var(--surface-2); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.primary:hover { filter: brightness(1.08); background: var(--accent); }
+  button.small { padding: 4px 10px; font-size: 13px; }
+  button.danger { color: var(--up); }
+  .icon-btn { padding: 9px 11px; }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px; box-shadow: var(--shadow);
+  }
+
+  /* key stats (always visible) */
+  .key { margin-bottom: 16px; }
+  .key .cards { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 640px) { .key .cards { grid-template-columns: 1fr 1fr; } .key .cards .card:first-child { grid-column: span 2; } }
+  .key .card { background: var(--surface); }
+  .key .card .value { font-size: 28px; }
+  .fc-strip {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    margin-top: 12px; padding: 12px 14px; border-radius: 12px;
+    background: var(--accent-soft); border: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .fc-strip b { font-variant-numeric: tabular-nums; }
+  .fc-strip .muted { color: var(--ink-2); font-size: 12.5px; }
+
+  /* cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .card .label { font-size: 12px; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; }
+  .card .value { font-size: 24px; font-weight: 650; margin-top: 4px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; overflow-wrap: anywhere; }
+  .card .unit { font-size: 14px; font-weight: 500; color: var(--ink-2); margin-left: 2px; }
+  .card .meta { font-size: 12.5px; color: var(--ink-3); margin-top: 4px; }
+  .card.hero .value { font-size: 30px; }
+  /* Highlighter-pen mark for the latest bill's date and amount. */
+  .hl {
+    background: var(--hl); color: var(--hl-ink);
+    padding: 0 .25em; margin: 0 -.05em; border-radius: 4px;
+    -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  }
+  .delta { font-weight: 600; }
+  .delta.up { color: var(--up); }
+  .delta.down { color: var(--down); }
+  @media (max-width: 480px) {
+    .cards { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .card { padding: 12px; }
+    .card .label { font-size: 11px; }
+    .card .value, .key .card .value { font-size: 19px; }
+    .card.hero { grid-column: span 2; }
+    .card.hero .value { font-size: 26px; }
+    .card .unit { font-size: 12px; }
+    .card .meta { font-size: 11.5px; }
+  }
+
+  /* collapsible groups */
+  details.group {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; box-shadow: var(--shadow); margin-bottom: 12px; overflow: hidden;
+  }
+  details.group > summary {
+    list-style: none; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+  }
+  details.group > summary::-webkit-details-marker { display: none; }
+  details.group > summary:hover { background: var(--surface-2); }
+  .chev { width: 18px; height: 18px; flex: none; color: var(--ink-3); transition: transform .15s; }
+  details.group[open] > summary .chev { transform: rotate(90deg); }
+  .sum-peek { margin-left: auto; color: var(--ink-2); font-size: 13.5px; font-variant-numeric: tabular-nums; text-align: right; }
+  details.group[open] .sum-peek { display: none; }
+  .group-body { padding: 0 16px 16px; }
+  .group-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; }
+  @media (max-width: 640px) { .group-grid { grid-template-columns: 1fr; } }
+  .group-grid > details.group { margin-bottom: 0; }
+  .expand-all { display: flex; justify-content: flex-end; gap: 8px; margin: 4px 0 8px; }
+  .linkish { background: none; border: 0; color: var(--accent); padding: 4px 6px; font-size: 13px; }
+  .linkish:hover { background: none; text-decoration: underline; }
+
+  /* charts */
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  @media (max-width: 400px) { .charts { grid-template-columns: 1fr; } }
+  .chart-box { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .chart-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .chart-title h3 { margin: 0; font-size: 14px; font-weight: 600; }
+  .chart-title .hint { font-size: 12px; color: var(--ink-3); }
+  .chart { position: relative; width: 100%; height: 220px; }
+  .chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .chart .empty { color: var(--ink-3); font-size: 14px; padding: 80px 0; text-align: center; margin: 0; }
+  .axis text { fill: var(--ink-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .grid line { stroke: var(--grid); stroke-width: 1; }
+  .baseline { stroke: var(--border-strong); stroke-width: 1; }
+  .direct { fill: var(--ink-2); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .hit { fill: transparent; cursor: pointer; }
+  .hit:hover { fill: var(--ink); fill-opacity: .04; }
+  .xhair { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+  .tip {
+    position: absolute; pointer-events: none; z-index: 5;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    padding: 8px 10px; font-size: 12.5px; line-height: 1.4;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12); white-space: nowrap;
+    opacity: 0; transition: opacity .08s;
+  }
+  .tip.on { opacity: 1; }
+  .tip b { font-variant-numeric: tabular-nums; }
+  .tip .t { color: var(--ink-2); font-size: 11.5px; margin-bottom: 2px; }
+  .swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 1px; }
+
+  /* table */
+  .toolbar { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+  th, td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-size: 12px; color: var(--ink-2); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr:hover { background: var(--surface-2); }
+  td.actions { display: flex; gap: 6px; justify-content: flex-end; }
+  td .note { display: block; font-size: 12px; color: var(--ink-3); white-space: normal; max-width: 220px; }
+  td.missing { color: var(--ink-3); }
+  tfoot td { font-weight: 650; border-top: 1px solid var(--border-strong); border-bottom: 0; }
+  .foot { color: var(--ink-3); font-size: 12.5px; margin-top: 10px; }
+
+  /* dialogs */
+  dialog {
+    border: 1px solid var(--border-strong); border-radius: 16px; padding: 0;
+    background: var(--surface); color: var(--ink);
+    width: min(520px, calc(100vw - 24px)); max-height: calc(100vh - 32px);
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  .dlg-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 6px; }
+  .dlg-head h2 { font-size: 17px; }
+  .dlg-body { padding: 8px 18px 4px; }
+  .dlg-foot { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; padding: 14px 18px 18px; }
+  .dlg-foot .spacer { flex: 1; }
+  .close-x { border: 0; background: none; font-size: 22px; line-height: 1; padding: 4px 8px; color: var(--ink-2); }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .fields .full { grid-column: span 2; }
+  @media (max-width: 420px) { .fields { grid-template-columns: 1fr; } .fields .full { grid-column: span 1; } }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--ink-2); }
+  label.f small { color: var(--ink-3); font-size: 11.5px; }
+  input[type=date], input[type=number], input[type=text], select {
+    font: inherit; font-size: 16px; /* 16px stops iOS zoom-on-focus */
+    padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--border-strong); background: var(--bg); color: var(--ink);
+    width: 100%; min-width: 0;
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .kwh-hint { font-size: 12px; color: var(--ink-3); margin-top: 4px; min-height: 1.2em; }
+  .kwh-hint.warn { color: var(--up); }
+  .kwh-hint .linkish { padding: 0 2px; font-size: 12px; }
+  #kwhMode { display: inline-block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; padding: 1px 6px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); }
+  #kwhMode.auto { background: var(--accent-soft); color: var(--accent); }
+  .auto-tag { font-size: 10.5px; color: var(--accent); margin-left: 4px; text-transform: uppercase; letter-spacing: .03em; }
+  .preview { font-size: 13px; color: var(--ink-2); margin-top: 12px; min-height: 1.2em; }
+  .err { color: var(--up); font-size: 13px; margin-top: 10px; min-height: 1.2em; }
+
+  .fc-info { font-size: 13.5px; color: var(--ink-2); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+  .fc-info b { color: var(--ink); }
+  .fc-result { margin-top: 14px; display: none; }
+  .fc-result.on { display: block; }
+  .fc-big { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 420px) { .fc-big { grid-template-columns: 1fr; } }
+  .fc-big .card .value { font-size: 24px; }
+  .fc-big .card.main { background: var(--accent-soft); }
+  .fc-lines { margin-top: 10px; font-size: 13px; color: var(--ink-2); }
+  .fc-lines div { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--border); }
+  .fc-lines div:last-child { border-bottom: 0; }
+  .fc-lines b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .fc-note { font-size: 12px; color: var(--ink-3); margin-top: 8px; }
+
+  .banner { background: var(--surface-2); border: 1px solid var(--up); color: var(--up); padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; display: none; }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px;
+    font-size: 14px; opacity: 0; transition: all .2s; pointer-events: none; z-index: 20;
+  }
+  .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title-row">
+      <a href="index.html" class="home-btn" aria-label="Back to House App" title="Back to House App">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L10 3l7 6.5V17a1 1 0 0 1-1 1h-3.5v-5h-5v5H4a1 1 0 0 1-1-1z"/></svg>
+      </a>
+      <div>
+      <h1>⚡ Energy Tracker</h1>
+      <div class="sub">Monthly electricity bills &amp; consumption · saved on this device</div>
+      </div>
+    </div>
+    <div class="head-actions">
+      <button type="button" id="forecastBtn" class="grow">📈 Forecast</button>
+      <button type="button" id="addBtn" class="primary grow">＋ Add bill</button>
+      <button type="button" id="themeBtn" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+    </div>
+  </header>
+
+  <div id="storageBanner" class="banner">⚠ This browser is blocking local storage (private mode?). Entries won't be saved after you close the page — use Export to keep a backup.</div>
+
+  <!-- Always-visible key stats -->
+  <section class="panel key">
+    <div class="cards" id="keyCards"></div>
+    <div class="fc-strip" id="fcStrip" style="display:none"></div>
+  </section>
+
+  <div class="expand-all">
+    <button type="button" class="linkish" id="expandAll">Expand all</button>
+    <button type="button" class="linkish" id="collapseAll">Collapse all</button>
+  </div>
+
+  <div class="group-grid">
+    <details class="group" data-group="month">
+      <summary><svg class="chev" viewBox="0 0 20 20" fill="currentColor"><path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><h2 id="monthTitle">Latest month</h2><span class="sum-peek" id="peekMonth"></span></summary>
+      <div class="group-body"><div class="cards" id="cardsMonth"></div></div>
+    </details>
+    <details class="group" data-group="avg">
+      <summary><svg class="chev" viewBox="0 0 20 20"><path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><h2>Averages</h2><span class="sum-peek" id="peekAvg"></span></summary>
+      <div class="group-body"><div class="cards" id="cardsAvg"></div></div>
+    </details>
+  </div>
+  <div style="height:12px"></div>
+
+  <details class="group" data-group="totals">
+    <summary><svg class="chev" viewBox="0 0 20 20"><path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><h2>Totals &amp; records</h2><span class="sum-peek" id="peekTotals"></span></summary>
+    <div class="group-body"><div class="cards" id="cardsTotals"></div></div>
+  </details>
+
+  <details class="group" data-group="charts">
+    <summary><svg class="chev" viewBox="0 0 20 20"><path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><h2>Charts</h2><span class="sum-peek">Bill · kWh · rate · daily use</span></summary>
+    <div class="group-body">
+      <div class="charts">
+        <div class="chart-box">
+          <div class="chart-title"><h3>Bill amount (₱)</h3><span class="hint">per month</span></div>
+          <div class="chart" id="chartPhp"></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title"><h3>Consumption (kWh)</h3><span class="hint">per month</span></div>
+          <div class="chart" id="chartKwh"></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title"><h3>Effective rate (₱ per kWh)</h3><span class="hint">bill ÷ kWh</span></div>
+          <div class="chart" id="chartRate"></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title"><h3>Average daily use (kWh/day)</h3><span class="hint">kWh ÷ days in period</span></div>
+          <div class="chart" id="chartDaily"></div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details class="group" data-group="history">
+    <summary><svg class="chev" viewBox="0 0 20 20"><path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><h2>Bill history</h2><span class="sum-peek" id="peekHistory"></span></summary>
+    <div class="group-body">
+      <div class="toolbar">
+        <button type="button" class="small" id="exportBtn">Export backup</button>
+        <button type="button" class="small" id="csvBtn">Export CSV</button>
+        <button type="button" class="small" id="importBtn">Import backup</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Bill date</th><th>Amount</th><th>kWh</th><th>₱/kWh</th><th>Meter</th>
+              <th>Days</th><th>kWh/day</th><th>vs prev (₱)</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+          <tfoot id="tfoot"></tfoot>
+        </table>
+      </div>
+      <div class="foot" id="savedAt"></div>
+    </div>
+  </details>
+</div>
+
+<!-- Add / edit bill -->
+<dialog id="billDlg">
+  <form id="billForm" autocomplete="off" method="dialog">
+    <div class="dlg-head"><h2 id="billTitle">Add a monthly bill</h2><button type="button" class="close-x" data-close aria-label="Close">×</button></div>
+    <div class="dlg-body">
+      <div class="fields">
+        <label class="f">Bill date
+          <input type="date" id="fDate" required>
+        </label>
+        <label class="f">Bill amount (₱)
+          <input type="number" id="fPhp" step="0.01" min="0" inputmode="decimal" placeholder="e.g. 12345.67" required>
+        </label>
+        <label class="f">Meter reading (kWh) <small>present reading on the bill</small>
+          <input type="number" id="fMeter" step="0.01" min="0" inputmode="decimal" placeholder="optional">
+        </label>
+        <div>
+          <label class="f">Consumption (kWh) <small id="kwhMode">manual</small>
+            <input type="number" id="fKwh" step="0.01" min="0.01" inputmode="decimal" placeholder="e.g. 750" required>
+          </label>
+          <div class="kwh-hint" id="kwhHint"></div>
+        </div>
+        <label class="f full">Note (optional)
+          <input type="text" id="fNote" maxlength="120" placeholder="e.g. new aircon">
+        </label>
+      </div>
+      <div class="preview" id="ratePreview"></div>
+      <div class="err" id="billErr"></div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="danger" id="deleteBtn" style="display:none">Delete</button>
+      <span class="spacer"></span>
+      <button type="button" data-close>Cancel</button>
+      <button type="submit" class="primary" id="saveBtn">Add bill</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Forecast -->
+<dialog id="fcDlg">
+  <form id="fcForm" autocomplete="off" method="dialog">
+    <div class="dlg-head"><h2>Forecast this month's bill</h2><button type="button" class="close-x" data-close aria-label="Close">×</button></div>
+    <div class="dlg-body">
+      <div class="fc-info" id="fcInfo"></div>
+      <div class="fields">
+        <label class="f full" id="fcLastWrap" style="display:none">Meter reading on your last bill (kWh) <small id="fcLastHint"></small>
+          <input type="number" id="fcLast" step="0.01" min="0" inputmode="decimal" placeholder="present reading printed on the bill">
+        </label>
+        <label class="f">Current meter reading (kWh)
+          <input type="number" id="fcNow" step="0.01" min="0" inputmode="decimal" placeholder="read it off your meter">
+        </label>
+        <label class="f">Reading date
+          <input type="date" id="fcDate">
+        </label>
+        <label class="f full">Rate to use
+          <select id="fcRate"></select>
+        </label>
+      </div>
+      <div class="err" id="fcErr"></div>
+      <div class="fc-result" id="fcResult"></div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" data-close>Close</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // Versioned keys: bump .vN if the stored shape ever changes incompatibly.
+  // (meter was added to bills as an optional field, so v1 still holds.)
+  var STORE_BILLS = "energy.bills.v1";
+  var STORE_THEME = "energy.theme.v1";
+  var STORE_SAVED = "energy.savedAt.v1";
+  var STORE_GROUPS = "energy.groups.v1";
+  var STORE_FC = "energy.forecast.v1";
+  var STORE_SUMMARY = "energy.summary.v1";   // read by the home screen widget (index.html)
+
+  // Only used the very first time (key absent). Once the key exists — even as
+  // an empty list after deleting everything — we never reseed.
+  var SEED = [
+    { date: "2026-05-24", php: 6053.04,  kwh: 349 },
+    { date: "2026-06-24", php: 5472.95,  kwh: 307 },
+    { date: "2026-07-24", php: 10640.18, kwh: 613 },
+    { date: "2026-08-24", php: 13415.27, kwh: 788 },
+    { date: "2026-09-24", php: 16547.84, kwh: 986 }
+  ];
+
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, txt) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (txt != null) n.textContent = txt;
+    return n;
+  }
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+  var storageOk = true;
+  function safeRead(key) {
+    try { return localStorage.getItem(key); } catch (e) { storageOk = false; return null; }
+  }
+  function safeWrite(key, val) {
+    try { localStorage.setItem(key, val); return true; } catch (e) { storageOk = false; return false; }
+  }
+  function readJson(key, fallback) {
+    var raw = safeRead(key);
+    if (raw == null) return fallback;
+    try { return JSON.parse(raw); } catch (e) { return fallback; }
+  }
+
+  function uid() { return "b" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function numOrNull(v) { v = parseFloat(v); return isFinite(v) ? Math.round(v * 100) / 100 : null; }
+
+  // ---------- data ----------
+  var BILLS = [];
+
+  function load() {
+    var raw = safeRead(STORE_BILLS);
+    if (raw == null) {
+      BILLS = SEED.map(function (s) { return { id: uid(), date: s.date, php: s.php, kwh: s.kwh, meter: null, note: "", kwhManual: true }; });
+      save();
+      return;
+    }
+    try {
+      var parsed = JSON.parse(raw);
+      BILLS = Array.isArray(parsed) ? parsed.filter(validBill).map(normBill) : [];
+    } catch (e) { BILLS = []; }
+    sortBills();
+  }
+
+  function validBill(b) {
+    return b && typeof b.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.date) &&
+      isFinite(b.php) && isFinite(b.kwh) && b.kwh > 0;
+  }
+  // kwhManual: false means kWh is derived from meter − previous meter and is
+  // kept in sync on every save. Bills stored before this flag existed carry
+  // kWh typed straight off the bill, so they default to manual.
+  function normBill(b) {
+    return { id: b.id || uid(), date: b.date, php: +b.php, kwh: +b.kwh,
+      meter: b.meter == null || b.meter === "" ? null : numOrNull(b.meter), note: b.note || "",
+      kwhManual: b.kwhManual !== false };
+  }
+
+  function meterDiff(meter, prev) {
+    if (meter == null || !prev || prev.meter == null) return null;
+    return Math.round((meter - prev.meter) * 100) / 100;
+  }
+
+  // Editing or deleting one bill changes the "previous reading" of the next,
+  // so re-derive every auto bill rather than just the one being saved.
+  function recomputeAuto() {
+    for (var i = 1; i < BILLS.length; i++) {
+      var b = BILLS[i];
+      if (b.kwhManual) continue;
+      var d = meterDiff(b.meter, BILLS[i - 1]);
+      if (d != null && d > 0) b.kwh = d;
+    }
+  }
+
+  function save() {
+    sortBills();
+    recomputeAuto();
+    var ok = safeWrite(STORE_BILLS, JSON.stringify(BILLS));
+    if (ok) safeWrite(STORE_SAVED, new Date().toISOString());
+    $("storageBanner").style.display = storageOk ? "none" : "block";
+  }
+
+  function sortBills() { BILLS.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }); }
+  function latestBill() { return BILLS.length ? BILLS[BILLS.length - 1] : null; }
+
+  // ---------- formatting ----------
+  function peso(v, dp) {
+    if (dp == null) dp = 2;
+    return "₱" + Number(v).toLocaleString("en-PH", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+  }
+  function num(v, dp) {
+    return Number(v).toLocaleString("en-PH", { minimumFractionDigits: dp || 0, maximumFractionDigits: dp || 0 });
+  }
+  function kwhFmt(v) { return num(v, v % 1 ? 2 : 0); }
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  function iso(d) { return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+  function today() { return iso(new Date()); }
+  function parseDate(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function monthLabel(s) { var d = parseDate(s); return MONTHS[d.getMonth()] + " " + d.getFullYear(); }
+  function shortMonth(s, withYear) { var d = parseDate(s); return MONTHS[d.getMonth()] + (withYear ? " '" + String(d.getFullYear()).slice(2) : ""); }
+  function fullDate(s) { var d = parseDate(s); return MONTHS[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear(); }
+  function daysBetween(a, b) { return Math.round((parseDate(b) - parseDate(a)) / 86400000); }
+  function pct(cur, prev) { return prev ? (cur - prev) / prev * 100 : null; }
+
+  // Bills land on the same day each month, so the next one is one month after
+  // the latest (clamped for short months).
+  function addMonth(s) {
+    var d = parseDate(s), day = d.getDate();
+    var n = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    var dim = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
+    n.setDate(Math.min(day, dim));
+    return iso(n);
+  }
+
+  // Billing period length: days since the previous bill. The first bill has no
+  // predecessor, so fall back to a nominal 30-day period.
+  function enrich() {
+    return BILLS.map(function (b, i) {
+      var prev = i > 0 ? BILLS[i - 1] : null;
+      var days = prev ? daysBetween(prev.date, b.date) : 30;
+      if (!(days > 0)) days = 30;
+      return {
+        id: b.id, date: b.date, php: b.php, kwh: b.kwh, meter: b.meter, note: b.note || "", kwhManual: b.kwhManual,
+        rate: b.php / b.kwh, days: days, daily: b.kwh / days, estDays: !prev,
+        prev: prev
+      };
+    });
+  }
+
+  function rateOver(rows) {
+    var p = 0, k = 0;
+    rows.forEach(function (r) { p += r.php; k += r.kwh; });
+    return k ? p / k : 0;
+  }
+
+  // ---------- cards ----------
+  function deltaSpan(p, lowerIsGood) {
+    if (p == null || !isFinite(p)) return null;
+    var s = el("span", "delta");
+    var up = p > 0.05, down = p < -0.05;
+    s.textContent = (up ? "▲ " : down ? "▼ " : "• ") + Math.abs(p).toFixed(1) + "%";
+    if (up) s.className += lowerIsGood ? " up" : " down";
+    if (down) s.className += lowerIsGood ? " down" : " up";
+    return s;
+  }
+
+  function card(label, value, unit, metaNodes, cls) {
+    var c = el("div", "card" + (cls ? " " + cls : ""));
+    c.appendChild(el("div", "label", label));
+    var v = el("div", "value", value);
+    if (unit) v.appendChild(el("span", "unit", unit));
+    c.appendChild(v);
+    if (metaNodes) {
+      var m = el("div", "meta");
+      metaNodes.forEach(function (n) {
+        if (n == null) return;
+        m.appendChild(typeof n === "string" ? document.createTextNode(n) : n);
+      });
+      c.appendChild(m);
+    }
+    return c;
+  }
+
+  function renderCards(rows) {
+    var key = $("keyCards"), cm = $("cardsMonth"), ca = $("cardsAvg"), ct = $("cardsTotals");
+    [key, cm, ca, ct].forEach(clear);
+    ["peekMonth", "peekAvg", "peekTotals", "peekHistory"].forEach(function (id) { $(id).textContent = ""; });
+    $("monthTitle").textContent = "Latest month";
+
+    if (!rows.length) {
+      key.appendChild(card("No bills yet", "—", "", ["Tap “Add bill” to get started."]));
+      return;
+    }
+    var n = rows.length;
+    var last = rows[n - 1], prev = n > 1 ? rows[n - 2] : null;
+    var totPhp = 0, totKwh = 0, totDays = 0;
+    var maxB = rows[0], minB = rows[0], maxR = rows[0], minR = rows[0];
+    rows.forEach(function (r) {
+      totPhp += r.php; totKwh += r.kwh; totDays += r.days;
+      if (r.php > maxB.php) maxB = r;
+      if (r.php < minB.php) minB = r;
+      if (r.rate > maxR.rate) maxR = r;
+      if (r.rate < minR.rate) minR = r;
+    });
+    var avgPhp = totPhp / n, avgKwh = totKwh / n, avgRate = totPhp / totKwh;
+    var recent = rows.slice(-3), r3 = 0;
+    recent.forEach(function (r) { r3 += r.php; });
+    r3 /= recent.length;
+
+    // Key stats — always visible.
+    key.appendChild(card("Avg daily use (latest)", last.daily.toFixed(1), " kWh/day", [
+      last.days + (last.estDays ? " days (assumed)" : "-day period") + " · " + peso(last.php / last.days) + "/day"
+    ]));
+    key.appendChild(card("Last " + recent.length + " months avg", peso(r3), "", [
+      "≈ " + peso(r3 * 12, 0) + " / year at this pace"
+    ]));
+    key.appendChild(card("Rate range", "₱" + minR.rate.toFixed(2) + "–" + maxR.rate.toFixed(2), "", [
+      "Low " + shortMonth(minR.date, true) + " · High " + shortMonth(maxR.date, true)
+    ]));
+
+    // Latest month
+    $("monthTitle").textContent = "Latest month · " + monthLabel(last.date);
+    $("peekMonth").textContent = peso(last.php) + " · " + kwhFmt(last.kwh) + " kWh";
+    var billCard = card("Bill", "", "", [
+      prev ? deltaSpan(pct(last.php, prev.php), true) : null,
+      prev ? " vs " + shortMonth(prev.date) + " (" + (last.php >= prev.php ? "+" : "−") + peso(Math.abs(last.php - prev.php)) + ")" : "First bill on record"
+    ], "hero");
+    var bl = billCard.querySelector(".label");
+    bl.textContent = "Bill · ";
+    bl.appendChild(el("span", "hl", fullDate(last.date)));
+    billCard.querySelector(".value").appendChild(el("span", "hl", peso(last.php)));
+    cm.appendChild(billCard);
+    cm.appendChild(card("Rate", "₱" + last.rate.toFixed(2), "/kWh", [
+      prev ? deltaSpan(pct(last.rate, prev.rate), true) : null,
+      prev ? " vs ₱" + prev.rate.toFixed(2) : peso(last.php) + " ÷ " + kwhFmt(last.kwh) + " kWh"
+    ]));
+    cm.appendChild(card("Consumption", kwhFmt(last.kwh), " kWh", [
+      prev ? deltaSpan(pct(last.kwh, prev.kwh), true) : null,
+      prev ? " vs " + kwhFmt(prev.kwh) : null
+    ]));
+
+    // Averages
+    $("peekAvg").textContent = peso(avgPhp) + " · ₱" + avgRate.toFixed(2) + "/kWh";
+    ca.appendChild(card("Monthly bill", peso(avgPhp), "", ["Across " + n + " month" + (n > 1 ? "s" : "")], "hero"));
+    ca.appendChild(card("Monthly use", num(avgKwh, 1), " kWh", [(totKwh / totDays).toFixed(1) + " kWh/day overall"]));
+    ca.appendChild(card("Rate", "₱" + avgRate.toFixed(2), "/kWh", ["Total ₱ ÷ total kWh"]));
+
+    // Totals & records
+    $("peekTotals").textContent = peso(totPhp) + " spent · " + kwhFmt(totKwh) + " kWh";
+    ct.appendChild(card("Total spent", peso(totPhp), "", [monthLabel(rows[0].date) + " – " + monthLabel(last.date)]));
+    ct.appendChild(card("Total consumption", kwhFmt(totKwh), " kWh", [n + " bill" + (n > 1 ? "s" : "")]));
+    ct.appendChild(card("Highest bill", peso(maxB.php), "", [monthLabel(maxB.date) + " · " + kwhFmt(maxB.kwh) + " kWh"]));
+    ct.appendChild(card("Lowest bill", peso(minB.php), "", [monthLabel(minB.date) + " · " + kwhFmt(minB.kwh) + " kWh"]));
+
+    $("peekHistory").textContent = n + " bill" + (n > 1 ? "s" : "");
+  }
+
+  // ---------- charts (hand-rolled SVG so it works offline, no CDN) ----------
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function sv(tag, attrs, txt) {
+    var n = document.createElementNS(SVGNS, tag);
+    for (var k in attrs) if (attrs.hasOwnProperty(k)) n.setAttribute(k, attrs[k]);
+    if (txt != null) n.textContent = txt;
+    return n;
+  }
+
+  function niceStep(range, count) {
+    var raw = range / count;
+    var p = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10));
+    var f = raw / p;
+    var nice = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
+    return nice * p;
+  }
+
+  // cfg: { kind: "bar"|"line", color: css var, value: fn(row), fmt: fn(v) for the direct label,
+  //        axis: fn(v) for tick labels, tip: fn(row) -> [[label, value], ...] }
+  function drawChart(host, rows, cfg) {
+    clear(host);
+    if (!rows.length) { host.appendChild(el("p", "empty", "No data yet")); return; }
+    // A collapsed <details> has zero width; draw when it's opened instead.
+    if (!host.clientWidth) return;
+
+    var W = host.clientWidth, H = host.clientHeight || 220;
+    var m = { t: 22, r: 12, b: 28, l: 58 };
+    var iw = W - m.l - m.r, ih = H - m.t - m.b;
+    var vals = rows.map(cfg.value);
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    var lo, hi, step;
+
+    if (cfg.kind === "bar") {
+      // Bars encode magnitude by length, so the axis must start at zero.
+      lo = 0;
+      step = niceStep(mx || 1, 4);
+      hi = Math.ceil((mx || 1) / step) * step;
+    } else {
+      // Rate lines vary by a few pesos; a zero baseline would flatten them.
+      var pad = Math.max((mx - mn) * 0.3, mx * 0.03, 0.1);
+      step = niceStep((mx - mn) + pad * 2, 4);
+      lo = Math.max(0, Math.floor((mn - pad) / step) * step);
+      hi = Math.ceil((mx + pad) / step) * step;
+    }
+    function y(v) { return m.t + ih - (v - lo) / (hi - lo) * ih; }
+    var band = iw / rows.length;
+    function x(i) { return m.l + band * (i + 0.5); }
+
+    var svg = sv("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": cfg.label });
+    var grid = sv("g", { "class": "grid" }), axis = sv("g", { "class": "axis" });
+    for (var t = lo; t <= hi + step / 1000; t += step) {
+      var yy = Math.round(y(t)) + 0.5;
+      if (t !== lo || cfg.kind !== "bar") grid.appendChild(sv("line", { x1: m.l, x2: W - m.r, y1: yy, y2: yy }));
+      axis.appendChild(sv("text", { x: m.l - 8, y: yy + 4, "text-anchor": "end" }, cfg.axis(t)));
+    }
+    svg.appendChild(grid);
+
+    // Thin out x labels when there are many months so they never collide.
+    var every = Math.max(1, Math.ceil(rows.length / Math.max(1, Math.floor(iw / 52))));
+    var spansYears = rows[0].date.slice(0, 4) !== rows[rows.length - 1].date.slice(0, 4);
+    rows.forEach(function (r, i) {
+      if ((rows.length - 1 - i) % every) return;
+      axis.appendChild(sv("text", { x: x(i), y: H - 8, "text-anchor": "middle" }, shortMonth(r.date, spansYears)));
+    });
+
+    var marks = sv("g", {});
+    var last = rows.length - 1;
+    if (cfg.kind === "bar") {
+      var bw = Math.max(4, Math.min(44, band - 8));
+      rows.forEach(function (r, i) {
+        var v = vals[i], x0 = x(i) - bw / 2, y0 = y(v), yb = y(lo);
+        var rr = Math.min(4, yb - y0, bw / 2);
+        // Rounded data-end on top only; square base sits on the baseline.
+        var d = "M" + x0 + "," + yb + "V" + (y0 + rr) +
+          "Q" + x0 + "," + y0 + " " + (x0 + rr) + "," + y0 +
+          "H" + (x0 + bw - rr) + "Q" + (x0 + bw) + "," + y0 + " " + (x0 + bw) + "," + (y0 + rr) +
+          "V" + yb + "Z";
+        marks.appendChild(sv("path", { d: d, fill: "var(" + cfg.color + ")", opacity: i === last ? 1 : 0.78 }));
+      });
+      svg.appendChild(marks);
+      svg.appendChild(sv("line", { "class": "baseline", x1: m.l, x2: W - m.r, y1: Math.round(y(lo)) + 0.5, y2: Math.round(y(lo)) + 0.5 }));
+    } else {
+      var pts = rows.map(function (r, i) { return x(i) + "," + y(vals[i]); }).join(" ");
+      marks.appendChild(sv("polyline", { points: pts, fill: "none", stroke: "var(" + cfg.color + ")", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+      rows.forEach(function (r, i) {
+        marks.appendChild(sv("circle", { cx: x(i), cy: y(vals[i]), r: 4, fill: "var(" + cfg.color + ")", stroke: "var(--bg)", "stroke-width": 2 }));
+      });
+      svg.appendChild(marks);
+    }
+    svg.appendChild(axis);
+
+    // Direct label on the latest month only — the rest live in the tooltip.
+    svg.appendChild(sv("text", { "class": "direct", x: x(last), y: y(vals[last]) - 8, "text-anchor": "middle" }, cfg.fmt(vals[last])));
+
+    var xh = sv("line", { "class": "xhair", y1: m.t, y2: m.t + ih, x1: -10, x2: -10, visibility: "hidden" });
+    if (cfg.kind === "line") svg.appendChild(xh);
+
+    var tip = el("div", "tip");
+    rows.forEach(function (r, i) {
+      // Hit target is the full column, much bigger than the mark itself.
+      var hit = sv("rect", { "class": "hit", x: m.l + band * i, y: m.t, width: band, height: ih });
+      function show() {
+        clear(tip);
+        tip.appendChild(el("div", "t", fullDate(r.date)));
+        cfg.tip(r).forEach(function (pair, k) {
+          var line = el("div");
+          if (k === 0) { var sw = el("span", "swatch"); sw.style.background = "var(" + cfg.color + ")"; line.appendChild(sw); }
+          line.appendChild(document.createTextNode(pair[0] + " "));
+          line.appendChild(el("b", null, pair[1]));
+          tip.appendChild(line);
+        });
+        tip.className = "tip on";
+        var tw = tip.offsetWidth, th = tip.offsetHeight;
+        var left = Math.max(0, Math.min(W - tw, x(i) - tw / 2));
+        var top = y(vals[i]) - th - 14;
+        if (top < 0) top = y(vals[i]) + 14;
+        tip.style.left = left + "px";
+        tip.style.top = top + "px";
+        xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
+      }
+      function hide() { tip.className = "tip"; xh.setAttribute("visibility", "hidden"); }
+      hit.addEventListener("pointerenter", show);
+      hit.addEventListener("pointerdown", show);
+      hit.addEventListener("pointerleave", hide);
+      svg.appendChild(hit);
+    });
+
+    host.appendChild(svg);
+    host.appendChild(tip);
+  }
+
+  function renderCharts(rows) {
+    drawChart($("chartPhp"), rows, {
+      kind: "bar", color: "--s-php", label: "Monthly bill amount in pesos",
+      value: function (r) { return r.php; },
+      fmt: function (v) { return peso(v, 0); },
+      axis: function (v) { return v >= 1000 ? "₱" + (v / 1000) + "k" : "₱" + v; },
+      tip: function (r) { return [["Bill", peso(r.php)], ["kWh", kwhFmt(r.kwh)], ["Rate", "₱" + r.rate.toFixed(2) + "/kWh"]]; }
+    });
+    drawChart($("chartKwh"), rows, {
+      kind: "bar", color: "--s-kwh", label: "Monthly consumption in kWh",
+      value: function (r) { return r.kwh; },
+      fmt: function (v) { return num(v) + " kWh"; },
+      axis: function (v) { return num(v); },
+      tip: function (r) { return [["Used", kwhFmt(r.kwh) + " kWh"], ["Per day", r.daily.toFixed(1) + " kWh"], ["Bill", peso(r.php)]]; }
+    });
+    drawChart($("chartRate"), rows, {
+      kind: "line", color: "--s-rate", label: "Effective rate in pesos per kWh",
+      value: function (r) { return r.rate; },
+      fmt: function (v) { return "₱" + v.toFixed(2); },
+      axis: function (v) { return "₱" + (v % 1 ? v.toFixed(1) : v); },
+      tip: function (r) { return [["Rate", "₱" + r.rate.toFixed(4) + "/kWh"], ["Bill", peso(r.php)], ["kWh", kwhFmt(r.kwh)]]; }
+    });
+    drawChart($("chartDaily"), rows, {
+      kind: "bar", color: "--s-kwh", label: "Average daily consumption in kWh",
+      value: function (r) { return r.daily; },
+      fmt: function (v) { return v.toFixed(1); },
+      axis: function (v) { return v % 1 ? v.toFixed(1) : String(v); },
+      tip: function (r) { return [["Per day", r.daily.toFixed(2) + " kWh"], ["Period", r.days + " days" + (r.estDays ? " (assumed)" : "")], ["Cost/day", peso(r.php / r.days)]]; }
+    });
+  }
+
+  // ---------- table ----------
+  function renderTable(rows) {
+    var tb = $("tbody"), tf = $("tfoot");
+    clear(tb); clear(tf);
+    if (!rows.length) {
+      var tr0 = el("tr"), td0 = el("td", null, "No bills yet — tap “Add bill”.");
+      td0.colSpan = 9; td0.style.textAlign = "center"; td0.style.color = "var(--ink-3)";
+      tr0.appendChild(td0); tb.appendChild(tr0);
+      return;
+    }
+    var totPhp = 0, totKwh = 0;
+    rows.slice().reverse().forEach(function (r) {
+      totPhp += r.php; totKwh += r.kwh;
+      var tr = el("tr");
+      var isLatest = r === rows[rows.length - 1];
+      var tdDate = el("td");
+      tdDate.appendChild(isLatest ? el("span", "hl", fullDate(r.date)) : document.createTextNode(fullDate(r.date)));
+      if (r.note) tdDate.appendChild(el("span", "note", r.note));
+      tr.appendChild(tdDate);
+      var tdAmt = el("td");
+      tdAmt.appendChild(isLatest ? el("span", "hl", peso(r.php)) : document.createTextNode(peso(r.php)));
+      tr.appendChild(tdAmt);
+      var kCell = el("td", null, kwhFmt(r.kwh));
+      if (!r.kwhManual && meterDiff(r.meter, r.prev) > 0) {
+        kCell.appendChild(el("span", "auto-tag", "auto"));
+        kCell.title = "Meter " + kwhFmt(r.meter) + " − previous " + kwhFmt(r.prev.meter);
+      }
+      tr.appendChild(kCell);
+      tr.appendChild(el("td", null, "₱" + r.rate.toFixed(2)));
+      tr.appendChild(r.meter != null ? el("td", null, kwhFmt(r.meter)) : el("td", "missing", "—"));
+      tr.appendChild(el("td", null, r.estDays ? "—" : String(r.days)));
+      tr.appendChild(el("td", null, r.daily.toFixed(1)));
+      var dCell = el("td");
+      var d = r.prev ? deltaSpan(pct(r.php, r.prev.php), true) : null;
+      if (d) dCell.appendChild(d); else dCell.textContent = "—";
+      tr.appendChild(dCell);
+      var act = el("td", "actions");
+      var eb = el("button", "small", "Edit"); eb.type = "button";
+      eb.addEventListener("click", function () { openBill(r.id); });
+      var db = el("button", "small danger", "Delete"); db.type = "button";
+      db.addEventListener("click", function () { removeBill(r.id); });
+      act.appendChild(eb); act.appendChild(db);
+      tr.appendChild(act);
+      tb.appendChild(tr);
+    });
+    var ft = el("tr");
+    ft.appendChild(el("td", null, "Total (" + rows.length + ")"));
+    ft.appendChild(el("td", null, peso(totPhp)));
+    ft.appendChild(el("td", null, kwhFmt(totKwh)));
+    ft.appendChild(el("td", null, "₱" + (totPhp / totKwh).toFixed(2)));
+    for (var i = 0; i < 5; i++) ft.appendChild(el("td"));
+    tf.appendChild(ft);
+
+    var at = safeRead(STORE_SAVED);
+    $("savedAt").textContent = at ? "Last saved on this device: " + new Date(at).toLocaleString() : "";
+  }
+
+  var ROWS = [];
+  function renderAll() {
+    ROWS = enrich();
+    renderCards(ROWS);
+    renderCharts(ROWS);
+    renderTable(ROWS);
+    renderFcStrip();
+  }
+
+  // ---------- collapsible groups ----------
+  var GROUPS = readJson(STORE_GROUPS, {});
+  function initGroups() {
+    var list = document.querySelectorAll("details.group");
+    Array.prototype.forEach.call(list, function (d) {
+      var k = d.getAttribute("data-group");
+      d.open = GROUPS[k] !== false;   // open unless the user collapsed it before
+      d.addEventListener("toggle", function () {
+        GROUPS[k] = d.open;
+        safeWrite(STORE_GROUPS, JSON.stringify(GROUPS));
+        if (k === "charts" && d.open) renderCharts(ROWS);
+      });
+    });
+  }
+  function setAllGroups(open) {
+    Array.prototype.forEach.call(document.querySelectorAll("details.group"), function (d) { d.open = open; });
+  }
+
+  // ---------- dialogs ----------
+  function openDlg(d) {
+    if (d.showModal) { if (!d.open) d.showModal(); } else d.setAttribute("open", "");
+  }
+  function closeDlg(d) {
+    if (d.close) d.close(); else d.removeAttribute("open");
+  }
+  function wireDlg(d) {
+    Array.prototype.forEach.call(d.querySelectorAll("[data-close]"), function (b) {
+      b.addEventListener("click", function () { closeDlg(d); });
+    });
+    // Tap on the dimmed backdrop closes it.
+    d.addEventListener("click", function (e) { if (e.target === d) closeDlg(d); });
+  }
+
+  // ---------- add / edit bill ----------
+  var editingId = null;
+  var kwhAuto = false;   // dialog state: is the kWh field following the meter readings?
+  function findBill(id) {
+    for (var i = 0; i < BILLS.length; i++) if (BILLS[i].id === id) return BILLS[i];
+    return null;
+  }
+
+  function openBill(id) {
+    var b = id ? findBill(id) : null;
+    editingId = b ? b.id : null;
+    $("billForm").reset();
+    $("billErr").textContent = "";
+    if (b) {
+      $("fDate").value = b.date;
+      $("fPhp").value = b.php;
+      $("fKwh").value = b.kwh;
+      $("fMeter").value = b.meter != null ? b.meter : "";
+      $("fNote").value = b.note || "";
+      $("billTitle").textContent = "Edit bill · " + monthLabel(b.date);
+      $("saveBtn").textContent = "Save changes";
+      $("deleteBtn").style.display = "";
+      // A manual kWh that happens to match the meter difference is effectively
+      // auto — treat it that way so later meter edits keep it in sync.
+      var d = meterDiff(b.meter, billBefore(b.date, b.id));
+      kwhAuto = !b.kwhManual || (d != null && d === b.kwh);
+    } else {
+      var l = latestBill();
+      $("fDate").value = l ? addMonth(l.date) : today();
+      $("billTitle").textContent = "Add a monthly bill";
+      $("saveBtn").textContent = "Add bill";
+      $("deleteBtn").style.display = "none";
+      kwhAuto = true;
+    }
+    syncKwh();
+    openDlg($("billDlg"));
+    (b ? $("fPhp") : $("fMeter")).focus();
+  }
+
+  function readMeter() { return $("fMeter").value === "" ? null : numOrNull($("fMeter").value); }
+
+  // Works out the auto kWh for what's currently in the dialog.
+  function autoKwh() {
+    var date = $("fDate").value;
+    var prev = date ? billBefore(date, editingId) : null;
+    var meter = readMeter();
+    return { prev: prev, meter: meter, diff: meterDiff(meter, prev) };
+  }
+
+  function syncKwh() {
+    var a = autoKwh(), hint = $("kwhHint"), badge = $("kwhMode");
+    var ok = a.diff != null && a.diff > 0;
+    clear(hint);
+    hint.className = "kwh-hint";
+    // Readings that agree with the kWh already entered need no override.
+    if (!kwhAuto && ok && numOrNull($("fKwh").value) === a.diff) kwhAuto = true;
+    if (kwhAuto && ok) $("fKwh").value = a.diff;
+    var isAuto = kwhAuto && ok;
+    badge.textContent = isAuto ? "auto" : "manual";
+    badge.className = isAuto ? "auto" : "";
+
+    if (isAuto) {
+      hint.textContent = kwhFmt(a.meter) + " − " + kwhFmt(a.prev.meter) + " (" + shortMonth(a.prev.date) + " " + parseDate(a.prev.date).getDate() + " reading). Type to override.";
+    } else if (ok) {
+      hint.appendChild(document.createTextNode("Meter difference is " + kwhFmt(a.diff) + " kWh · "));
+      var use = el("button", "linkish", "Use auto");
+      use.type = "button";
+      use.addEventListener("click", function () { kwhAuto = true; syncKwh(); });
+      hint.appendChild(use);
+    } else if (!a.prev) {
+      hint.textContent = "No earlier bill to compare with — enter kWh.";
+    } else if (a.prev.meter == null) {
+      hint.textContent = "The " + fullDate(a.prev.date) + " bill has no meter reading, so enter kWh manually.";
+    } else if (a.meter == null) {
+      hint.textContent = "Enter the meter reading to auto-calculate (last: " + kwhFmt(a.prev.meter) + ").";
+    } else {
+      hint.className = "kwh-hint warn";
+      hint.textContent = "Meter reading is not higher than the previous one (" + kwhFmt(a.prev.meter) + ") — check it, or enter kWh manually.";
+    }
+    updateBillPreview();
+  }
+
+  // The bill before a given date — used to sanity-check / suggest the meter reading.
+  function billBefore(date, excludeId) {
+    var p = null;
+    BILLS.forEach(function (b) { if (b.date < date && b.id !== excludeId) p = b; });
+    return p;
+  }
+
+  function updateBillPreview() {
+    var php = parseFloat($("fPhp").value), kwh = parseFloat($("fKwh").value);
+    var parts = [];
+    if (php > 0 && kwh > 0) parts.push("Rate for this bill: ₱" + (php / kwh).toFixed(4) + " per kWh");
+    var date = $("fDate").value;
+    var prev = date ? billBefore(date, editingId) : null;
+    // Reverse suggestion (kWh -> meter) only makes sense when kWh is typed by hand.
+    if (!kwhAuto && prev && prev.meter != null && kwh > 0) {
+      var expect = Math.round((prev.meter + kwh) * 100) / 100;
+      $("fMeter").placeholder = "≈ " + kwhFmt(expect) + " (last " + kwhFmt(prev.meter) + " + kWh)";
+    } else {
+      $("fMeter").placeholder = "optional";
+    }
+    $("ratePreview").textContent = parts.join(" · ");
+  }
+
+  function onBillSubmit(e) {
+    e.preventDefault();
+    var date = $("fDate").value;
+    var php = numOrNull($("fPhp").value);
+    var a = autoKwh();
+    var isAuto = kwhAuto && a.diff != null && a.diff > 0;
+    var kwh = isAuto ? a.diff : numOrNull($("fKwh").value);
+    var meter = a.meter;
+    var note = $("fNote").value.trim();
+    if (!date || php == null || php < 0 || !(kwh > 0)) { $("billErr").textContent = "Please fill in the date, amount and kWh."; return; }
+    if (meter != null && meter < 0) { $("billErr").textContent = "Meter reading can't be negative."; return; }
+
+    var clash = null;
+    BILLS.forEach(function (b) { if (b.date === date && b.id !== editingId) clash = b; });
+    if (clash && !confirm("You already have a bill dated " + fullDate(date) + ". Replace it?")) return;
+    if (clash) BILLS = BILLS.filter(function (b) { return b.id !== clash.id; });
+
+    if (editingId) {
+      var b = findBill(editingId);
+      if (b) { b.date = date; b.php = php; b.kwh = kwh; b.meter = meter; b.note = note; b.kwhManual = !isAuto; }
+      toast("Bill updated");
+    } else {
+      BILLS.push({ id: uid(), date: date, php: php, kwh: kwh, meter: meter, note: note, kwhManual: !isAuto });
+      toast("Bill added · ₱" + (php / kwh).toFixed(2) + "/kWh");
+    }
+    save();
+    closeDlg($("billDlg"));
+    renderAll();
+  }
+
+  function removeBill(id) {
+    var b = findBill(id);
+    if (!b) return;
+    if (!confirm("Delete the " + fullDate(b.date) + " bill (" + peso(b.php) + ")?")) return;
+    BILLS = BILLS.filter(function (x) { return x.id !== id; });
+    save();
+    if (editingId === id) closeDlg($("billDlg"));
+    renderAll();
+    toast("Bill deleted");
+  }
+
+  // ---------- forecast ----------
+  // Estimate = kWh used since the last bill's meter reading × a chosen ₱/kWh.
+  // The rate is an effective average (bill ÷ kWh), so fixed/tiered charges are
+  // folded in — good enough for a ballpark, not an exact bill.
+  var FC = readJson(STORE_FC, { now: "", date: "", rate: "latest" });
+
+  function rateOptions() {
+    if (!ROWS.length) return [];
+    var last = ROWS[ROWS.length - 1];
+    var opts = [
+      { k: "latest", label: "Latest bill (" + shortMonth(last.date) + ")", v: last.rate },
+      { k: "avg3", label: "Last " + Math.min(3, ROWS.length) + " months average", v: rateOver(ROWS.slice(-3)) },
+      { k: "avg", label: "All-time average", v: rateOver(ROWS) }
+    ];
+    var hi = ROWS.reduce(function (a, r) { return r.rate > a ? r.rate : a; }, 0);
+    opts.push({ k: "high", label: "Highest so far (worst case)", v: hi });
+    return opts;
+  }
+
+  function computeForecast() {
+    var last = latestBill();
+    if (!last || last.meter == null) return { err: "need-last" };
+    var now = parseFloat(FC.now);
+    if (!isFinite(now)) return { err: "need-now" };
+    if (now < last.meter) return { err: "lower" };
+    var date = FC.date || today();
+    var used = now - last.meter;
+    var days = daysBetween(last.date, date);
+    var opts = rateOptions();
+    var opt = opts.filter(function (o) { return o.k === FC.rate; })[0] || opts[0];
+    var next = addMonth(last.date);
+    var period = daysBetween(last.date, next);
+    var res = { last: last, now: now, date: date, used: used, days: days, rate: opt, next: next, period: period, opts: opts };
+    res.cost = used * opt.v;
+    if (days > 0) {
+      res.daily = used / days;
+      res.projKwh = days >= period ? used : res.daily * period;
+      res.projCost = res.projKwh * opt.v;
+      res.daysLeft = Math.max(0, period - days);
+    }
+    return res;
+  }
+
+  function openForecast() {
+    var last = latestBill();
+    var info = $("fcInfo");
+    clear(info);
+    $("fcErr").textContent = "";
+    if (!last) {
+      info.textContent = "Add at least one bill first — the forecast uses your last bill's meter reading and rate.";
+      $("fcResult").className = "fc-result";
+      openDlg($("fcDlg"));
+      return;
+    }
+    info.appendChild(document.createTextNode("Last bill: "));
+    info.appendChild(el("b", null, fullDate(last.date)));
+    info.appendChild(document.createTextNode(last.meter != null
+      ? " · meter reading " : " · no meter reading saved yet"));
+    if (last.meter != null) info.appendChild(el("b", null, kwhFmt(last.meter) + " kWh"));
+    info.appendChild(document.createTextNode(". Next bill expected " + fullDate(addMonth(last.date)) + "."));
+
+    $("fcLastWrap").style.display = last.meter == null ? "" : "none";
+    $("fcLastHint").textContent = "the “present reading” on your " + fullDate(last.date) + " bill — saved to that bill";
+    $("fcLast").value = "";
+
+    var sel = $("fcRate");
+    clear(sel);
+    rateOptions().forEach(function (o) {
+      var op = el("option", null, o.label + " — ₱" + o.v.toFixed(2) + "/kWh");
+      op.value = o.k;
+      sel.appendChild(op);
+    });
+    sel.value = FC.rate || "latest";
+    if (!sel.value) sel.value = "latest";
+    $("fcNow").value = FC.now;
+    $("fcDate").value = FC.date || today();
+    updateForecast();
+    openDlg($("fcDlg"));
+    if (last.meter == null) $("fcLast").focus(); else $("fcNow").focus();
+  }
+
+  function onFcInput() {
+    var last = latestBill();
+    // Entering the last bill's meter here writes it straight onto that bill.
+    if (last && last.meter == null && $("fcLast").value !== "") {
+      var lm = numOrNull($("fcLast").value);
+      if (lm != null && lm >= 0 && document.activeElement !== $("fcLast")) {
+        last.meter = lm; save(); renderAll(); openForecast(); toast("Meter reading saved to " + monthLabel(last.date) + " bill");
+        return;
+      }
+    }
+    FC.now = $("fcNow").value;
+    FC.date = $("fcDate").value;
+    FC.rate = $("fcRate").value;
+    safeWrite(STORE_FC, JSON.stringify(FC));
+    updateForecast();
+    renderFcStrip();
+  }
+
+  function fcLine(label, value) {
+    var d = el("div");
+    d.appendChild(el("span", null, label));
+    d.appendChild(el("b", null, value));
+    return d;
+  }
+
+  function updateForecast() {
+    var out = $("fcResult"), err = $("fcErr");
+    clear(out); err.textContent = "";
+    var f = computeForecast();
+    var last = latestBill();
+    if (f.err) {
+      out.className = "fc-result";
+      if (f.err === "need-last") err.textContent = last ? "Enter the meter reading from your last bill first." : "";
+      if (f.err === "lower") err.textContent = "The current reading is lower than your last bill's reading (" + kwhFmt(last.meter) + "). Double-check the number.";
+      return;
+    }
+    out.className = "fc-result on";
+    var big = el("div", "fc-big");
+    big.appendChild(card("Estimated so far", peso(f.cost), "", [kwhFmt(Math.round(f.used * 100) / 100) + " kWh in " + f.days + " day" + (f.days === 1 ? "" : "s")], "main"));
+    if (f.projCost != null) {
+      big.appendChild(card("Projected bill · " + shortMonth(f.next), peso(f.projCost), "", ["≈ " + num(f.projKwh, 0) + " kWh at this pace"]));
+    }
+    out.appendChild(big);
+
+    var lines = el("div", "fc-lines");
+    lines.appendChild(fcLine("Rate used", "₱" + f.rate.v.toFixed(4) + "/kWh"));
+    if (f.daily != null) {
+      lines.appendChild(fcLine("Daily use so far", f.daily.toFixed(1) + " kWh/day (" + peso(f.daily * f.rate.v) + "/day)"));
+      lines.appendChild(fcLine("Days left until " + shortMonth(f.next) + " " + parseDate(f.next).getDate(), String(f.daysLeft)));
+      var lastRow = ROWS[ROWS.length - 1];
+      var diff = pct(f.projCost, lastRow.php);
+      if (diff != null) {
+        var d = el("div");
+        d.appendChild(el("span", null, "vs last bill (" + peso(lastRow.php) + ")"));
+        var b = el("b"); var ds = deltaSpan(diff, true); if (ds) b.appendChild(ds);
+        d.appendChild(b);
+        lines.appendChild(d);
+      }
+    } else {
+      lines.appendChild(fcLine("Projection", "needs a reading at least 1 day after the last bill"));
+    }
+    var lo = Math.min.apply(null, f.opts.map(function (o) { return o.v; }));
+    var hi = Math.max.apply(null, f.opts.map(function (o) { return o.v; }));
+    if (f.projKwh != null) lines.appendChild(fcLine("Projected range (all rates)", peso(f.projKwh * lo, 0) + " – " + peso(f.projKwh * hi, 0)));
+    out.appendChild(lines);
+    out.appendChild(el("div", "fc-note", "Estimate only: uses your average ₱/kWh, so tiered rates, fixed charges and rate changes can move the real bill."));
+  }
+
+  // A small pre-computed snapshot for the home screen's Energy widget, so
+  // index.html doesn't have to duplicate the forecast maths.
+  function writeSummary(f) {
+    var n = ROWS.length, last = n ? ROWS[n - 1] : null, prev = n > 1 ? ROWS[n - 2] : null;
+    var sum = { updatedAt: new Date().toISOString(), latest: null, forecast: null };
+    if (last) sum.latest = { date: last.date, php: last.php, kwh: last.kwh, rate: last.rate, deltaPct: prev ? pct(last.php, prev.php) : null };
+    if (f && !f.err) sum.forecast = { cost: f.cost, projCost: f.projCost != null ? f.projCost : null,
+      next: f.next, nextLabel: shortMonth(f.next) + " " + parseDate(f.next).getDate() };
+    safeWrite(STORE_SUMMARY, JSON.stringify(sum));
+  }
+
+  function renderFcStrip() {
+    var s = $("fcStrip");
+    clear(s);
+    var f = computeForecast();
+    writeSummary(f);
+    if (f.err) { s.style.display = "none"; return; }
+    s.style.display = "";
+    var left = el("div");
+    left.appendChild(document.createTextNode("📈 Forecast: "));
+    left.appendChild(el("b", null, peso(f.cost)));
+    left.appendChild(document.createTextNode(" so far"));
+    if (f.projCost != null) {
+      left.appendChild(document.createTextNode(" · projected "));
+      left.appendChild(el("b", null, peso(f.projCost)));
+      left.appendChild(document.createTextNode(" by " + shortMonth(f.next) + " " + parseDate(f.next).getDate()));
+    }
+    left.appendChild(el("div", "muted", "Meter " + kwhFmt(f.now) + " on " + fullDate(f.date) + " · " + kwhFmt(Math.round(f.used * 100) / 100) + " kWh since last bill"));
+    s.appendChild(left);
+    var b = el("button", "small", "Update reading"); b.type = "button";
+    b.addEventListener("click", openForecast);
+    s.appendChild(b);
+  }
+
+  // ---------- backup ----------
+  function download(name, text, type) {
+    var blob = new Blob([text], { type: type });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  function exportJson() {
+    download("energy-tracker-backup-" + today() + ".json",
+      JSON.stringify({ app: "energy-tracker", version: 1, exportedAt: new Date().toISOString(), bills: BILLS, forecast: FC }, null, 2),
+      "application/json");
+  }
+  function exportCsv() {
+    var lines = ["Bill date,Amount (PHP),kWh,PHP per kWh,Meter reading,Days,kWh per day,Note"];
+    ROWS.forEach(function (r) {
+      lines.push([r.date, r.php.toFixed(2), r.kwh, r.rate.toFixed(4), r.meter != null ? r.meter : "", r.estDays ? "" : r.days, r.daily.toFixed(2),
+        '"' + (r.note || "").replace(/"/g, '""') + '"'].join(","));
+    });
+    download("energy-tracker-" + today() + ".csv", lines.join("\n"), "text/csv");
+  }
+  function importJson(file) {
+    var fr = new FileReader();
+    fr.onload = function () {
+      try {
+        var data = JSON.parse(fr.result);
+        var list = Array.isArray(data) ? data : data.bills;
+        if (!Array.isArray(list)) throw new Error("no bills");
+        list = list.filter(validBill).map(normBill);
+        if (!list.length) throw new Error("empty");
+        if (!confirm("Replace your current " + BILLS.length + " bill(s) with " + list.length + " from this backup?")) return;
+        BILLS = list;
+        if (data.forecast && typeof data.forecast === "object") {
+          FC = { now: data.forecast.now || "", date: data.forecast.date || "", rate: data.forecast.rate || "latest" };
+          safeWrite(STORE_FC, JSON.stringify(FC));
+        }
+        save(); renderAll();
+        toast("Imported " + list.length + " bills");
+      } catch (e) { toast("That file isn't a valid Energy Tracker backup"); }
+    };
+    fr.readAsText(file);
+  }
+
+  // ---------- theme / misc ----------
+  function applyTheme(t) {
+    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    else document.documentElement.removeAttribute("data-theme");
+    var dark = t === "dark" || (!t && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+    document.querySelector('meta[name="theme-color"]').setAttribute("content", dark ? "#111110" : "#f6f5f2");
+  }
+  function toggleTheme() {
+    var cur = document.documentElement.getAttribute("data-theme");
+    var dark = cur ? cur === "dark" : (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = dark ? "light" : "dark";
+    safeWrite(STORE_THEME, next);
+    applyTheme(next);
+  }
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $("toast");
+    t.textContent = msg; t.className = "toast on";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.className = "toast"; }, 2200);
+  }
+
+  // ---------- boot ----------
+  applyTheme(safeRead(STORE_THEME));
+  load();
+  // Ask the browser not to evict our data under storage pressure (best effort).
+  if (navigator.storage && navigator.storage.persist) { try { navigator.storage.persist(); } catch (e) {} }
+  $("storageBanner").style.display = storageOk ? "none" : "block";
+
+  wireDlg($("billDlg"));
+  wireDlg($("fcDlg"));
+  $("billForm").addEventListener("submit", onBillSubmit);
+  $("deleteBtn").addEventListener("click", function () { if (editingId) removeBill(editingId); });
+  $("fPhp").addEventListener("input", updateBillPreview);
+  $("fMeter").addEventListener("input", syncKwh);
+  $("fDate").addEventListener("input", syncKwh);
+  // Typing a kWh yourself switches that bill to manual; "Use auto" switches back.
+  $("fKwh").addEventListener("input", function () { kwhAuto = false; syncKwh(); });
+  $("addBtn").addEventListener("click", function () { openBill(null); });
+  $("forecastBtn").addEventListener("click", openForecast);
+  $("fcForm").addEventListener("submit", function (e) { e.preventDefault(); $("fcLast").blur(); onFcInput(); });
+  ["fcNow", "fcDate", "fcRate"].forEach(function (id) {
+    $(id).addEventListener("input", onFcInput);
+    $(id).addEventListener("change", onFcInput);
+  });
+  $("fcLast").addEventListener("change", function () { $("fcLast").blur(); onFcInput(); });
+
+  $("themeBtn").addEventListener("click", toggleTheme);
+  $("expandAll").addEventListener("click", function () { setAllGroups(true); });
+  $("collapseAll").addEventListener("click", function () { setAllGroups(false); });
+  $("exportBtn").addEventListener("click", exportJson);
+  $("csvBtn").addEventListener("click", exportCsv);
+  $("importBtn").addEventListener("click", function () { $("importFile").click(); });
+  $("importFile").addEventListener("change", function () {
+    if (this.files && this.files[0]) importJson(this.files[0]);
+    this.value = "";
+  });
+  // Another tab edited the data — pick it up so both stay in sync.
+  window.addEventListener("storage", function (e) {
+    if (e.key === STORE_BILLS) { load(); renderAll(); }
+  });
+
+  var rz;
+  window.addEventListener("resize", function () {
+    clearTimeout(rz);
+    rz = setTimeout(function () { renderCharts(ROWS); }, 120);
+  });
+
+  // Only over http(s): opened as a local file there's no worker, and that's fine.
+  if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function (err) { console.warn("SW registration failed", err); });
+    });
+  }
+
+  initGroups();
+  renderAll();
+})();
+</script>
+</body>
+</html>

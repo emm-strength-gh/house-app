@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1740">
+<meta name="description" content="House App — a home screen of household tools.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="House">
+<meta name="application-name" content="House">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/house.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/house-32.png">
+<link rel="apple-touch-icon" href="icons/house-180.png">
+<title>House App</title>
+<style>
+  :root {
+    --wall-base: #5a4fd6;
+    --wall-a: #ff8fc7;
+    --wall-b: #ffc57a;
+    --wall-c: #56b6ff;
+    --wall-d: #3b2aa8;
+    --glass: rgba(255,255,255,.22);
+    --glass-border: rgba(255,255,255,.35);
+    --label: #ffffff;
+    --cal-bg: #ffffff;
+    --cal-ink: #111111;
+    --cal-red: #ff3b30;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --wall-base: #14112e;
+      --wall-a: #6b2a7a;
+      --wall-b: #7a4a1c;
+      --wall-c: #1d4f8a;
+      --wall-d: #0b0a1f;
+      --glass: rgba(30,30,40,.42);
+      --glass-border: rgba(255,255,255,.14);
+      --cal-bg: #1c1c1e;
+      --cal-ink: #ffffff;
+      --cal-red: #ff453a;
+    }
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--wall-base);
+    color: var(--label);
+    font: 15px/1.3 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Wallpaper: soft blurred colour blobs, fixed behind everything. */
+  .wall {
+    position: fixed; inset: -10%;
+    background:
+      radial-gradient(45% 35% at 15% 20%, var(--wall-a), transparent 70%),
+      radial-gradient(40% 30% at 90% 35%, var(--wall-b), transparent 70%),
+      radial-gradient(55% 40% at 25% 85%, var(--wall-c), transparent 70%),
+      radial-gradient(50% 40% at 85% 95%, var(--wall-d), transparent 70%),
+      linear-gradient(160deg, var(--wall-d), var(--wall-base) 45%, var(--wall-d));
+    filter: saturate(1.1);
+    z-index: 0;
+  }
+  .wall::after {
+    /* Darken the very top so the white iOS status bar stays readable. */
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,.28), transparent 22%);
+  }
+
+  .screen {
+    position: relative; z-index: 1;
+    max-width: 430px; height: 100%; margin: 0 auto;
+    padding: max(14px, env(safe-area-inset-top)) 22px max(18px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column;
+  }
+
+  /* Fake status bar — only in a browser tab. Installed, iOS draws the real one. */
+  .statusbar {
+    display: flex; justify-content: space-between; align-items: center;
+    height: 30px; padding: 0 10px; margin-bottom: 8px;
+    font-weight: 600; font-size: 15px; letter-spacing: -.01em;
+  }
+  .statusbar .sb-icons { display: flex; gap: 6px; align-items: center; }
+  .statusbar svg { display: block; fill: #fff; }
+  .standalone .statusbar { display: none; }
+  .standalone .screen { padding-top: calc(env(safe-area-inset-top) + 12px); }
+
+  /* Widgets */
+  .widgets { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin: 8px 0 26px; }
+  .widget {
+    display: block; text-decoration: none; color: inherit;
+    border-radius: 22px; padding: 14px 15px; aspect-ratio: 1 / 1;
+    position: relative; overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    transition: transform .15s ease;
+  }
+  .widget:active { transform: scale(.96); }
+  .w-cal { background: var(--cal-bg); color: var(--cal-ink); display: flex; flex-direction: column; }
+  .w-cal .dow { color: var(--cal-red); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+  .w-cal .day { font-size: 54px; font-weight: 300; line-height: 1; margin-top: 2px; letter-spacing: -.03em; }
+  .w-cal .mon { margin-top: auto; font-size: 13px; font-weight: 600; opacity: .55; }
+  .w-cal .clock { font-size: 13px; font-weight: 600; opacity: .55; font-variant-numeric: tabular-nums; }
+
+  .w-energy {
+    background: linear-gradient(145deg, #ffcf33, #ff7a00);
+    color: #fff; display: flex; flex-direction: column;
+  }
+  .w-energy .w-head { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+  .w-energy .w-head img { width: 18px; height: 18px; border-radius: 5px; }
+  .w-energy .w-big { font-size: 25px; font-weight: 700; letter-spacing: -.02em; margin-top: 8px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .w-energy .w-sub { font-size: 12px; font-weight: 600; opacity: .92; margin-top: 3px; }
+  .w-energy .w-foot { margin-top: auto; font-size: 12px; font-weight: 600; background: rgba(255,255,255,.22); border-radius: 10px; padding: 6px 8px; line-height: 1.25; }
+  .w-energy .w-foot b { font-variant-numeric: tabular-nums; }
+  .w-label { text-align: center; font-size: 12px; font-weight: 500; margin-top: 6px; text-shadow: 0 1px 3px rgba(0,0,0,.35); }
+  .w-wrap { display: flex; flex-direction: column; min-width: 0; }
+
+  /* App grid */
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 24px; column-gap: 10px; align-content: start; }
+  .app {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    text-decoration: none; color: var(--label); min-width: 0;
+  }
+  .app-icon {
+    width: 100%; max-width: 64px; aspect-ratio: 1 / 1;
+    border-radius: 23%; overflow: hidden; display: block;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    transition: transform .14s ease, filter .14s ease;
+  }
+  .app-icon img { width: 100%; height: 100%; display: block; }
+  .app:active .app-icon, .app.pressed .app-icon { transform: scale(.9); filter: brightness(.85); }
+  .app-label {
+    /* Borrows a little of the column gap so short names like "Energy Tracker" fit whole. */
+    font-size: 11.5px; font-weight: 500; max-width: calc(100% + 16px); margin: 0 -8px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+
+  .spacer { flex: 1; }
+  .dots { display: flex; justify-content: center; gap: 8px; margin: 10px 0 14px; }
+  .dots span { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.45); }
+  .dots span.on { background: #fff; }
+
+  /* Install hint pill (browser only) */
+  .install {
+    display: none; align-items: center; gap: 10px; justify-content: space-between;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6);
+    border-radius: 18px; padding: 10px 12px 10px 14px; font-size: 13px; line-height: 1.35;
+  }
+  .install.on { display: flex; }
+  .install button {
+    font: inherit; font-weight: 600; font-size: 13px; border: 0; border-radius: 999px;
+    background: #fff; color: #111; padding: 7px 14px; cursor: pointer; flex: none;
+  }
+  .install .x { background: transparent; color: #fff; padding: 4px 6px; font-size: 18px; line-height: 1; }
+  .share-glyph { display: inline-block; vertical-align: -3px; }
+
+  /* App-launch zoom */
+  .launch {
+    position: fixed; z-index: 50; overflow: hidden; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+  }
+  .launch img { width: 64px; height: 64px; transition: opacity .2s ease, transform .32s cubic-bezier(.2,.8,.2,1); }
+  .launch.go { transition: top .34s cubic-bezier(.2,.8,.2,1), left .34s cubic-bezier(.2,.8,.2,1), width .34s cubic-bezier(.2,.8,.2,1), height .34s cubic-bezier(.2,.8,.2,1), border-radius .34s ease, background-color .3s ease .12s; }
+  .launch.go img { opacity: 0; transform: scale(1.6); }
+</style>
+</head>
+<body>
+<div class="wall" aria-hidden="true"></div>
+
+<main class="screen">
+  <div class="statusbar" aria-hidden="true">
+    <span id="sbTime">9:41</span>
+    <span class="sb-icons">
+      <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 2.2c2.3 0 4.4.9 6 2.4l1.3-1.4C13.4 1.4 10.8.3 8 .3S2.6 1.4.7 3.2L2 4.6c1.6-1.5 3.7-2.4 6-2.4zm0 3.7c1.3 0 2.5.5 3.4 1.3l1.3-1.4C11.5 4.7 9.8 4 8 4s-3.5.7-4.7 1.8l1.3 1.4C5.5 6.4 6.7 5.9 8 5.9zm0 3.6c.4 0 .8.2 1.1.4L8 11.7 6.9 9.9c.3-.2.7-.4 1.1-.4z"/></svg>
+      <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="#fff" stroke-opacity=".5"/><rect x="2" y="2" width="18" height="9" rx="2"/><rect x="25" y="4.5" width="1.6" height="4" rx=".8" fill-opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <section class="widgets">
+    <div class="w-wrap">
+      <div class="widget w-cal" aria-label="Today">
+        <div class="dow" id="calDow">Friday</div>
+        <div class="day" id="calDay">25</div>
+        <div class="mon" id="calMon">September</div>
+        <div class="clock" id="calClock"></div>
+      </div>
+      <div class="w-label">Calendar</div>
+    </div>
+    <div class="w-wrap">
+      <a class="widget w-energy" href="energy-tracker.html" data-launch data-color="#ff9f1a" data-icon="icons/energy.svg" aria-label="Energy Tracker summary">
+        <div class="w-head"><img src="icons/energy.svg" alt="">Energy</div>
+        <div class="w-big" id="wBig">—</div>
+        <div class="w-sub" id="wSub">Tap to add your first bill</div>
+        <div class="w-foot" id="wFoot" style="display:none"></div>
+      </a>
+      <div class="w-label">Energy Tracker</div>
+    </div>
+  </section>
+
+  <nav class="grid" id="grid" aria-label="Apps"></nav>
+
+  <div class="spacer"></div>
+
+  <div class="install" id="install">
+    <span id="installText"></span>
+    <button type="button" id="installBtn" style="display:none">Install</button>
+    <button type="button" class="x" id="installX" aria-label="Dismiss">×</button>
+  </div>
+  <div class="dots" aria-hidden="true"><span class="on"></span></div>
+</main>
+
+<div class="launch" id="launch" aria-hidden="true"><img alt=""></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // House App's tools. Add new ones here — each becomes an icon, in order.
+  // `color` is the tile colour the launch zoom starts from. New pages also
+  // need adding to SHELL_ASSETS in sw.js (and a CACHE_VERSION bump).
+  var APPS = [
+    { name: "Energy Tracker", href: "energy-tracker.html", icon: "icons/energy.svg", color: "#ff9f1a" }
+  ];
+
+  var STORE_SUMMARY = "energy.summary.v1";   // written by energy-tracker.html
+  var STORE_HINT = "house.installHintDismissed.v1";
+
+  var DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, txt) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (txt != null) n.textContent = txt;
+    return n;
+  }
+  function safeRead(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function safeWrite(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+
+  var standalone = window.navigator.standalone === true ||
+    (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  if (standalone) document.documentElement.className += " standalone";
+
+  // ---------- icons ----------
+  function renderGrid() {
+    var grid = $("grid");
+    APPS.forEach(function (a) {
+      var link = el("a", "app");
+      link.href = a.href;
+      link.setAttribute("data-launch", "");
+      link.setAttribute("data-color", a.color);
+      link.setAttribute("data-icon", a.icon);
+      var ic = el("span", "app-icon");
+      var img = el("img"); img.src = a.icon; img.alt = "";
+      ic.appendChild(img);
+      link.appendChild(ic);
+      link.appendChild(el("span", "app-label", a.name));
+      grid.appendChild(link);
+    });
+  }
+
+  // ---------- clock / calendar ----------
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  function tick() {
+    var d = new Date();
+    var h = d.getHours() % 12 || 12;
+    var t = h + ":" + pad2(d.getMinutes());
+    $("sbTime").textContent = t;
+    $("calDow").textContent = DAYS[d.getDay()];
+    $("calDay").textContent = d.getDate();
+    $("calMon").textContent = MONTHS[d.getMonth()];
+    $("calClock").textContent = t + (d.getHours() < 12 ? " AM" : " PM");
+  }
+
+  // ---------- energy widget ----------
+  function peso(v, dp) {
+    return "₱" + Number(v).toLocaleString("en-PH", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+  }
+  function renderEnergy() {
+    var s = null;
+    try { s = JSON.parse(safeRead(STORE_SUMMARY) || "null"); } catch (e) {}
+    var foot = $("wFoot");
+    if (!s || !s.latest) {
+      $("wBig").textContent = "—";
+      $("wSub").textContent = "Tap to add your first bill";
+      foot.style.display = "none";
+      return;
+    }
+    var L = s.latest;
+    var d = L.date.split("-");
+    $("wBig").textContent = peso(L.php, 0);
+    $("wSub").textContent = MONTHS[+d[1] - 1].slice(0, 3) + " " + (+d[2]) + " bill · ₱" + L.rate.toFixed(2) + "/kWh";
+    while (foot.firstChild) foot.removeChild(foot.firstChild);
+    if (s.forecast && s.forecast.projCost != null) {
+      foot.appendChild(document.createTextNode("Forecast "));
+      foot.appendChild(el("b", null, peso(s.forecast.projCost, 0)));
+      foot.appendChild(document.createTextNode(" by " + s.forecast.nextLabel));
+      foot.style.display = "";
+    } else if (L.deltaPct != null) {
+      foot.textContent = (L.deltaPct > 0 ? "▲ " : "▼ ") + Math.abs(L.deltaPct).toFixed(1) + "% vs last bill";
+      foot.style.display = "";
+    } else {
+      foot.style.display = "none";
+    }
+  }
+
+  // ---------- launch animation ----------
+  var reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var launching = false;
+
+  function launch(link, e) {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return;   // let "open in new tab" work
+    if (reduceMotion) return;
+    e.preventDefault();
+    if (launching) return;
+    launching = true;
+    var href = link.getAttribute("href");
+    var src = link.querySelector(".app-icon, .widget") || link;
+    var r = (link.querySelector(".app-icon") || link).getBoundingClientRect();
+    var L = $("launch");
+    var dark = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches;
+    L.className = "launch";
+    L.style.top = r.top + "px"; L.style.left = r.left + "px";
+    L.style.width = r.width + "px"; L.style.height = r.height + "px";
+    L.style.borderRadius = getComputedStyle(src).borderRadius;
+    L.style.backgroundColor = link.getAttribute("data-color");
+    L.querySelector("img").src = link.getAttribute("data-icon");
+    L.style.opacity = "1";
+    link.classList.add("pressed");
+    // Next frame: grow to full screen and fade toward the app's own background.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        L.className = "launch go";
+        L.style.top = "0px"; L.style.left = "0px";
+        L.style.width = window.innerWidth + "px"; L.style.height = window.innerHeight + "px";
+        L.style.borderRadius = "0px";
+        L.style.backgroundColor = dark ? "#111110" : "#f6f5f2";
+      });
+    });
+    setTimeout(function () { location.href = href; }, 360);
+  }
+
+  // Coming back via the back button restores this page from the bfcache with
+  // the overlay still covering the screen — reset it.
+  window.addEventListener("pageshow", function () {
+    launching = false;
+    var L = $("launch");
+    L.className = "launch"; L.style.opacity = "0";
+    Array.prototype.forEach.call(document.querySelectorAll(".pressed"), function (n) { n.classList.remove("pressed"); });
+    renderEnergy();
+  });
+
+  document.addEventListener("click", function (e) {
+    var link = e.target.closest ? e.target.closest("[data-launch]") : null;
+    if (link) launch(link, e);
+  });
+
+  // ---------- install hint ----------
+  var deferredPrompt = null;
+  function showInstall(text, withButton) {
+    if (standalone || safeRead(STORE_HINT)) return;
+    $("installText").innerHTML = text;
+    $("installBtn").style.display = withButton ? "" : "none";
+    $("install").className = "install on";
+  }
+  var ua = navigator.userAgent;
+  var isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS && location.protocol.indexOf("http") === 0) {
+    showInstall('Install: tap <svg class="share-glyph" width="14" height="17" viewBox="0 0 14 17" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1v10M3.5 4.5L7 1l3.5 3.5M4.5 7H2v9h10V7H9.5"/></svg> Share, then <b>Add to Home Screen</b>', false);
+  }
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    showInstall("Install <b>House App</b> on this device", true);
+  });
+  $("installBtn").addEventListener("click", function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function () { deferredPrompt = null; $("install").className = "install"; });
+  });
+  $("installX").addEventListener("click", function () {
+    safeWrite(STORE_HINT, "1");
+    $("install").className = "install";
+  });
+
+  // ---------- service worker ----------
+  // Only over http(s): opened as a local file there's no worker, and that's fine.
+  if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function (err) { console.warn("SW registration failed", err); });
+    });
+  }
+
+  // ---------- boot ----------
+  renderGrid();
+  tick();
+  setInterval(tick, 15000);
+  renderEnergy();
+  // The tracker may update the summary in another tab.
+  window.addEventListener("storage", function (e) { if (e.key === STORE_SUMMARY) renderEnergy(); });
+})();
+</script>
+</body>
+</html>
