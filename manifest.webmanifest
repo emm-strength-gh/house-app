@@ -1,0 +1,25 @@
+{
+  "id": "./",
+  "name": "House App",
+  "short_name": "House",
+  "description": "House App — a home screen of household tools, starting with the Energy Tracker.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1b1740",
+  "theme_color": "#1b1740",
+  "icons": [
+    { "src": "icons/house-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/house-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/house-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Energy Tracker",
+      "short_name": "Energy",
+      "url": "./energy-tracker.html",
+      "icons": [{ "src": "icons/energy-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
