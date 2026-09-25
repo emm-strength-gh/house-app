@@ -2,7 +2,7 @@
   "id": "./",
   "name": "House App",
   "short_name": "House",
-  "description": "House App — a home screen of household tools, including the Energy Tracker, Oni Orders and Grocery Planner.",
+  "description": "House App — a home screen of household tools, including the Energy Tracker, Oni Orders, Grocery Planner and To Do.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -32,6 +32,12 @@
       "short_name": "Grocery",
       "url": "./grocery.html",
       "icons": [{ "src": "icons/grocery-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "To Do",
+      "short_name": "To Do",
+      "url": "./todo.html",
+      "icons": [{ "src": "icons/todo-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }
