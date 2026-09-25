@@ -7,6 +7,7 @@
  *   house-*   the House App launcher (index.html) — the installed PWA's icon
  *   energy-*  the Energy Tracker app tile
  *   oni-*     the Oni Orders app tile
+ *   grocery-* the Grocery Planner app tile
  *
  * Variants:
  *   *-180.png           apple-touch-icon: full-bleed square, iOS rounds it itself
@@ -45,6 +46,19 @@ var ICONS = {
       { rect: [0.775, 0.355, 0.066, 0.29, 0], color: "#fff8f2" }
     ],
     scaleAny: 0.92, scaleMask: 0.74
+  },
+  grocery: {
+    // Basket: handle is a ring whose lower half hides behind the rim and body.
+    bg: ["#3ddc84", "#0e8a4f"],
+    shapes: [
+      { ring: [0.50, 0.44, 0.215, 0.23, 0.06], color: "#ffffff" },
+      { rect: [0.13, 0.40, 0.74, 0.095, 0.035], color: "#ffffff" },
+      { poly: [[0.18, 0.47], [0.82, 0.47], [0.75, 0.82], [0.25, 0.82]], color: "#ffffff" },
+      { rect: [0.335, 0.54, 0.05, 0.21, 0.025], color: "#0e8a4f", alpha: 0.35 },
+      { rect: [0.475, 0.54, 0.05, 0.21, 0.025], color: "#0e8a4f", alpha: 0.35 },
+      { rect: [0.615, 0.54, 0.05, 0.21, 0.025], color: "#0e8a4f", alpha: 0.35 }
+    ],
+    scaleAny: 0.88, scaleMask: 0.72
   },
   house: {
     bg: ["#5b6cff", "#9b4fe0"],
