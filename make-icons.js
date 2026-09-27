@@ -9,6 +9,7 @@
  *   oni-*     the Oni Orders app tile
  *   grocery-* the Grocery Planner app tile
  *   todo-*    the To Do app tile
+ *   expenses-* the Expenses app tile
  *
  * Variants:
  *   *-180.png           apple-touch-icon: full-bleed square, iOS rounds it itself
@@ -74,6 +75,20 @@ var ICONS = {
       { rect: [0.42, 0.6625, 0.36, 0.075, 0.0375], color: "#ffffff" }
     ],
     scaleAny: 1.0, scaleMask: 0.8
+  },
+  expenses: {
+    // Receipt with a torn (zigzag) bottom edge and soft ledger lines, on a
+    // peach -> lavender watercolour gradient.
+    bg: ["#f6c3aa", "#b9a6dc"],
+    shapes: [
+      { poly: [[0.27, 0.15], [0.73, 0.15], [0.73, 0.85], [0.6725, 0.80], [0.615, 0.85], [0.5575, 0.80], [0.50, 0.85],
+               [0.4425, 0.80], [0.385, 0.85], [0.3275, 0.80], [0.27, 0.85]], color: "#fffaf5" },
+      { rect: [0.36, 0.29, 0.28, 0.06, 0.03], color: "#c98f86", alpha: 0.75 },
+      { rect: [0.36, 0.42, 0.28, 0.06, 0.03], color: "#9f8fc4", alpha: 0.6 },
+      { rect: [0.36, 0.55, 0.17, 0.06, 0.03], color: "#9f8fc4", alpha: 0.6 },
+      { rect: [0.56, 0.62, 0.08, 0.06, 0.03], color: "#7fa1bd", alpha: 0.8 }
+    ],
+    scaleAny: 0.95, scaleMask: 0.78
   },
   house: {
     bg: ["#5b6cff", "#9b4fe0"],
