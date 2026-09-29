@@ -7,7 +7,13 @@ growing set of household tools:
   ₱/kWh rate and forecasts from meter readings.
 - **Oni Orders** (`oni-orders.html`) — build and email orders to ONI / Bukiya
   from a saved item catalog, with JSON-file backups. Brought in from the
-  standalone Oni Inventory App.
+  standalone Oni Inventory App. **Invoices** bills your own customers: items
+  carry a selling price in ₱ (set on the Items tab), each invoice has a
+  customer, an order number (counts up from the highest used, e.g. `INV-0024`),
+  a status (Unpaid, Paid, Awaiting delivery, Sent, Completed), shipping and
+  discount. **Preview invoice** shows it full-screen on light "paper", shrunk
+  to fit one phone screen so a single screenshot can be sent to the customer.
+  Invoices ride in the same **Save backup** file as everything else.
 - **Grocery Planner** (`grocery.html`) — an Item Manager of groceries with
   peso prices, and a Planner that builds a shopping list with quantities,
   line totals and a running total. Can show everything in British pounds
@@ -96,7 +102,9 @@ Grocery Planner and Expenses **Settings → Export backup / Import backup**.
 
 Energy Tracker: `energy.bills.v1`, `energy.forecast.v1`, `energy.groups.v1`,
 `energy.theme.v1`, `energy.savedAt.v1`, `energy.summary.v1` (snapshot the home
-widget reads). Oni Orders: `oni.catalog.v1`, `oni.orders.v1`, `oni.settings.v1`. Grocery Planner:
+widget reads). Oni Orders: `oni.catalog.v1` (item `price` in ₱ is optional), `oni.orders.v1`,
+`oni.invoices.v1`, `oni.settings.v1` (also shop name/handle, invoice number
+prefix and the last invoice message). Grocery Planner:
 `grocery.items.v1`, `grocery.plan.v1`, `grocery.settings.v1`, `grocery.theme.v1`,
 `grocery.tab.v1`. To Do: `todo.items.v1`, `todo.theme.v1`, `todo.tab.v1`.
 Expenses: `expenses.items.v1` (amounts in centavos), `expenses.categories.v1`,
