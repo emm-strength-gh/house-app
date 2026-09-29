@@ -79,7 +79,7 @@
   }
   nav.tabs button{
     border:none;background:transparent;color:var(--muted);font-weight:600;font-size:14px;
-    padding:9px 14px;border-radius:10px 10px 0 0;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;transition:.15s;
+    padding:9px 10px;border-radius:10px 10px 0 0;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;transition:.15s;
   }
   nav.tabs button:hover{color:var(--ink)}
   nav.tabs button.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--accent-soft)}
@@ -94,7 +94,7 @@
   .card .sub{color:var(--muted);font-size:13px;margin:0 0 14px}
   label{display:block;font-size:13px;font-weight:600;margin:0 0 5px;color:var(--muted)}
   input,select,textarea{
-    width:100%;font:inherit;color:var(--ink);background:var(--surface-2);
+    width:100%;font:inherit;font-size:16px;/* 16px+ stops iOS zooming in on focus */color:var(--ink);background:var(--surface-2);
     border:1px solid var(--border-strong);border-radius:11px;padding:11px 12px;transition:.15s;
   }
   input:focus,select:focus,textarea:focus{
@@ -168,6 +168,100 @@
   .note{font-size:12px;color:var(--muted);margin-top:6px}
   .divider{height:1px;background:var(--border);margin:14px 0}
   code.k{background:var(--chip);padding:1px 6px;border-radius:5px;font-size:12px}
+
+  /* ---------- invoices ---------- */
+  .money{position:relative}
+  .money span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+  .money input{padding-left:28px}
+  .backlink{border:none;background:none;color:var(--accent);font:inherit;font-weight:600;font-size:14px;padding:6px 0;cursor:pointer}
+  .pagetitle{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0 0 14px}
+  .fchips{display:flex;gap:6px;overflow-x:auto;margin-top:12px;padding-bottom:2px;scrollbar-width:none}
+  .fchips::-webkit-scrollbar{display:none}
+  .fchip{flex:none;height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--border);background:var(--chip);
+    color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .fchip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--ink);font-weight:700}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow)}
+  .stat .k{font-size:12px;font-weight:600;color:var(--muted)}
+  .stat .v{font-size:20px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .stat .s{font-size:12px;color:var(--muted)}
+  .invrow{display:flex;gap:12px;align-items:center;width:100%;padding:12px 0;border:none;border-top:1px solid var(--border);
+    background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+  .invrow:first-child{border-top:none}
+  .invrow .grow{flex:1;min-width:0}
+  .invrow .cust{font-weight:700;overflow-wrap:anywhere}
+  .invrow .imeta{font-size:13px;color:var(--muted)}
+  .invrow .right{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+  .invrow .amt{font-weight:700;font-variant-numeric:tabular-nums}
+  .st{display:inline-flex;align-items:center;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .stpills{display:flex;flex-wrap:wrap;gap:8px}
+  .stpill{height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--border);background:var(--chip);
+    color:var(--muted);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+  .stpill.on{border-color:currentColor;font-weight:700}
+  /* Status colours: each pair differs in lightness as well as hue, and always
+     carries its label, so they read without relying on colour alone. */
+  .c-unpaid{background:#fbe1d9;color:#9c3419} .c-paid{background:#dcf1e2;color:#1f6b3a}
+  .c-awaiting{background:#f8ecc7;color:#74560a} .c-sent{background:#dde9fb;color:#1f4f94}
+  .c-completed{background:#ece6de;color:#4a4037}
+  html[data-theme="dark"] .c-unpaid{background:#43261f;color:#f39a82}
+  html[data-theme="dark"] .c-paid{background:#1f3626;color:#7fd69c}
+  html[data-theme="dark"] .c-awaiting{background:#3b331b;color:#ecc964}
+  html[data-theme="dark"] .c-sent{background:#1e2c40;color:#93bdf6}
+  html[data-theme="dark"] .c-completed{background:#35302b;color:#ddd3c7}
+  .lines li .lt{font-weight:700;white-space:nowrap;align-self:center;font-variant-numeric:tabular-nums}
+  .iconx{border:none;background:transparent;color:var(--muted);width:36px;height:36px;border-radius:10px;cursor:pointer;
+    font-size:18px;line-height:1;align-self:center;flex:none}
+  .iconx:hover{color:var(--danger);background:var(--surface-2)}
+  .trow{display:flex;justify-content:space-between;color:var(--muted);font-variant-numeric:tabular-nums;padding:3px 0}
+  .trow.grand{color:var(--ink);font-weight:700;border-top:1px solid var(--border);margin-top:6px;padding-top:10px;align-items:baseline}
+  .trow.grand .v{font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--accent)}
+  .cardlabel{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:8px}
+  .pricerow{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .pricerow label{margin:0;width:56px;flex:none}
+  .pricerow .money{flex:1;max-width:180px}
+
+  /* ---------- invoice preview: always "paper" colours, sized to one phone screen ---------- */
+  .invprev{position:fixed;inset:0;z-index:60;background:#f3e9dc;overflow:auto;display:none;
+    padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px)}
+  .invprev.show{display:block}
+  .inv-paper{max-width:420px;margin:0 auto;background:#fffdf9;border:1px solid #eadfce;border-radius:20px;
+    padding:1.55em 1.4em;box-shadow:0 10px 30px rgba(120,80,40,.10);color:#2c2622;font-size:14px;line-height:1.4;
+    display:flex;flex-direction:column;gap:1.1em}
+  .ip-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .ip-shop{font-size:1.3em;font-weight:800;letter-spacing:-.01em;overflow-wrap:anywhere}
+  .ip-sub{font-size:.9em;color:#75685b;overflow-wrap:anywhere}
+  .ip-k{font-size:.78em;font-weight:700;letter-spacing:.1em;color:#75685b;text-transform:uppercase}
+  .ip-no{font-size:1.2em;font-weight:800;font-variant-numeric:tabular-nums}
+  .ip-rule{height:1px;background:#ece0cf}
+  .ip-bill{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px}
+  .ip-bill .r{display:flex;flex-direction:column;align-items:flex-end;text-align:right}
+  .ip-name{font-size:1.07em;font-weight:700;overflow-wrap:anywhere}
+  .inv-paper .st{font-size:.86em;font-weight:800;padding:.2em .7em;margin-top:.35em}
+  .inv-paper .st.c-unpaid{background:#fbe1d9;color:#9c3419} .inv-paper .st.c-paid{background:#dcf1e2;color:#1f6b3a}
+  .inv-paper .st.c-awaiting{background:#f8ecc7;color:#74560a} .inv-paper .st.c-sent{background:#dde9fb;color:#1f4f94}
+  .inv-paper .st.c-completed{background:#ece6de;color:#4a4037}
+  .ip-row{display:grid;grid-template-columns:minmax(0,1fr) 2.4em 6.2em;gap:.6em;padding:.65em 0;border-top:1px solid #ece0cf;
+    align-items:start;font-variant-numeric:tabular-nums}
+  .ip-row.head{border-top:none;padding:0 0 .4em}
+  .ip-row .q{text-align:center} .ip-row .a{text-align:right;font-weight:700}
+  .ip-row .n{font-weight:700;overflow-wrap:anywhere}
+  .ip-row .d{font-size:.9em;color:#75685b}
+  .ip-tot{border-top:1px solid #ece0cf;padding-top:.85em;display:flex;flex-direction:column;gap:.35em;font-variant-numeric:tabular-nums}
+  .ip-tot .t{display:flex;justify-content:space-between;color:#5c5046}
+  .ip-tot .g{display:flex;justify-content:space-between;align-items:baseline;margin-top:.4em}
+  .ip-tot .g b{font-size:1.07em} .ip-tot .g .v{font-size:2em;font-weight:800;letter-spacing:-.02em;color:#b4532e}
+  .ip-pay{background:#f7efe3;border-radius:12px;padding:.85em 1em;white-space:pre-line}
+  .ip-pay b{display:block;font-size:.93em}
+  .ip-pay div{font-size:.96em;color:#3d352f}
+  .ip-thanks{text-align:center;font-size:.93em;color:#75685b}
+  .ip-ctrl{position:fixed;left:0;right:0;bottom:0;padding:18px 16px calc(env(safe-area-inset-bottom) + 12px);
+    background:linear-gradient(rgba(243,233,220,0), rgba(243,233,220,.96) 28%);text-align:center}
+  .ip-ctrl.hide{display:none}
+  .ip-hint{font-size:12.5px;color:#5c5046;margin-bottom:8px}
+  .ip-btns{display:flex;gap:10px;justify-content:center}
+  .ip-btn{height:46px;padding:0 20px;border-radius:12px;border:1px solid #ddccb5;background:#fffdf9;color:#2c2622;
+    font:inherit;font-weight:700;cursor:pointer}
+  .ip-btn.primary{background:#c85a36;border-color:#c85a36;color:#fff}
 </style>
 </head>
 <body>
@@ -181,9 +275,10 @@
 </header>
 
 <nav class="tabs">
-  <button data-tab="order" class="active">New Order</button>
+  <button data-tab="order" class="active">Order</button>
+  <button data-tab="invoices">Invoices</button>
   <button data-tab="catalog">Items</button>
-  <button data-tab="saved">Saved Orders</button>
+  <button data-tab="saved">Saved</button>
   <button data-tab="backup">Backup</button>
 </nav>
 
@@ -273,6 +368,116 @@
     </div>
   </section>
 
+  <!-- ============ INVOICES ============ -->
+  <section class="panel" id="tab-invoices">
+    <div id="invListView">
+      <div class="card">
+        <h2>Invoices</h2>
+        <p class="sub">Bills for your customers. Open one and preview it, then screenshot and send.</p>
+        <button class="btn primary block" id="newInvBtn">+ New invoice</button>
+        <div style="margin-top:12px"><input id="invSearch" type="search" placeholder="Search name or order no." aria-label="Search invoices" /></div>
+        <div class="fchips" id="invFilters"></div>
+      </div>
+      <div class="stats" id="invStats"></div>
+      <div class="card"><div id="invList"></div></div>
+      <div class="card">
+        <h2>Invoice details</h2>
+        <p class="sub">Shown at the top of every invoice.</p>
+        <div class="field">
+          <label for="setShop">Shop name</label>
+          <input id="setShop" type="text" placeholder="Your shop or page name" />
+        </div>
+        <div class="row">
+          <div class="col field">
+            <label for="setHandle">Facebook / IG handle</label>
+            <input id="setHandle" type="text" placeholder="e.g. @yourshop" />
+          </div>
+          <div class="col field" style="max-width:130px">
+            <label for="setPrefix">Number prefix</label>
+            <input id="setPrefix" type="text" placeholder="INV-" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="invEditView" class="hidden">
+      <button class="backlink" id="invBackBtn">‹ Invoices</button>
+      <h2 class="pagetitle" id="invEditTitle">New invoice</h2>
+
+      <div class="card">
+        <h2 style="margin-bottom:12px">Customer</h2>
+        <div class="field">
+          <label for="ivCustomer">Customer name</label>
+          <input id="ivCustomer" type="text" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="ivContact">Contact (optional)</label>
+          <input id="ivContact" type="text" autocomplete="off" placeholder="e.g. @name on Messenger" />
+        </div>
+        <div class="row">
+          <div class="col field">
+            <label for="ivNo">Order no.</label>
+            <input id="ivNo" type="text" autocomplete="off" />
+          </div>
+          <div class="col field">
+            <label for="ivDate">Date</label>
+            <input id="ivDate" type="date" />
+          </div>
+        </div>
+        <p class="note" style="margin-top:0">Order numbers count up by themselves. You can still type your own.</p>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom:12px">Status</h2>
+        <div class="stpills" id="ivStatus"></div>
+      </div>
+
+      <div class="card">
+        <h2>Items</h2>
+        <p class="sub">Prices come from the Items tab. Change a line's price for a one-off deal.</p>
+        <div class="field">
+          <label for="ivItem">Item</label>
+          <select id="ivItem"></select>
+        </div>
+        <div class="row">
+          <div class="col field"><label for="ivSize">Size</label><select id="ivSize"></select></div>
+          <div class="col field"><label for="ivColour">Colour</label><select id="ivColour"></select></div>
+          <div class="col field" style="max-width:90px"><label for="ivQty">Qty</label>
+            <input id="ivQty" type="number" min="1" step="1" value="1" inputmode="numeric" /></div>
+        </div>
+        <div class="field">
+          <label for="ivPrice">Price each (₱)</label>
+          <div class="money"><span>₱</span><input id="ivPrice" type="text" inputmode="decimal" placeholder="0.00" /></div>
+        </div>
+        <button class="btn block" id="ivAddLine">+ Add to invoice</button>
+        <ul class="lines" id="ivLines"></ul>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom:12px">Totals</h2>
+        <div class="row">
+          <div class="col field"><label for="ivShip">Shipping fee (₱)</label>
+            <div class="money"><span>₱</span><input id="ivShip" type="text" inputmode="decimal" placeholder="0" /></div></div>
+          <div class="col field"><label for="ivDisc">Discount (₱)</label>
+            <div class="money"><span>₱</span><input id="ivDisc" type="text" inputmode="decimal" placeholder="0" /></div></div>
+        </div>
+        <div id="ivTotals"></div>
+      </div>
+
+      <div class="card">
+        <label for="ivMsg" class="cardlabel">Message on the invoice</label>
+        <textarea id="ivMsg" placeholder="e.g. Pay via GCash to 09XX XXX XXXX and send a screenshot of the receipt."></textarea>
+        <p class="note">Remembered, so your next invoice starts with it.</p>
+      </div>
+
+      <button class="btn primary block" id="ivPreviewBtn" style="height:50px;font-size:16px">Preview invoice</button>
+      <div class="btnrow" style="margin:10px 0 24px">
+        <button class="btn" id="ivSaveBtn" style="flex:1">💾 Save</button>
+        <button class="btn ghost danger" id="ivDeleteBtn" style="flex:1">Delete</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ CATALOG ============ -->
   <section class="panel" id="tab-catalog">
     <div class="card">
@@ -286,6 +491,10 @@
         <div class="col field">
           <label for="newCategory">Category (optional)</label>
           <input id="newCategory" type="text" placeholder="e.g. Singlets" />
+        </div>
+        <div class="col field">
+          <label for="newPrice">Price (₱)</label>
+          <div class="money"><span>₱</span><input id="newPrice" type="text" inputmode="decimal" placeholder="Your selling price" /></div>
         </div>
       </div>
       <div class="row">
@@ -303,7 +512,7 @@
 
     <div class="card">
       <h2>Your items</h2>
-      <p class="sub">Tap a size or colour chip's ✕ to remove it, or add new ones inline.</p>
+      <p class="sub">Set each item's price for invoices. Tap a size or colour chip's ✕ to remove it, or add new ones inline.</p>
       <div id="catList"></div>
     </div>
   </section>
@@ -324,7 +533,7 @@
   <section class="panel" id="tab-backup">
     <div class="card">
       <h2>Save everything to a file</h2>
-      <p class="sub">Downloads one JSON file with <b>all</b> your items, saved orders and settings. Keep it somewhere safe (iCloud, Drive, email to yourself) — this is your real backup, not just browser storage.</p>
+      <p class="sub">Downloads one JSON file with <b>all</b> your items, saved orders, invoices and settings. Keep it somewhere safe (iCloud, Drive, email to yourself) — this is your real backup, not just browser storage.</p>
       <button class="btn primary block" id="exportAllBtn">💾 Save backup (.json)</button>
       <div class="divider"></div>
       <h2 style="font-size:15px">Restore from a file</h2>
@@ -345,6 +554,18 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- invoice preview: full screen so one screenshot captures the whole invoice -->
+<div class="invprev" id="invPrev" aria-hidden="true">
+  <div class="inv-paper" id="ipPaper"></div>
+  <div class="ip-ctrl" id="ipCtrl">
+    <div class="ip-hint">Tap <b>Hide buttons</b>, take a screenshot, then tap anywhere to bring them back.</div>
+    <div class="ip-btns">
+      <button class="ip-btn" id="ipHide">Hide buttons</button>
+      <button class="ip-btn primary" id="ipClose">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- hidden file inputs -->
 <input type="file" id="fileOrder" accept="application/json,.json" class="hidden" />
 <input type="file" id="fileBackup" accept="application/json,.json" class="hidden" />
@@ -359,7 +580,7 @@
   function clear(n){ while(n.firstChild) n.removeChild(n.firstChild); }
 
   /* ---------- storage (localStorage is a convenience cache only) ---------- */
-  var STORE = { catalog:"oni.catalog.v1", orders:"oni.orders.v1", settings:"oni.settings.v1" };
+  var STORE = { catalog:"oni.catalog.v1", orders:"oni.orders.v1", settings:"oni.settings.v1", invoices:"oni.invoices.v1" };
   function safeRead(key, fallback){
     try{ var v=localStorage.getItem(key); return v==null? fallback : JSON.parse(v); }
     catch(e){ return fallback; }
@@ -401,6 +622,17 @@
   var settings = safeRead(STORE.settings, null) || {
     toEmail:"bukiyaorder@gmail.com", ccEmail:"onibukiya@gmail.com", fromName:"", theme:"dark"
   };
+  // Invoices: [{ id, no, customer, contact, date:"YYYY-MM-DD", status, lines:[{name,size,colour,qty,price}],
+  //              shipping, discount, message, createdAt, updatedAt }] — all money in PHP.
+  var invoices = safeRead(STORE.invoices, []);
+  function fillInvoiceSettings(){
+    // Settings saved before invoices existed (or restored from an old backup) lack these.
+    if(settings.shopName==null) settings.shopName="";
+    if(settings.shopHandle==null) settings.shopHandle="";
+    if(settings.invPrefix==null) settings.invPrefix="INV-";
+    if(settings.invMessage==null) settings.invMessage="";
+  }
+  fillInvoiceSettings();
 
   // current working order (draft, not saved until user saves)
   var draft = { id:uid(), name:"", lines:[] };
@@ -408,6 +640,7 @@
   function persistCatalog(){ safeWrite(STORE.catalog, catalog); }
   function persistOrders(){ safeWrite(STORE.orders, orders); }
   function persistSettings(){ safeWrite(STORE.settings, settings); }
+  function persistInvoices(){ safeWrite(STORE.invoices, invoices); }
 
   /* ---------- toast ---------- */
   var toastTimer=null;
@@ -439,6 +672,7 @@
       $("tab-"+btn.getAttribute("data-tab")).classList.add("active");
       if(btn.getAttribute("data-tab")==="catalog") renderCatalog();
       if(btn.getAttribute("data-tab")==="saved") renderSaved();
+      if(btn.getAttribute("data-tab")==="invoices"){ renderInvoices(); if(inv) renderInvItemSelect(); }
     });
   });
 
@@ -730,6 +964,26 @@
     wrap.appendChild(top);
 
     var body=el("div","catbody");
+    var pr=el("div","pricerow");
+    var prId="price-"+it.id;
+    var prLabel=el("label", null, "Price"); prLabel.setAttribute("for", prId);
+    var prBox=el("div","money"); prBox.appendChild(el("span", null, "₱"));
+    var prIn=el("input"); prIn.id=prId; prIn.type="text"; prIn.inputMode="decimal"; prIn.placeholder="Set price";
+    prIn.value = it.price!=null ? String(it.price) : "";
+    prIn.addEventListener("change", function(){
+      var v=prIn.value.trim();
+      if(v===""){ delete it.price; }
+      else {
+        var n=moneyVal(v);
+        if(n==null){ toast("Enter a price in pesos"); prIn.value = it.price!=null ? String(it.price) : ""; return; }
+        it.price=n; prIn.value=String(n);
+      }
+      persistCatalog(); if(inv) renderInvItemSelect(); toast("Price saved");
+    });
+    prIn.addEventListener("keydown", function(e){ if(e.key==="Enter") prIn.blur(); });
+    prBox.appendChild(prIn);
+    pr.appendChild(prLabel); pr.appendChild(prBox);
+    body.appendChild(pr);
     body.appendChild(chipRow("Sizes", it.sizes,
       function(v){ it.sizes.push(v); persistCatalog(); renderCatalog(); renderItemSelect(); },
       function(i){ it.sizes.splice(i,1); persistCatalog(); renderCatalog(); renderItemSelect(); }
@@ -750,15 +1004,383 @@
   $("addItemBtn").addEventListener("click", function(){
     var name=$("newName").value.trim();
     if(!name){ toast("Enter an item name"); return; }
-    catalog.push({
+    var priceTxt=$("newPrice").value.trim(), price=null;
+    if(priceTxt!==""){
+      price=moneyVal(priceTxt);
+      if(price==null){ toast("Enter the price in pesos, e.g. 3450"); return; }
+    }
+    var item={
       id:uid(), name:name, category:$("newCategory").value.trim(),
       sizes:parseList($("newSizes").value), colours:parseList($("newColours").value)
-    });
+    };
+    if(price!=null) item.price=price;
+    catalog.push(item);
     persistCatalog();
-    $("newName").value=""; $("newCategory").value=""; $("newSizes").value=""; $("newColours").value="";
+    $("newName").value=""; $("newCategory").value=""; $("newPrice").value=""; $("newSizes").value=""; $("newColours").value="";
+    if(inv) renderInvItemSelect();
     renderCatalog(); renderItemSelect();
     toast("Item added");
   });
+
+  /* ---------- invoices: money, dates, numbering ---------- */
+  var STATUSES = [
+    ["unpaid","Unpaid"], ["paid","Paid"], ["awaiting","Awaiting delivery"], ["sent","Sent"], ["completed","Completed"]
+  ];
+  function statusLabel(k){
+    for(var i=0;i<STATUSES.length;i++){ if(STATUSES[i][0]===k) return STATUSES[i][1]; }
+    return "Unpaid";
+  }
+  // Pesos typed as "3450", "3,450.50" or "₱3450" → 3450.5; anything else → null.
+  function moneyVal(s){
+    s=String(s==null?"":s).replace(/[₱,\s]/g,"");
+    if(!/^\d*\.?\d+$|^\d+\.$/.test(s)) return null;
+    return Math.round(parseFloat(s)*100)/100;
+  }
+  function peso(n){
+    n=Math.round((+n||0)*100)/100;
+    return "₱"+n.toLocaleString("en-PH",{ minimumFractionDigits:(n%1?2:0), maximumFractionDigits:2 });
+  }
+  function pad2(n){ return (n<10?"0":"")+n; }
+  // Local date, not toISOString(): in the Philippines (UTC+8) that's still yesterday until 8am.
+  function todayISO(){ var d=new Date(); return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
+  function fmtDate(iso, withYear){
+    var p=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||""); if(!p) return iso||"";
+    var d=new Date(+p[1], +p[2]-1, +p[3]);
+    return d.toLocaleDateString("en-GB", withYear ? {day:"numeric",month:"short",year:"numeric"} : {day:"numeric",month:"short"});
+  }
+  function invTotals(v){
+    var sub=0, count=0;
+    (v.lines||[]).forEach(function(l){ sub+=(+l.qty||0)*(+l.price||0); count+=(+l.qty||0); });
+    var ship=+v.shipping||0, disc=+v.discount||0;
+    return { sub:Math.round(sub*100)/100, ship:ship, disc:disc, count:count, total:Math.max(0, Math.round((sub+ship-disc)*100)/100) };
+  }
+  // Next number = highest number used so far + 1, whatever the prefix, so typing
+  // INV-0024 on the first invoice carries on from an older paper system.
+  function nextInvoiceNo(){
+    var max=0;
+    invoices.forEach(function(v){ var m=/(\d+)\s*$/.exec(v.no||""); if(m){ var n=parseInt(m[1],10); if(n>max) max=n; } });
+    var s=String(max+1); while(s.length<4) s="0"+s;
+    return (settings.invPrefix||"")+s;
+  }
+  function normalizeInvoice(v){
+    if(!v.id) v.id=uid();
+    if(!Array.isArray(v.lines)) v.lines=[];
+    if(!v.status) v.status="unpaid";
+    if(!v.date) v.date=todayISO();
+    return v;
+  }
+
+  /* ---------- invoices: list ---------- */
+  var invFilter="all";
+  function sortedInvoices(){
+    return invoices.slice().sort(function(a,b){
+      if(a.date!==b.date) return a.date<b.date ? 1 : -1;
+      return (b.no||"").localeCompare(a.no||"", undefined, {numeric:true});
+    });
+  }
+  function renderInvoices(){
+    // chips
+    var counts={ all:invoices.length };
+    STATUSES.forEach(function(s){ counts[s[0]]=0; });
+    invoices.forEach(function(v){ counts[v.status]=(counts[v.status]||0)+1; });
+    var fbox=$("invFilters"); clear(fbox);
+    [["all","All"]].concat(STATUSES).forEach(function(s){
+      var b=el("button","fchip"+(invFilter===s[0]?" on":""), s[1]+" · "+(counts[s[0]]||0));
+      b.type="button";
+      b.setAttribute("aria-pressed", invFilter===s[0] ? "true" : "false");
+      b.addEventListener("click", function(){ invFilter=s[0]; renderInvoices(); });
+      fbox.appendChild(b);
+    });
+
+    // stats
+    var owed=0, owedN=0, toShip=0;
+    invoices.forEach(function(v){
+      if(v.status==="unpaid"){ owed+=invTotals(v).total; owedN++; }
+      if(v.status==="paid" || v.status==="awaiting") toShip++;
+    });
+    var sbox=$("invStats"); clear(sbox);
+    function stat(k, v, s){
+      var d=el("div","stat"); d.appendChild(el("div","k",k)); d.appendChild(el("div","v",v)); d.appendChild(el("div","s",s)); return d;
+    }
+    sbox.appendChild(stat("Still to be paid", peso(owed), owedN+(owedN===1?" invoice":" invoices")));
+    sbox.appendChild(stat("Paid, not yet sent", String(toShip), toShip===1?"order to ship out":"orders to ship out"));
+
+    // rows
+    var q=$("invSearch").value.trim().toLowerCase();
+    var list=sortedInvoices().filter(function(v){
+      if(invFilter!=="all" && v.status!==invFilter) return false;
+      if(!q) return true;
+      return (v.customer||"").toLowerCase().indexOf(q)>=0 || (v.no||"").toLowerCase().indexOf(q)>=0;
+    });
+    var box=$("invList"); clear(box);
+    if(!list.length){
+      box.appendChild(el("div","empty", invoices.length ? "No invoices match." : "No invoices yet. Tap New invoice to make your first one."));
+      return;
+    }
+    list.forEach(function(v){
+      var t=invTotals(v);
+      var row=el("button","invrow"); row.type="button";
+      var grow=el("div","grow");
+      grow.appendChild(el("div","cust", v.customer || "(no name)"));
+      grow.appendChild(el("div","imeta", [v.no, fmtDate(v.date,false), t.count+(t.count===1?" item":" items")].filter(Boolean).join(" · ")));
+      var right=el("div","right");
+      right.appendChild(el("div","amt", peso(t.total)));
+      right.appendChild(el("span","st c-"+v.status, statusLabel(v.status)));
+      row.appendChild(grow); row.appendChild(right);
+      row.addEventListener("click", function(){ openInvoice(v); });
+      box.appendChild(row);
+    });
+  }
+  $("invSearch").addEventListener("input", renderInvoices);
+  $("newInvBtn").addEventListener("click", function(){ openInvoice(null); });
+
+  // Invoice details: saved as they're typed, like any other setting.
+  $("setShop").value=settings.shopName; $("setHandle").value=settings.shopHandle; $("setPrefix").value=settings.invPrefix;
+  $("setShop").addEventListener("input", function(){ settings.shopName=this.value; persistSettings(); });
+  $("setHandle").addEventListener("input", function(){ settings.shopHandle=this.value; persistSettings(); });
+  $("setPrefix").addEventListener("input", function(){ settings.invPrefix=this.value; persistSettings(); });
+
+  /* ---------- invoices: editor ---------- */
+  // `inv` is a working copy: nothing reaches `invoices` (or storage) until Save.
+  var inv=null, invIsNew=false, invDirty=false;
+
+  function showInvView(edit){
+    $("invListView").classList.toggle("hidden", edit);
+    $("invEditView").classList.toggle("hidden", !edit);
+    window.scrollTo(0,0);
+  }
+  function openInvoice(rec){
+    inv = rec ? normalizeInvoice(JSON.parse(JSON.stringify(rec))) : {
+      id:uid(), no:nextInvoiceNo(), customer:"", contact:"", date:todayISO(), status:"unpaid",
+      lines:[], shipping:0, discount:0, message:settings.invMessage||"", createdAt:null
+    };
+    invIsNew=!rec; invDirty=false;
+    $("ivCustomer").value=inv.customer||""; $("ivContact").value=inv.contact||"";
+    $("ivNo").value=inv.no||""; $("ivDate").value=inv.date||"";
+    $("ivShip").value=inv.shipping ? String(inv.shipping) : ""; $("ivDisc").value=inv.discount ? String(inv.discount) : "";
+    $("ivMsg").value=inv.message||"";
+    $("invEditTitle").textContent = invIsNew ? "New invoice" : "Invoice "+(inv.no||"");
+    $("ivDeleteBtn").classList.toggle("hidden", invIsNew);
+    renderInvItemSelect(); renderInvStatus(); renderInvLines();
+    showInvView(true);
+  }
+  function leaveEditor(){
+    if(invDirty && !confirm("Leave without saving your changes to this invoice?")) return;
+    inv=null; invDirty=false;
+    showInvView(false); renderInvoices();
+  }
+  $("invBackBtn").addEventListener("click", leaveEditor);
+
+  function bindInvField(id, key, parse){
+    $(id).addEventListener("input", function(){
+      if(!inv) return;
+      inv[key] = parse ? parse(this.value) : this.value;
+      invDirty=true;
+      if(parse) renderInvTotals();
+    });
+  }
+  bindInvField("ivCustomer","customer"); bindInvField("ivContact","contact");
+  bindInvField("ivNo","no"); bindInvField("ivDate","date"); bindInvField("ivMsg","message");
+  function moneyOrZero(s){ var n=moneyVal(s); return n==null ? 0 : n; }
+  bindInvField("ivShip","shipping",moneyOrZero); bindInvField("ivDisc","discount",moneyOrZero);
+
+  function renderInvStatus(){
+    var box=$("ivStatus"); clear(box);
+    STATUSES.forEach(function(s){
+      var on=inv.status===s[0];
+      var b=el("button","stpill"+(on?" on c-"+s[0]:""), (on?"✓ ":"")+s[1]);
+      b.type="button"; b.setAttribute("aria-pressed", on?"true":"false");
+      b.addEventListener("click", function(){ inv.status=s[0]; invDirty=true; renderInvStatus(); });
+      box.appendChild(b);
+    });
+  }
+
+  function invCurrentItem(){
+    var id=$("ivItem").value;
+    for(var i=0;i<catalog.length;i++){ if(catalog[i].id===id) return catalog[i]; }
+    return null;
+  }
+  function renderInvItemSelect(){
+    var sel=$("ivItem"), keep=sel.value; clear(sel);
+    if(!catalog.length){
+      var o=el("option", null, "No items yet — add some under Items"); o.value=""; sel.appendChild(o);
+      onInvItemChange(); return;
+    }
+    catalog.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }).forEach(function(it){
+      var o=el("option", null, it.name + (it.price!=null ? "  ·  "+peso(it.price) : ""));
+      o.value=it.id; sel.appendChild(o);
+    });
+    if(keep && catalog.some(function(c){ return c.id===keep; })) sel.value=keep;
+    onInvItemChange();
+  }
+  function onInvItemChange(){
+    var it=invCurrentItem();
+    var sizes = it && it.sizes ? it.sizes : [], cols = it && it.colours ? it.colours : [];
+    fillSelect($("ivSize"), sizes, sizes.length ? "— select —" : "(no size)");
+    fillSelect($("ivColour"), cols, cols.length ? "— select —" : "(no colour)");
+    $("ivPrice").value = it && it.price!=null ? String(it.price) : "";
+  }
+  $("ivItem").addEventListener("change", onInvItemChange);
+
+  $("ivAddLine").addEventListener("click", function(){
+    var it=invCurrentItem();
+    if(!it){ toast("Add an item under Items first"); return; }
+    var size=$("ivSize").value||"", colour=$("ivColour").value||"";
+    if(it.sizes && it.sizes.length && !size){ toast("Pick a size"); return; }
+    if(it.colours && it.colours.length && !colour){ toast("Pick a colour"); return; }
+    var qty=parseInt($("ivQty").value,10); if(!qty||qty<1) qty=1;
+    var price=moneyVal($("ivPrice").value);
+    if(price==null){ toast("Enter the price in pesos"); $("ivPrice").focus(); return; }
+    inv.lines.push({ name:it.name, size:size, colour:colour, qty:qty, price:price });
+    invDirty=true;
+    $("ivQty").value="1";
+    renderInvLines();
+    toast("Added");
+  });
+
+  function lineDetail(l){ return [l.size, l.colour].filter(Boolean).join(" · "); }
+  function renderInvLines(){
+    var ul=$("ivLines"); clear(ul);
+    if(!inv.lines.length){
+      var li=el("li"); li.appendChild(el("span","empty","No items on this invoice yet.")); ul.appendChild(li);
+    }
+    inv.lines.forEach(function(l, idx){
+      var li=el("li");
+      var grow=el("div","grow");
+      grow.appendChild(el("div","name", l.name));
+      var d=lineDetail(l); if(d) grow.appendChild(el("div","meta", d));
+      grow.appendChild(el("div","meta", l.qty+" × "+peso(l.price)));
+      li.appendChild(grow);
+      li.appendChild(el("div","lt", peso(l.qty*l.price)));
+      var rm=el("button","iconx","✕"); rm.type="button"; rm.setAttribute("aria-label","Remove "+l.name);
+      rm.addEventListener("click", function(){ inv.lines.splice(idx,1); invDirty=true; renderInvLines(); });
+      li.appendChild(rm);
+      ul.appendChild(li);
+    });
+    renderInvTotals();
+  }
+  function renderInvTotals(){
+    var t=invTotals(inv), box=$("ivTotals"); clear(box);
+    function row(k, v, cls){ var r=el("div","trow"+(cls?" "+cls:"")); r.appendChild(el("span",null,k)); r.appendChild(el("span","v",v)); box.appendChild(r); }
+    row("Subtotal ("+t.count+(t.count===1?" item)":" items)"), peso(t.sub));
+    if(t.ship) row("Shipping", peso(t.ship));
+    if(t.disc) row("Discount", "−"+peso(t.disc));
+    row("Total", peso(t.total), "grand");
+  }
+
+  $("ivSaveBtn").addEventListener("click", saveInvoice);
+  function saveInvoice(){
+    inv.customer=(inv.customer||"").trim(); inv.no=(inv.no||"").trim();
+    if(!inv.customer){ toast("Enter the customer's name"); $("ivCustomer").focus(); return false; }
+    if(!inv.no){ toast("Enter an order number"); $("ivNo").focus(); return false; }
+    var clash=invoices.some(function(v){ return v.id!==inv.id && (v.no||"").toLowerCase()===inv.no.toLowerCase(); });
+    if(clash && !confirm("Another invoice already uses "+inv.no+". Save anyway?")) return false;
+    var now=new Date().toISOString();
+    if(!inv.createdAt) inv.createdAt=now;
+    inv.updatedAt=now;
+    var rec=JSON.parse(JSON.stringify(inv)), found=false;
+    for(var i=0;i<invoices.length;i++){ if(invoices[i].id===rec.id){ invoices[i]=rec; found=true; break; } }
+    if(!found) invoices.unshift(rec);
+    persistInvoices();
+    if(inv.message!==settings.invMessage){ settings.invMessage=inv.message||""; persistSettings(); }
+    invIsNew=false; invDirty=false;
+    $("invEditTitle").textContent="Invoice "+inv.no;
+    $("ivDeleteBtn").classList.remove("hidden");
+    toast("Invoice saved");
+    return true;
+  }
+  $("ivDeleteBtn").addEventListener("click", function(){
+    if(!confirm("Delete invoice "+(inv.no||"")+" for "+(inv.customer||"this customer")+"?")) return;
+    invoices=invoices.filter(function(v){ return v.id!==inv.id; });
+    persistInvoices();
+    invDirty=false; leaveEditor();
+    toast("Invoice deleted");
+  });
+
+  /* ---------- invoices: preview (one phone screen, for a screenshot) ---------- */
+  function renderPreview(v){
+    var t=invTotals(v), p=$("ipPaper"); clear(p);
+
+    var top=el("div","ip-top");
+    var who=el("div"); who.style.minWidth="0";
+    if(settings.shopName) who.appendChild(el("div","ip-shop", settings.shopName));
+    if(settings.shopHandle) who.appendChild(el("div","ip-sub", settings.shopHandle));
+    var num=el("div"); num.style.textAlign="right"; num.style.flexShrink="0";
+    num.appendChild(el("div","ip-k","Invoice")); num.appendChild(el("div","ip-no", v.no||""));
+    top.appendChild(who); top.appendChild(num); p.appendChild(top);
+    p.appendChild(el("div","ip-rule"));
+
+    var bill=el("div","ip-bill");
+    var l=el("div");
+    l.appendChild(el("div","ip-k","Billed to"));
+    l.appendChild(el("div","ip-name", v.customer||""));
+    if(v.contact) l.appendChild(el("div","ip-sub", v.contact));
+    var r=el("div","r");
+    r.appendChild(el("div","ip-k","Date"));
+    r.appendChild(el("div","ip-name", fmtDate(v.date,true)));
+    r.appendChild(el("span","st c-"+v.status, statusLabel(v.status)));
+    bill.appendChild(l); bill.appendChild(r); p.appendChild(bill);
+
+    var tbl=el("div");
+    var head=el("div","ip-row head ip-k");
+    head.appendChild(el("span",null,"Item")); head.appendChild(el("span","q","Qty")); head.appendChild(el("span","a","Amount"));
+    tbl.appendChild(head);
+    v.lines.forEach(function(ln){
+      var row=el("div","ip-row");
+      var c=el("div"); c.appendChild(el("div","n", ln.name));
+      c.appendChild(el("div","d", [lineDetail(ln), peso(ln.price)+" each"].filter(Boolean).join(" · ")));
+      row.appendChild(c); row.appendChild(el("span","q", String(ln.qty))); row.appendChild(el("span","a", peso(ln.qty*ln.price)));
+      tbl.appendChild(row);
+    });
+    p.appendChild(tbl);
+
+    var tot=el("div","ip-tot");
+    function trow(k, val){ var d=el("div","t"); d.appendChild(el("span",null,k)); d.appendChild(el("span",null,val)); tot.appendChild(d); }
+    trow("Subtotal", peso(t.sub));
+    if(t.ship) trow("Shipping", peso(t.ship));
+    if(t.disc) trow("Discount", "−"+peso(t.disc));
+    var g=el("div","g"); g.appendChild(el("b",null, v.status==="unpaid" ? "Total due" : "Total")); g.appendChild(el("span","v", peso(t.total)));
+    tot.appendChild(g); p.appendChild(tot);
+
+    if((v.message||"").trim()){
+      var pay=el("div","ip-pay");
+      pay.appendChild(el("b",null, v.status==="unpaid" ? "How to pay" : "Note"));
+      pay.appendChild(el("div",null, v.message.trim()));
+      p.appendChild(pay);
+    }
+    p.appendChild(el("div","ip-thanks","Thank you for your order!"));
+  }
+
+  // Shrink the type (everything inside is sized in em) until the invoice fits
+  // the screen, so a long order still screenshots in one go.
+  function fitPreview(){
+    var box=$("invPrev"), paper=$("ipPaper");
+    var cs=getComputedStyle(box);
+    var room=box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    var size=14;
+    paper.style.fontSize=size+"px";
+    while(paper.offsetHeight>room && size>9){ size-=0.5; paper.style.fontSize=size+"px"; }
+  }
+  function openPreview(){
+    if(!inv) return;
+    if(!inv.lines.length){ toast("Add at least one item first"); return; }
+    renderPreview(inv);
+    $("ipCtrl").classList.remove("hide");
+    $("invPrev").classList.add("show"); $("invPrev").setAttribute("aria-hidden","false");
+    document.body.style.overflow="hidden";
+    fitPreview();
+  }
+  function closePreview(){
+    $("invPrev").classList.remove("show"); $("invPrev").setAttribute("aria-hidden","true");
+    document.body.style.overflow="";
+  }
+  $("ivPreviewBtn").addEventListener("click", openPreview);
+  $("ipClose").addEventListener("click", closePreview);
+  $("ipHide").addEventListener("click", function(e){ e.stopPropagation(); $("ipCtrl").classList.add("hide"); });
+  $("invPrev").addEventListener("click", function(e){
+    if($("ipCtrl").classList.contains("hide") && !$("ipCtrl").contains(e.target)) $("ipCtrl").classList.remove("hide");
+  });
+  window.addEventListener("resize", function(){ if($("invPrev").classList.contains("show")) fitPreview(); });
 
   /* ---------- file download / read helpers ---------- */
   function download(filename, obj){
@@ -795,7 +1417,7 @@
   /* ---------- full backup ---------- */
   $("exportAllBtn").addEventListener("click", function(){
     var payload={ kind:"oni-backup", version:1, exportedAt:new Date().toISOString(),
-      catalog:catalog, orders:orders, settings:settings };
+      catalog:catalog, orders:orders, invoices:invoices, settings:settings };
     download("oni-order-builder-backup-"+new Date().toISOString().slice(0,10)+".json", payload);
     toast("Backup saved");
   });
@@ -813,21 +1435,26 @@
     r.onload=function(){
       try{
         var data=JSON.parse(r.result);
-        if(!data || (!data.catalog && !data.orders)){ toast("Not a valid backup file"); $("fileBackup").value=""; return; }
+        if(!data || (!data.catalog && !data.orders && !data.invoices)){ toast("Not a valid backup file"); $("fileBackup").value=""; return; }
         if(pendingMode==="replace"){
           catalog = Array.isArray(data.catalog)? data.catalog : [];
           orders  = Array.isArray(data.orders)? data.orders : [];
+          invoices = Array.isArray(data.invoices)? data.invoices : [];
           if(data.settings) settings = data.settings;
         } else {
           mergeCatalog(data.catalog||[]);
           mergeOrders(data.orders||[]);
+          mergeInvoices(data.invoices||[]);
         }
         // ensure ids exist
         catalog.forEach(function(c){ if(!c.id) c.id=uid(); if(!c.sizes)c.sizes=[]; if(!c.colours)c.colours=[]; });
         orders.forEach(function(o){ if(!o.id) o.id=uid(); });
-        persistCatalog(); persistOrders(); persistSettings();
+        invoices = invoices.filter(function(v){ return v && typeof v==="object"; }).map(normalizeInvoice);
+        fillInvoiceSettings();
+        persistCatalog(); persistOrders(); persistInvoices(); persistSettings();
         applyTheme(settings.theme||"dark");
-        renderItemSelect(); renderCatalog(); renderSaved();
+        $("setShop").value=settings.shopName; $("setHandle").value=settings.shopHandle; $("setPrefix").value=settings.invPrefix;
+        renderItemSelect(); renderCatalog(); renderSaved(); renderInvoices();
         toast(pendingMode==="replace" ? "Backup restored" : "Backup merged in");
       }catch(err){ toast("Couldn't read that backup"); }
       $("fileBackup").value="";
@@ -843,11 +1470,15 @@
         if(catalog[i].name.toLowerCase()===inc.name.toLowerCase()){ match=catalog[i]; break; }
       }
       if(!match){
-        catalog.push({ id:uid(), name:inc.name, category:inc.category||"",
-          sizes:(inc.sizes||[]).slice(), colours:(inc.colours||[]).slice() });
+        var added={ id:uid(), name:inc.name, category:inc.category||"",
+          sizes:(inc.sizes||[]).slice(), colours:(inc.colours||[]).slice() };
+        if(typeof inc.price==="number") added.price=inc.price;
+        catalog.push(added);
       } else {
         (inc.sizes||[]).forEach(function(s){ if(match.sizes.indexOf(s)<0) match.sizes.push(s); });
         (inc.colours||[]).forEach(function(c){ if(match.colours.indexOf(c)<0) match.colours.push(c); });
+        // A price already set on this device wins; the backup only fills a gap.
+        if(match.price==null && typeof inc.price==="number") match.price=inc.price;
       }
     });
   }
@@ -859,23 +1490,41 @@
       if(!dup) orders.unshift(inc);
     });
   }
+  // Same invoice (by id) already here: keep whichever was edited last.
+  function mergeInvoices(incoming){
+    incoming.forEach(function(inc){
+      if(!inc || typeof inc!=="object") return;
+      for(var i=0;i<invoices.length;i++){
+        if(inc.id && invoices[i].id===inc.id){
+          if((inc.updatedAt||"") > (invoices[i].updatedAt||"")) invoices[i]=inc;
+          return;
+        }
+      }
+      invoices.push(inc);
+    });
+  }
 
   /* ---------- reset ---------- */
   $("resetBtn").addEventListener("click", function(){
-    if(!confirm("Delete ALL items and saved orders from this app? Your downloaded backup files are not affected.")) return;
+    if(!confirm("Delete ALL items, saved orders and invoices from this app? Your downloaded backup files are not affected.")) return;
     if(!confirm("Really delete everything?")) return;
-    try{ localStorage.removeItem(STORE.catalog); localStorage.removeItem(STORE.orders); localStorage.removeItem(STORE.settings); }catch(e){}
-    catalog=seedCatalog(); orders=[]; settings={toEmail:"bukiyaorder@gmail.com",ccEmail:"onibukiya@gmail.com",fromName:"",theme:settings.theme||"dark"};
-    persistCatalog(); persistOrders(); persistSettings();
+    try{ localStorage.removeItem(STORE.catalog); localStorage.removeItem(STORE.orders); localStorage.removeItem(STORE.settings); localStorage.removeItem(STORE.invoices); }catch(e){}
+    catalog=seedCatalog(); orders=[]; invoices=[]; settings={toEmail:"bukiyaorder@gmail.com",ccEmail:"onibukiya@gmail.com",fromName:"",theme:settings.theme||"dark"};
+    fillInvoiceSettings();
+    persistCatalog(); persistOrders(); persistInvoices(); persistSettings();
     draft={ id:uid(), name:"", lines:[] };
+    inv=null; invDirty=false; showInvView(false);
+    $("setShop").value=settings.shopName; $("setHandle").value=settings.shopHandle; $("setPrefix").value=settings.invPrefix;
     $("inShipTo").value=""; $("inNotes").value=""; $("emailCard").classList.add("hidden");
-    renderItemSelect(); renderLines(); renderCatalog(); renderSaved();
+    renderItemSelect(); renderLines(); renderCatalog(); renderSaved(); renderInvoices();
     toast("Reset to defaults");
   });
 
   /* ---------- init ---------- */
+  invoices = invoices.filter(function(v){ return v && typeof v==="object"; }).map(normalizeInvoice);
   renderItemSelect();
   renderLines();
+  renderInvoices();
 
   /* ---------- service worker (PWA) ---------- */
   // House App's shared worker. Only over http(s) — opened as a local file
