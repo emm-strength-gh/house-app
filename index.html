@@ -138,6 +138,14 @@
     transition: transform .14s ease, filter .14s ease;
   }
   .app-icon img { width: 100%; height: 100%; display: block; }
+  .app-hold { position: relative; width: 100%; max-width: 64px; display: block; }
+  /* Sync status on the Account tile: green synced, amber needs attention. */
+  .app-dot {
+    position: absolute; top: -3px; right: -3px; width: 15px; height: 15px; border-radius: 50%;
+    background: #34c759; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+  .app-dot.warn { background: #ff9f0a; }
+  .app-dot[hidden] { display: none; }
   .app:active .app-icon, .app.pressed .app-icon { transform: scale(.9); filter: brightness(.85); }
   .app-label {
     /* Borrows a little of the column gap so short names like "Energy Tracker" fit whole. */
@@ -176,6 +184,7 @@
   .launch.go { transition: top .34s cubic-bezier(.2,.8,.2,1), left .34s cubic-bezier(.2,.8,.2,1), width .34s cubic-bezier(.2,.8,.2,1), height .34s cubic-bezier(.2,.8,.2,1), border-radius .34s ease, background-color .3s ease .12s; }
   .launch.go img { opacity: 0; transform: scale(1.6); }
 </style>
+<script defer src="cloud.js"></script>
 </head>
 <body>
 <div class="wall" aria-hidden="true"></div>
@@ -241,7 +250,9 @@
     { name: "Grocery", href: "grocery.html", icon: "icons/grocery.svg", color: "#22b366", bg: ["#f6f5f2", "#111110"] },
     { name: "To Do", href: "todo.html", icon: "icons/todo.svg", color: "#3a8cf3", bg: ["#f6f5f2", "#111110"] },
     // Expenses is light-only (watercolour paper), whatever the OS theme.
-    { name: "Expenses", href: "expenses.html", icon: "icons/expenses.svg", color: "#b9a6dc", bg: ["#fbf8f3", "#fbf8f3"] }
+    { name: "Expenses", href: "expenses.html", icon: "icons/expenses.svg", color: "#b9a6dc", bg: ["#fbf8f3", "#fbf8f3"] },
+    // Sign-in and sync (cloud.js). `id` lets the sync status dot find this tile.
+    { id: "account", name: "Account", href: "account.html", icon: "icons/cloud.svg", color: "#3f8cf0", bg: ["#f6f5f2", "#111110"] }
   ];
 
   var STORE_SUMMARY = "energy.summary.v1";   // written by energy-tracker.html
@@ -277,6 +288,14 @@
       var ic = el("span", "app-icon");
       var img = el("img"); img.src = a.icon; img.alt = "";
       ic.appendChild(img);
+      if (a.id) {
+        // The dot sits outside the icon's rounded clip, so wrap the two together.
+        var holder = el("span", "app-hold");
+        holder.appendChild(ic);
+        var dot = el("span", "app-dot"); dot.id = "dot-" + a.id; dot.hidden = true;
+        holder.appendChild(dot);
+        ic = holder;
+      }
       link.appendChild(ic);
       link.appendChild(el("span", "app-label", a.name));
       grid.appendChild(link);
@@ -423,6 +442,20 @@
   renderEnergy();
   // The tracker may update the summary in another tab.
   window.addEventListener("storage", function (e) { if (e.key === STORE_SUMMARY) renderEnergy(); });
+
+  // ---------- sync status ----------
+  // cloud.js is deferred, so it exists by DOMContentLoaded. No dot at all until
+  // someone has signed in on this device.
+  document.addEventListener("DOMContentLoaded", function () {
+    var HC = window.HouseCloud, dot = $("dot-account");
+    if (!HC || !dot) return;
+    function paint(st) {
+      dot.hidden = !st.user;
+      dot.className = "app-dot" + (st.member && st.joined && !st.lastError ? "" : " warn");
+    }
+    HC.onChange(paint);
+    paint(HC.status());
+  });
 })();
 </script>
 </body>

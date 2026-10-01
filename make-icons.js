@@ -90,6 +90,17 @@ var ICONS = {
     ],
     scaleAny: 0.95, scaleMask: 0.78
   },
+  cloud: {
+    // Account & sync: a cloud built from three circles on a flat base.
+    bg: ["#5ab0ff", "#2f6fe0"],
+    shapes: [
+      { rect: [0.17, 0.45, 0.30, 0.30, 0.15], color: "#ffffff" },
+      { rect: [0.33, 0.27, 0.38, 0.38, 0.19], color: "#ffffff" },
+      { rect: [0.55, 0.43, 0.28, 0.28, 0.14], color: "#ffffff" },
+      { rect: [0.32, 0.55, 0.37, 0.20, 0.02], color: "#ffffff" }
+    ],
+    scaleAny: 0.92, scaleMask: 0.74
+  },
   house: {
     bg: ["#5b6cff", "#9b4fe0"],
     shapes: [

@@ -1,0 +1,13 @@
+{
+  "name": "house-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "House App — household tools PWA. This file exists only for the Node tests; the app itself ships as plain static files with no build step.",
+  "scripts": {
+    "test": "node test-cloud.js && node test-tools.js"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "jsdom": "^30.1.0"
+  }
+}

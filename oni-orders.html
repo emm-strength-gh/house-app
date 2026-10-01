@@ -263,6 +263,7 @@
     font:inherit;font-weight:700;cursor:pointer}
   .ip-btn.primary{background:#c85a36;border-color:#c85a36;color:#fff}
 </style>
+<script defer src="cloud.js"></script>
 </head>
 <body>
 <header>
@@ -586,8 +587,10 @@
     catch(e){ return fallback; }
   }
   function safeWrite(key, val){
-    try{ localStorage.setItem(key, JSON.stringify(val)); return true; }
+    try{ localStorage.setItem(key, JSON.stringify(val)); }
     catch(e){ return false; }
+    if(window.HouseCloud) window.HouseCloud.dirty(key);   // signed in: upload the change (cloud.js)
+    return true;
   }
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -1518,6 +1521,24 @@
     $("inShipTo").value=""; $("inNotes").value=""; $("emailCard").classList.add("hidden");
     renderItemSelect(); renderLines(); renderCatalog(); renderSaved(); renderInvoices();
     toast("Reset to defaults");
+  });
+
+  /* ---------- another tab, or another device through the cloud (cloud.js) ---------- */
+  // Reload whatever changed underneath us. The order being built and an open
+  // invoice are working copies in memory, so they are left alone.
+  window.addEventListener("storage", function(e){
+    if(e.key===STORE.catalog){ catalog=safeRead(STORE.catalog, catalog) || []; renderItemSelect(); renderCatalog(); if(inv) renderInvItemSelect(); }
+    else if(e.key===STORE.orders){ orders=safeRead(STORE.orders, orders) || []; renderSaved(); }
+    else if(e.key===STORE.invoices){
+      invoices=(safeRead(STORE.invoices, invoices) || []).filter(function(v){ return v && typeof v==="object"; }).map(normalizeInvoice);
+      renderInvoices();
+    }
+    else if(e.key===STORE.settings){
+      var theme=settings.theme;
+      settings=safeRead(STORE.settings, settings) || settings; settings.theme=settings.theme||theme;
+      fillInvoiceSettings();
+      $("setShop").value=settings.shopName; $("setHandle").value=settings.shopHandle; $("setPrefix").value=settings.invPrefix;
+    }
   });
 
   /* ---------- init ---------- */

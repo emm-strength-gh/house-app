@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f5f2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Account">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/cloud.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/cloud-32.png">
+<link rel="apple-touch-icon" href="icons/cloud-180.png">
+<title>Account &amp; sync</title>
+<style>
+  /* No double-tap-to-zoom on phones (it also fires on quick repeated taps of
+     buttons). Pinch-zoom still works. */
+  * { touch-action: manipulation; }
+  :root {
+    color-scheme: light;
+    --bg: #f6f5f2; --surface: #ffffff; --surface-2: #f0efeb; --border: #e7e5df; --border-strong: #d2cfc7;
+    --ink: #0f0f0e; --ink-2: #57564f; --ink-3: #77756c;
+    --accent: #2563c9; --accent-ink: #ffffff; --accent-soft: #e4edfb;
+    --ok: #1d7a3a; --ok-soft: #e1f3e7; --danger: #b3261e; --warn: #8a5a00; --warn-soft: #fbf0d3;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #111110; --surface: #1b1b1a; --surface-2: #252523; --border: #2c2c2a; --border-strong: #43423e;
+      --ink: #f7f7f5; --ink-2: #c1c0b8; --ink-3: #98978f;
+      --accent: #6aa3f5; --accent-ink: #06162e; --accent-soft: #17263d;
+      --ok: #6fcf8e; --ok-soft: #15291d; --danger: #f2827a; --warn: #ecc964; --warn-soft: #33290f;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 20px 16px 48px; padding-top: max(20px, env(safe-area-inset-top)); }
+  [hidden] { display: none !important; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .home-btn {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 40px; height: 40px; border-radius: 11px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink); text-decoration: none;
+  }
+  h1 { font-size: 21px; margin: 0; letter-spacing: -.02em; }
+  .sub { color: var(--ink-3); font-size: 12.5px; margin-top: 1px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    box-shadow: var(--shadow); padding: 18px; margin-bottom: 14px;
+  }
+  .card h2 { margin: 0 0 4px; font-size: 16px; }
+  .card p { margin: 0 0 12px; color: var(--ink-2); font-size: 14px; }
+  .card p:last-child { margin-bottom: 0; }
+  label.lbl { display: block; font-size: 12.5px; color: var(--ink-2); margin: 0 0 5px 2px; font-weight: 500; }
+  input.field {
+    font: inherit; font-size: 16px; width: 100%; padding: 11px 13px; border-radius: 12px;
+    border: 1px solid var(--border-strong); background: var(--bg); color: var(--ink); outline: none;
+  }
+  input.field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  input.code { font-size: 24px; font-weight: 700; letter-spacing: .3em; text-align: center; font-variant-numeric: tabular-nums; }
+  .btn {
+    font: inherit; font-size: 15px; font-weight: 600; min-height: 46px;
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink);
+    padding: 10px 16px; border-radius: 12px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-align: center;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.block { width: 100%; }
+  .btn.danger { color: var(--danger); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .linkish { font: inherit; font-size: 14px; color: var(--accent); background: none; border: 0; padding: 8px 2px; cursor: pointer; font-weight: 600; }
+  .stack > * + * { margin-top: 12px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 130px; }
+  .msg { font-size: 13.5px; border-radius: 10px; padding: 9px 12px; }
+  .msg.err { color: var(--danger); background: var(--surface-2); }
+  .msg.warn { color: var(--warn); background: var(--warn-soft); }
+  .state { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--ok-soft); color: var(--ok); font-weight: 600; margin-bottom: 12px; }
+  .state.busy { background: var(--accent-soft); color: var(--accent); }
+  .state.bad { background: var(--warn-soft); color: var(--warn); }
+  .state .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; flex: none; }
+  .state small { display: block; font-weight: 500; opacity: .9; }
+  .who { font-size: 14px; color: var(--ink-2); margin-bottom: 12px; overflow-wrap: anywhere; }
+  .who b { color: var(--ink); }
+  .choice {
+    display: block; width: 100%; text-align: left; font: inherit; color: var(--ink); cursor: pointer;
+    border: 1.5px solid var(--border-strong); background: var(--surface); border-radius: 14px; padding: 14px;
+  }
+  .choice + .choice { margin-top: 10px; }
+  .choice b { display: block; font-size: 15.5px; }
+  .choice span { display: block; font-size: 13.5px; color: var(--ink-2); margin-top: 2px; }
+  .choice.rec { border-color: var(--accent); }
+  .people { list-style: none; margin: 0 0 4px; padding: 0; }
+  .people li { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid var(--border); }
+  .people li:first-child { border-top: 0; }
+  .people .grow { flex: 1; min-width: 0; }
+  .people .nm { font-weight: 600; overflow-wrap: anywhere; }
+  .people .em { font-size: 13px; color: var(--ink-3); overflow-wrap: anywhere; }
+  .tag { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--ink-2); white-space: nowrap; }
+  .small-btn { font: inherit; font-size: 13px; font-weight: 600; min-height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--border-strong); background: transparent; color: var(--danger); cursor: pointer; }
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+  ul.plain { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 14px; }
+  ul.plain li + li { margin-top: 4px; }
+</style>
+<script defer src="cloud.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a href="index.html" class="home-btn" aria-label="Back to House App" title="Back to House App">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L10 3l7 6.5V17a1 1 0 0 1-1 1h-3.5v-5h-5v5H4a1 1 0 0 1-1-1z"/></svg>
+    </a>
+    <div>
+      <h1>Account &amp; sync</h1>
+      <div class="sub">Keep House App the same on every device</div>
+    </div>
+  </header>
+
+  <!-- cloud not switched on in this build -->
+  <section class="card" id="cardOff" hidden>
+    <h2>Sync isn't switched on yet</h2>
+    <p>Everything is saved on this device, as before. Once the cloud project is connected, you'll sign in here to share your data across devices.</p>
+  </section>
+
+  <!-- signed out -->
+  <section class="card" id="cardSignIn" hidden>
+    <h2>Sign in</h2>
+    <p id="signInLead">Enter your email and we'll send a 6-digit code. No password needed.</p>
+    <form class="stack" id="emailForm" autocomplete="on">
+      <div>
+        <label class="lbl" for="email">Email</label>
+        <input class="field" id="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false">
+      </div>
+      <button type="submit" class="btn primary block" id="sendBtn">Email me a code</button>
+    </form>
+    <form class="stack" id="codeForm" hidden autocomplete="off">
+      <div>
+        <label class="lbl" for="code">Code from the email</label>
+        <input class="field code" id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="······">
+      </div>
+      <button type="submit" class="btn primary block" id="verifyBtn">Sign in</button>
+      <button type="button" class="linkish" id="otherEmail">Use a different email</button>
+    </form>
+    <div class="msg err" id="signInErr" hidden style="margin-top:12px"></div>
+  </section>
+
+  <!-- signed in, not on the list -->
+  <section class="card" id="cardNoAccess" hidden>
+    <h2>This email doesn't have access</h2>
+    <p>You're signed in as <b id="noAccessEmail"></b>, but it isn't on this household's list. Ask the owner to add it under <b>Account → People with access</b>, then tap Check again.</p>
+    <p>Nothing on this device has been uploaded or changed.</p>
+    <div class="row">
+      <button type="button" class="btn primary" id="recheckBtn">Check again</button>
+      <button type="button" class="btn" data-signout>Sign out</button>
+    </div>
+  </section>
+
+  <!-- on the list, first time on this device -->
+  <section class="card" id="cardJoin" hidden>
+    <h2>Set up this device</h2>
+    <div id="joinBody"></div>
+    <div class="msg err" id="joinErr" hidden style="margin-top:12px"></div>
+  </section>
+
+  <!-- syncing -->
+  <section class="card" id="cardSync" hidden>
+    <div class="state" id="state"><span class="dot"></span><div><span id="stateText"></span><small id="stateSub"></small></div></div>
+    <div class="who">Signed in as <b id="whoEmail"></b> <span class="tag" id="whoRole"></span></div>
+    <div class="row">
+      <button type="button" class="btn primary" id="syncBtn">Sync now</button>
+      <button type="button" class="btn" data-signout>Sign out</button>
+    </div>
+  </section>
+
+  <section class="card" id="cardPeople" hidden>
+    <h2>People with access</h2>
+    <p id="peopleLead"></p>
+    <ul class="people" id="people"></ul>
+    <form id="addForm" hidden>
+      <div class="divider"></div>
+      <div class="stack">
+        <div class="row">
+          <div><label class="lbl" for="addEmail">Their email</label>
+            <input class="field" id="addEmail" type="email" inputmode="email" autocapitalize="none" spellcheck="false" autocomplete="off"></div>
+          <div><label class="lbl" for="addLabel">Name (optional)</label>
+            <input class="field" id="addLabel" type="text" maxlength="80" autocomplete="off"></div>
+        </div>
+        <button type="submit" class="btn block">Add person</button>
+      </div>
+    </form>
+    <div class="msg err" id="peopleErr" hidden style="margin-top:12px"></div>
+  </section>
+
+  <section class="card" id="cardAbout" hidden>
+    <h2>How it works</h2>
+    <ul class="plain">
+      <li>Energy Tracker, Oni Orders, Grocery, To Do and Expenses are shared. Everyone with access sees and edits the same data.</li>
+      <li>Changes save on this device first, so the app still works offline, then upload when you're online.</li>
+      <li>Light/dark theme and which tab you were on stay per device.</li>
+      <li>Each tool's own Backup / Export still works, and is worth doing now and then.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, txt) { var n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; }
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+  function show(id, on) { $(id).hidden = !on; }
+  function fail(id, e) { var n = $(id); n.textContent = e ? String(e.message || e) : ""; n.hidden = !e; }
+
+  var HC = null, pendingEmail = "", joinInfo = null, joinAsked = false, joining = false, peopleFor = "";
+
+  function ago(iso) {
+    if (!iso) return "";
+    var s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+    if (s < 45) return "just now";
+    if (s < 3600) return Math.round(s / 60) + " min ago";
+    if (s < 86400) return Math.round(s / 3600) + " h ago";
+    return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  }
+
+  function render(st) {
+    var signedIn = !!st.user;
+    show("cardOff", !st.configured);
+    show("cardSignIn", st.configured && !signedIn);
+    show("cardNoAccess", signedIn && !st.member);
+    show("cardJoin", signedIn && st.member && !st.joined);
+    show("cardSync", signedIn && st.member && st.joined);
+    show("cardPeople", signedIn && st.member && st.joined);
+    show("cardAbout", st.configured);
+    if (st.configured && !signedIn && $("codeForm").hidden) {
+      var down = !st.ready && !st.booting;
+      $("signInLead").textContent = down
+        ? "You're offline, or the sign-in service couldn't load. Connect to the internet and reopen this page to sign in."
+        : "Enter your email and we'll send a 6-digit code. No password needed.";
+      $("sendBtn").disabled = down;
+    }
+    if (signedIn && !st.member) $("noAccessEmail").textContent = st.user.email;
+    if (signedIn && st.member && !st.joined) prepareJoin();
+    if (signedIn && st.member && st.joined) {
+      var box = $("state");
+      box.className = "state" + (st.syncing ? " busy" : st.lastError ? " bad" : "");
+      $("stateText").textContent = st.syncing ? "Syncing…" : st.lastError ? "Not synced" : "Up to date";
+      $("stateSub").textContent = st.lastError ? st.lastError : st.lastSync ? "Last synced " + ago(st.lastSync) : "";
+      $("whoEmail").textContent = st.user.email;
+      $("whoRole").textContent = st.owner ? "Owner" : "Member";
+      $("syncBtn").disabled = st.syncing;
+      show("addForm", st.owner);
+      $("peopleLead").textContent = st.owner
+        ? "Everyone here sees and edits all the data. Only you can add or remove people."
+        : "Everyone here sees and edits all the data. The owner adds or removes people.";
+      if (peopleFor !== st.user.id) { peopleFor = st.user.id; loadPeople(); }
+    }
+  }
+
+  // ---------- sign in ----------
+  $("emailForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var email = $("email").value.trim();
+    fail("signInErr", null);
+    $("sendBtn").disabled = true; $("sendBtn").textContent = "Sending…";
+    HC.sendCode(email).then(function () {
+      pendingEmail = email;
+      show("emailForm", false); show("codeForm", true);
+      $("signInLead").textContent = "We sent a 6-digit code to " + email + ". It can take a minute; check spam too.";
+      $("code").value = ""; $("code").focus();
+    }, function (err) { fail("signInErr", err); }).then(function () {
+      $("sendBtn").disabled = false; $("sendBtn").textContent = "Email me a code";
+    });
+  });
+  $("codeForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    fail("signInErr", null);
+    $("verifyBtn").disabled = true; $("verifyBtn").textContent = "Signing in…";
+    HC.verifyCode(pendingEmail, $("code").value).then(function () {
+      show("emailForm", true); show("codeForm", false);
+    }, function (err) {
+      fail("signInErr", /expired|invalid/i.test(String(err && err.message)) ? "That code isn't right, or it has expired. Check it, or send a new one." : err);
+    }).then(function () { $("verifyBtn").disabled = false; $("verifyBtn").textContent = "Sign in"; });
+  });
+  $("otherEmail").addEventListener("click", function () {
+    show("emailForm", true); show("codeForm", false); fail("signInErr", null);
+    $("signInLead").textContent = "Enter your email and we'll send a 6-digit code. No password needed.";
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-signout]"), function (b) {
+    b.addEventListener("click", function () {
+      if (!confirm("Sign out on this device? Your data stays here; it just stops syncing until you sign in again.")) return;
+      joinAsked = false; joinInfo = null; peopleFor = "";
+      HC.signOut();
+    });
+  });
+  $("recheckBtn").addEventListener("click", function () { HC.refreshAccess(); });
+
+  // ---------- first time on this device ----------
+  function prepareJoin() {
+    if (joinAsked || joining) return;
+    joinAsked = true;
+    var body = $("joinBody");
+    clear(body); body.appendChild(el("p", null, "Checking what's already shared…"));
+    HC.joinInfo().then(function (info) {
+      joinInfo = info;
+      clear(body);
+      // Nothing to weigh up: an empty cloud takes this device's data, an empty
+      // device takes the cloud's.
+      if (!info.cloud) {
+        body.appendChild(el("p", null, info.local
+          ? "Nothing is shared yet. This device's data will become the shared data, for you and anyone you add."
+          : "Nothing is shared yet. Whatever you add from now on will sync."));
+        body.appendChild(choice("Start syncing", "", true, "merge"));
+        return;
+      }
+      if (!info.local) { doJoin("cloud"); return; }
+      body.appendChild(el("p", null, "Your household already has shared data, and this device has its own data too. What should happen to this device's data?"));
+      body.appendChild(choice("Use the shared data", "Replace what's on this device with the shared data. Best for a device that only has old or test data.", true, "cloud"));
+      body.appendChild(choice("Add this device's data", "Keep everything here and add it to the shared data, for everyone. Things that are the same on both aren't duplicated.", false, "merge"));
+      body.appendChild(el("p", null, "Either way, a copy of this device's data as it is now is kept on the device first."));
+      body.lastChild.style.marginTop = "12px";
+    }, function (err) { joinAsked = false; clear(body); fail("joinErr", err); });
+  }
+  function choice(title, text, recommended, mode) {
+    var b = el("button", "choice" + (recommended ? " rec" : ""));
+    b.type = "button";
+    b.appendChild(el("b", null, title));
+    if (text) b.appendChild(el("span", null, text));
+    b.addEventListener("click", function () { doJoin(mode); });
+    return b;
+  }
+  function doJoin(mode) {
+    if (joining) return;
+    joining = true;
+    fail("joinErr", null);
+    var body = $("joinBody");
+    clear(body); body.appendChild(el("p", null, "Setting up…"));
+    HC.join(mode, joinInfo.rows).then(function () { joining = false; },
+      function (err) { joining = false; joinAsked = false; fail("joinErr", err); });
+  }
+
+  // ---------- people ----------
+  function loadPeople() {
+    var st = HC.status();
+    HC.members().then(function (rows) {
+      var ul = $("people"); clear(ul);
+      if (st.owner) ul.appendChild(person("You", st.user.email, "Owner", null));
+      rows.forEach(function (m) {
+        var mine = m.email === st.user.email;
+        ul.appendChild(person(m.label || (mine ? "You" : m.email.split("@")[0]), m.email, mine ? "You" : "", st.owner ? m.email : null));
+      });
+      if (!st.owner && !rows.length) ul.appendChild(person("Only the owner so far", "", "", null));
+      fail("peopleErr", null);
+    }, function (err) { fail("peopleErr", err); });
+  }
+  function person(name, email, tag, removable) {
+    var li = el("li");
+    var g = el("div", "grow");
+    g.appendChild(el("div", "nm", name));
+    if (email) g.appendChild(el("div", "em", email));
+    li.appendChild(g);
+    if (tag) li.appendChild(el("span", "tag", tag));
+    if (removable) {
+      var b = el("button", "small-btn", "Remove");
+      b.type = "button";
+      b.setAttribute("aria-label", "Remove " + email);
+      b.addEventListener("click", function () {
+        if (!confirm("Remove " + email + "? They'll stop seeing and syncing the shared data straight away. What's already on their device stays there.")) return;
+        HC.removeMember(email).then(loadPeople, function (err) { fail("peopleErr", err); });
+      });
+      li.appendChild(b);
+    }
+    return li;
+  }
+  $("addForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    fail("peopleErr", null);
+    HC.addMember($("addEmail").value, $("addLabel").value).then(function () {
+      $("addEmail").value = ""; $("addLabel").value = "";
+      loadPeople();
+    }, function (err) { fail("peopleErr", err); });
+  });
+  $("syncBtn").addEventListener("click", function () { HC.syncNow().then(loadPeople); });
+
+  // ---------- boot ----------
+  // cloud.js is deferred, so it has run by the time this fires.
+  document.addEventListener("DOMContentLoaded", function () {
+    HC = window.HouseCloud;
+    if (!HC) { show("cardOff", true); return; }
+    HC.onChange(render);
+    render(HC.status());
+    // "Last synced 2 min ago" should keep counting.
+    setInterval(function () { render(HC.status()); }, 30000);
+  });
+
+  if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+  }
+})();
+</script>
+</body>
+</html>
