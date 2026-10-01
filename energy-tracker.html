@@ -302,6 +302,7 @@
   }
   .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
+<script defer src="cloud.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -509,7 +510,9 @@
     try { return localStorage.getItem(key); } catch (e) { storageOk = false; return null; }
   }
   function safeWrite(key, val) {
-    try { localStorage.setItem(key, val); return true; } catch (e) { storageOk = false; return false; }
+    try { localStorage.setItem(key, val); } catch (e) { storageOk = false; return false; }
+    if (window.HouseCloud) window.HouseCloud.dirty(key);   // signed in: upload the change (cloud.js)
+    return true;
   }
   function readJson(key, fallback) {
     var raw = safeRead(key);
@@ -1423,9 +1426,11 @@
     if (this.files && this.files[0]) importJson(this.files[0]);
     this.value = "";
   });
-  // Another tab edited the data — pick it up so both stay in sync.
+  // Another tab, or another device through the cloud (cloud.js), edited the
+  // data — pick it up so everything stays in sync.
   window.addEventListener("storage", function (e) {
     if (e.key === STORE_BILLS) { load(); renderAll(); }
+    else if (e.key === STORE_FC) { FC = readJson(STORE_FC, { now: "", date: "", rate: "latest" }); renderAll(); }
   });
 
   var rz;

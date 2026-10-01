@@ -274,6 +274,7 @@
     .sheet, .scrim, .check svg { transition: none; }
   }
 </style>
+<script defer src="cloud.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -379,8 +380,10 @@
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
   function safeRead(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
   function safeWrite(key, val) {
-    try { localStorage.setItem(key, val); return true; }
+    try { localStorage.setItem(key, val); }
     catch (e) { $("storageBanner").hidden = false; return false; }
+    if (window.HouseCloud) window.HouseCloud.dirty(key);   // signed in: upload the change (cloud.js)
+    return true;
   }
   function readJson(key, fallback) {
     try { var v = JSON.parse(safeRead(key)); return v == null ? fallback : v; } catch (e) { return fallback; }

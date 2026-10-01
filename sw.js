@@ -1,20 +1,26 @@
 /* Service worker for House App (home screen + every tool page).
  *
  * Strategy:
- *   HTML / navigation -> network-first, cache fallback. Online you get the newest
+ *   HTML / navigation, cloud.js -> network-first, cache fallback. Online you get the newest
  *                        version you deployed; offline you get the last good one.
  *   Icons + manifest  -> cache-first, refreshed in the background.
  *
- * No third-party assets: both pages are fully self-contained, so the whole app
- * works offline once it has been opened online one time.
+ * The only third-party asset is the Supabase library (sign-in + sync), cached
+ * here too, so the whole app works offline once it has been opened online one
+ * time. Supabase API calls themselves are never cached.
  *
  * Bump CACHE_VERSION when the file list below changes (added/renamed files).
  * Ordinary edits to the HTML files don't need a bump — network-first picks
  * them up.
  */
 
-var CACHE_VERSION = "v5";
+var CACHE_VERSION = "v6";
 var CACHE_SHELL = "house-app-shell-" + CACHE_VERSION;
+
+// Sign-in + sync library, loaded by cloud.js. Version-pinned on jsdelivr, so
+// the cached copy never goes stale; cached so the app still syncs after an
+// offline start. Keep this URL identical to LIB in cloud.js.
+var SUPABASE_LIB = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js";
 
 var SHELL_ASSETS = [
   "./",
@@ -24,6 +30,8 @@ var SHELL_ASSETS = [
   "./grocery.html",
   "./todo.html",
   "./expenses.html",
+  "./account.html",
+  "./cloud.js",
   "./manifest.webmanifest",
   "./icons/house.svg",
   "./icons/house-32.png",
@@ -50,7 +58,12 @@ var SHELL_ASSETS = [
   "./icons/expenses.svg",
   "./icons/expenses-32.png",
   "./icons/expenses-180.png",
-  "./icons/expenses-192.png"
+  "./icons/expenses-192.png",
+  "./icons/cloud.svg",
+  "./icons/cloud-32.png",
+  "./icons/cloud-180.png",
+  "./icons/cloud-192.png",
+  SUPABASE_LIB
 ];
 
 self.addEventListener("install", function (event) {
@@ -79,9 +92,10 @@ self.addEventListener("fetch", function (event) {
   var req = event.request;
   if (req.method !== "GET") return;
   var url = new URL(req.url);
+  if (req.url === SUPABASE_LIB) { event.respondWith(cacheFirst(req)); return; }
   if (url.origin !== self.location.origin) return;
 
-  if (req.mode === "navigate" || url.pathname.endsWith(".html") || url.pathname.endsWith("/")) {
+  if (req.mode === "navigate" || url.pathname.endsWith(".html") || url.pathname.endsWith("/") || url.pathname.endsWith("/cloud.js")) {
     event.respondWith(networkFirst(req));
     return;
   }
