@@ -184,6 +184,49 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   await page.sync();
   check("a withdrawal and a new rate from another device arrive and re-total", /Remote transfer/.test(wd().textContent) && doc.getElementById("wdTotal").textContent === "₱33,000.00", doc.getElementById("wdTotal").textContent);
   check("...without disturbing anything else", [...srv.rows.values()].every(r => !r.deleted));
+  const gbpTag = doc.getElementById("wdGbp");
+  check("the card also shows the total in pounds, at the same rate", !gbpTag.hidden && gbpTag.textContent === "≈ £412.50", gbpTag.textContent);
+  rateIn.value = ""; rateIn.dispatchEvent(new page.w.Event("change"));
+  check("...and hides it while there's no rate", gbpTag.hidden);
+  rateIn.value = "80"; rateIn.dispatchEvent(new page.w.Event("change"));
+
+  console.log("\nExpenses: pots");
+  const submit = id => doc.getElementById(id).dispatchEvent(new page.w.Event("submit", { cancelable: true, bubbles: true }));
+  const potRows = () => [...doc.querySelectorAll("#potList .pot-row:not(.add)")];
+  check("no pots yet: the card says what they're for", /Group withdrawals into pots/.test(doc.getElementById("potList").textContent));
+  doc.querySelector('#potList [data-pot=""]').click();
+  check("+ New pot opens the pot sheet", doc.getElementById("catTitle").textContent === "New pot" && doc.getElementById("catScrim").classList.contains("on"));
+  doc.getElementById("catName").value = "House build"; doc.getElementById("catEmoji").value = "🏠"; submit("catSheet");
+  doc.querySelector('#potList [data-pot=""]').click();
+  doc.getElementById("catName").value = "Mum"; submit("catSheet");
+  const pots = page.get("expenses.pots.v1") || [];
+  check("two pots made, and the categories untouched", pots.map(p => p.name).join() === "House build,Mum" && !(page.get("expenses.categories.v1") || []).some(c => c.name === "Mum"));
+  const house = pots[0].id;
+  // The existing £250 "To Mum" one goes into Mum, a new one into House build.
+  const toMum = page.get("expenses.withdrawals.v1").find(w => w.note === "To Mum");
+  doc.querySelector('#wdList [data-id="' + toMum.id + '"]').click();
+  doc.querySelector('#wdPots [data-wdpot="' + pots[1].id + '"]').click();
+  submit("wdSheet");
+  potRows()[0].click();   // look at House build, then add: it lands in that pot
+  doc.getElementById("fab").click();
+  check("adding while a pot is picked puts it in that pot", doc.querySelector('#wdPots [data-wdpot="' + house + '"]').classList.contains("on"));
+  doc.querySelector('.cur-pick [data-cur="PHP"]').click();
+  doc.getElementById("wdAmount").value = "12000"; submit("wdSheet");
+  check("each pot shows its own total for the month", /₱12,000/.test(potRows()[0].textContent) && /₱20,000/.test(potRows()[1].textContent), potRows().map(r => r.textContent).join(" | "));
+  check("...and its all-time total", /All time ₱12,000 · 1 withdrawal/.test(potRows()[0].textContent));
+  check("the list narrows to the picked pot", doc.querySelectorAll("#wdList .wd-row").length === 1 && /House build · 1 · ₱12,000/.test(doc.getElementById("wdCount").textContent), doc.getElementById("wdCount").textContent);
+  check("...while the month's total still covers everything", doc.getElementById("wdTotal").textContent === "₱45,000.00", doc.getElementById("wdTotal").textContent);
+  potRows()[0].click();
+  check("tapping the pot again shows everything", doc.querySelectorAll("#wdList .wd-row").length === 4);
+  check("rows say which pot they're in", /🏠 House build/.test(doc.getElementById("wdList").textContent));
+  await page.sync();
+  check("pots and the withdrawals' pots are uploaded", [...srv.rows.keys()].filter(k => k.startsWith("expenses.pots.v1|")).length === 3
+    && srv.rows.get("expenses.withdrawals.v1|" + toMum.id).data.pot === pots[1].id);
+  potRows()[1].querySelector(".edit").click();
+  check("the pencil opens the pot to edit", doc.getElementById("catTitle").textContent === "Edit pot" && doc.getElementById("catName").value === "Mum");
+  doc.getElementById("catDelete").click();
+  check("deleting a pot keeps its withdrawals, just without a pot", !(page.get("expenses.pots.v1") || []).some(p => p.name === "Mum")
+    && page.get("expenses.withdrawals.v1").find(w => w.id === toMum.id).pot === null && page.get("expenses.withdrawals.v1").length === 4);
 
   console.log("\nEnergy Tracker");
   srv = server();
