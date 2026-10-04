@@ -157,11 +157,11 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   doc.getElementById("fab").click();
   doc.querySelector('.cur-pick [data-cur="GBP"]').click();
   doc.getElementById("wdAmount").value = "250";
-  doc.querySelector('#wdKinds [data-kind="wu"]').click();
+  doc.querySelector('#wdKinds [data-kind="cat:medical"]').click();
   doc.getElementById("wdNote").value = "To Mum";
   doc.getElementById("wdSheet").dispatchEvent(new page.w.Event("submit", { cancelable: true, bubbles: true }));
   let stored = page.get("expenses.withdrawals.v1") || [];
-  check("+ Add on this tab adds a withdrawal, kept in pence", stored.length === 1 && stored[0].amount === 25000 && stored[0].currency === "GBP" && stored[0].kind === "wu");
+  check("+ Add on this tab adds a withdrawal, kept in pence", stored.length === 1 && stored[0].amount === 25000 && stored[0].currency === "GBP" && stored[0].kind === "cat:medical");
   check("without a rate, £ isn't guessed into the total", /₱0\.00/.test(doc.getElementById("wdTotal").textContent) && /£250/.test(doc.getElementById("wdWarn").textContent) && !doc.getElementById("wdWarn").hidden);
   const rateIn = doc.getElementById("rateInput");
   rateIn.value = "76.25"; rateIn.dispatchEvent(new page.w.Event("change"));
@@ -169,13 +169,13 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   check("...the row shows both: £250 and ≈ ₱19,062.50", /£250≈ ₱19,062\.50/.test(doc.getElementById("wdList").textContent), doc.getElementById("wdList").textContent);
   // Pesos straight in, then the total adds both.
   doc.getElementById("fab").click();
-  check("the next one starts like the last: pounds, Western Union", doc.querySelector('.cur-pick [data-cur="GBP"]').classList.contains("on") && doc.querySelector('#wdKinds [data-kind="wu"]').classList.contains("on"));
+  check("the next one starts like the last: pounds, Medical", doc.querySelector('.cur-pick [data-cur="GBP"]').classList.contains("on") && doc.querySelector('#wdKinds [data-kind="cat:medical"]').classList.contains("on"));
   doc.querySelector('.cur-pick [data-cur="PHP"]').click();
-  doc.querySelector('#wdKinds [data-kind="atm"]').click();
+  doc.querySelector('#wdKinds [data-kind="cat:education"]').click();
   doc.getElementById("wdAmount").value = "5,000";
   doc.getElementById("wdSheet").dispatchEvent(new page.w.Event("submit", { cancelable: true, bubbles: true }));
   check("₱ and £ withdrawals add up to one peso total", doc.getElementById("wdTotal").textContent === "₱24,062.50", doc.getElementById("wdTotal").textContent);
-  check("by type, in pesos", /Western Union1₱19,062\.50/.test(doc.getElementById("wdTypes").textContent) && /ATM1₱5,000/.test(doc.getElementById("wdTypes").textContent), doc.getElementById("wdTypes").textContent);
+  check("by type, in pesos", /Medical1₱19,062\.50/.test(doc.getElementById("wdTypes").textContent) && /Education1₱5,000/.test(doc.getElementById("wdTypes").textContent), doc.getElementById("wdTypes").textContent);
   check("withdrawals don't count as spending", !/24,062/.test(doc.getElementById("heroTotal").textContent));
   await page.sync();
   check("withdrawals and the rate are uploaded", [...srv.rows.keys()].filter(k => k.startsWith("expenses.withdrawals.v1|")).length === 2 && srv.rows.get("expenses.settings.v1|_").data.gbpRate === 76.25);
@@ -233,10 +233,9 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   doc.getElementById("fab").click();
   const types = [...doc.querySelectorAll("#wdKinds [data-kind]")].map(b => b.textContent);
   // This page's categories, whatever earlier checks left them as.
-  const pageCats = page.get("expenses.categories.v1").filter(c => c.id !== "other");
-  check("the type list is the withdrawal types, then the Breakdown categories", types.slice(0, 4).join() === "🏧ATM,💸Western Union,🏦Bank transfer,💱Other"
-    && types.slice(4).join() === pageCats.map(c => c.emoji + c.name).join(), types.join());
-  check("...without a second \"Other\"", types.filter(x => /Other$/.test(x)).length === 1);
+  const pageCats = page.get("expenses.categories.v1");
+  check("the types are just the Breakdown categories", types.join() === pageCats.map(c => c.emoji + c.name).join(), types.join());
+  check("...none of the old fixed ones", !types.some(x => /ATM|Western Union|Bank transfer/.test(x)));
   doc.querySelector('#wdKinds [data-kind="cat:therapy"]').click();
   doc.querySelector('.cur-pick [data-cur="PHP"]').click();
   doc.getElementById("wdAmount").value = "1500"; doc.getElementById("wdNote").value = "Session cash"; submit("wdSheet");
@@ -254,9 +253,24 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   doc.querySelector('[data-tab="settings"]').click();
   doc.querySelector('#catSettings [data-cat="therapy"]').click();
   doc.getElementById("catDelete").click();
-  check("deleting it moves the withdrawal where its expenses go", page.get("expenses.withdrawals.v1").find(w => w.id === g.id).kind === (dest === "other" ? "other" : "cat:" + dest),
+  check("deleting it moves the withdrawal where its expenses go", page.get("expenses.withdrawals.v1").find(w => w.id === g.id).kind === "cat:" + dest,
     page.get("expenses.withdrawals.v1").find(w => w.id === g.id).kind);
   doc.querySelector('[data-tab="wd"]').click();
+  // One saved before the fixed types went (e.g. arriving from an older device).
+  const old = page.get("expenses.withdrawals.v1");
+  old.push({ id: "old1", date: today(), kind: "wu", note: "Old remittance", amount: 20000, currency: "PHP", pot: null, createdAt: 9 });
+  page.w.localStorage.setItem("expenses.withdrawals.v1", JSON.stringify(old));
+  page.w.dispatchEvent(new page.w.StorageEvent("storage", { key: "expenses.withdrawals.v1" }));
+  check("a withdrawal saved with an old type still shows it", /Old remittance/.test(doc.getElementById("wdList").textContent) && /Western Union1₱200/.test(doc.getElementById("wdTypes").textContent), doc.getElementById("wdTypes").textContent);
+  doc.querySelector('#wdList [data-id="old1"]').click();
+  const shownTypes = [...doc.querySelectorAll("#wdKinds [data-kind]")];
+  check("...editing it shows that type picked, ahead of the categories", shownTypes[0].getAttribute("data-kind") === "wu" && shownTypes[0].classList.contains("on") && shownTypes.length === pageCats.length);
+  doc.querySelector('#wdKinds [data-kind="cat:education"]').click();
+  submit("wdSheet");
+  check("...and picking a category replaces it", page.get("expenses.withdrawals.v1").find(w => w.id === "old1").kind === "cat:education");
+  doc.getElementById("fab").click();
+  check("new ones never offer the old types", ![...doc.querySelectorAll("#wdKinds [data-kind]")].some(b => !/^cat:/.test(b.getAttribute("data-kind"))));
+  page.w.document.getElementById("wdCancel").click();
 
   console.log("\nEnergy Tracker");
   srv = server();

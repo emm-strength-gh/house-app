@@ -371,7 +371,6 @@
   .pot-row.add .blob { background: var(--accent-soft); color: var(--accent); font-size: 18px; }
   .pot-empty { padding: 14px 16px; font-size: 13.5px; color: var(--ink-3); }
   .pick-hint { font-size: 13px; color: var(--ink-3); }
-  .pick-break { flex-basis: 100%; height: 1px; background: var(--border); margin: 3px 2px; }
   .conv { font-size: 13.5px; color: var(--ink-2); margin-top: 8px; min-height: 1.3em; }
 
   .banner { background: var(--surface-2); border: 1px solid var(--danger); color: var(--danger); padding: 10px 14px; border-radius: 12px; margin-bottom: 14px; font-size: 13.5px; }
@@ -669,7 +668,7 @@
   var STORE_SETTINGS = "expenses.settings.v1"; // { budget: cents|null, lastCat, gbpRate: pesos per £1|null, gbpRateAt, lastWd: {cur, kind} }
   // Money taken out or sent: amount is in the smallest unit of its own currency
   // (centavos or pence), so a £ withdrawal keeps its real value whatever the rate.
-  // kind: a WD_KINDS id, or "cat:<category id>" when a Breakdown category is used as the type.
+  // kind: "cat:<category id>" (a Breakdown category), or an OLD_KINDS id on older ones.
   var STORE_WD = "expenses.withdrawals.v1";    // [{ id, date, kind, note, amount, currency: "PHP"|"GBP", pot: id|null, createdAt }]
   // Pots group withdrawals ("House build", "Mum's allowance") across months.
   var STORE_POTS = "expenses.pots.v1";         // [{ id, name, emoji, color }]
@@ -700,7 +699,9 @@
     { id: "other", name: "Other", emoji: "🏷️", color: "#d4cdc3" }
   ];
 
-  var WD_KINDS = [
+  // The fixed withdrawal types from before Breakdown categories were used.
+  // No longer offered; kept only so withdrawals saved with one still show it.
+  var OLD_KINDS = [
     { id: "atm", name: "ATM", emoji: "🏧", color: "#a9cce3" },
     { id: "wu", name: "Western Union", emoji: "💸", color: "#f1d99b" },
     { id: "bank", name: "Bank transfer", emoji: "🏦", color: "#b5d3b0" },
@@ -1125,18 +1126,23 @@
   }
 
   // ---------- render: withdrawals ----------
-  // The types a withdrawal can have: how the money left (ATM, Western Union…),
-  // then the Breakdown categories, so they stay one list to keep up to date.
-  // Category "Other" is left out: the withdrawal types already end with Other.
+  // A withdrawal's type is one of the Breakdown categories, so there is one
+  // list to keep up to date.
   function wdTypes() {
-    return WD_KINDS.concat(CATS.filter(function (c) { return c.id !== "other"; }).map(function (c) {
-      return { id: "cat:" + c.id, name: c.name, emoji: c.emoji, color: c.color, cat: true };
-    }));
+    return CATS.map(function (c) { return { id: "cat:" + c.id, name: c.name, emoji: c.emoji, color: c.color }; });
   }
   function kindOf(w) {
-    var list = wdTypes();
+    var list = wdTypes().concat(OLD_KINDS);
     for (var i = 0; i < list.length; i++) if (list[i].id === w.kind) return list[i];
-    return WD_KINDS[WD_KINDS.length - 1];   // a type that has since gone shows as Other
+    // A category that has since gone: show it as Other.
+    var other = catById("other");
+    return other ? { id: "cat:other", name: other.name, emoji: other.emoji, color: other.color }
+                 : { id: w.kind, name: "Other", emoji: "🏷️", color: "#d4cdc3" };
+  }
+  function defaultKind() {
+    var last = (SET.lastWd || {}).kind;
+    if (last && wdTypes().some(function (t) { return t.id === last; })) return last;
+    return catById("other") ? "cat:other" : "cat:" + CATS[0].id;
   }
   function wdById(id) {
     for (var i = 0; i < WD.length; i++) if (WD[i].id === id) return WD[i];
@@ -1544,7 +1550,7 @@
   $("listEmptyBtn").addEventListener("click", function () { openExpense(null); });
 
   // ---------- withdrawal sheet ----------
-  var wdEdit = null, wdCur = "PHP", wdKind = "atm", wdPot = null;
+  var wdEdit = null, wdCur = "PHP", wdKind = null, wdPot = null;
   function renderWdPick() {
     Array.prototype.forEach.call(document.querySelectorAll("[data-cur]"), function (b) {
       var on = b.getAttribute("data-cur") === wdCur;
@@ -1556,9 +1562,10 @@
     var box = $("wdKinds");
     clear(box);
     var types = wdTypes();
-    types.forEach(function (k, i) {
-      // A thin break between the withdrawal types and the categories.
-      if (k.cat && !types[i - 1].cat) { var br = el("div", "pick-break"); br.setAttribute("aria-hidden", "true"); box.appendChild(br); }
+    // Editing one saved with an old fixed type: show that type too, so it's
+    // clear what it has now; picking a category replaces it.
+    OLD_KINDS.forEach(function (k) { if (wdKind === k.id) types.unshift(k); });
+    types.forEach(function (k) {
       var on = wdKind === k.id, b = el("button", on ? "on" : "");
       b.type = "button";
       b.setAttribute("data-kind", k.id);
@@ -1619,7 +1626,7 @@
     wdEdit = w ? w.id : null;
     // A new one starts like the last one added: same currency, same type.
     wdCur = w ? w.currency : (last.cur === "GBP" ? "GBP" : "PHP");
-    wdKind = w ? kindOf(w).id : (last.kind || "atm");
+    wdKind = w ? kindOf(w).id : defaultKind();
     // Adding while looking at one pot puts it in that pot.
     wdPot = w ? (potOf(w) ? w.pot : null) : (WDPOT && WDPOT !== "none" && potById(WDPOT) ? WDPOT : null);
     $("wdTitle").textContent = w ? "Edit withdrawal" : "New withdrawal";
@@ -1838,7 +1845,7 @@
     var undo = snapshot();
     used.forEach(function (it) { it.cat = dest.id; });
     // Withdrawals typed with this category follow its expenses.
-    WD.forEach(function (w) { if (w.kind === "cat:" + c.id) w.kind = dest.id === "other" ? "other" : "cat:" + dest.id; });
+    WD.forEach(function (w) { if (w.kind === "cat:" + c.id) w.kind = "cat:" + dest.id; });
     CATS = CATS.filter(function (x) { return x.id !== c.id; });
     if (SET.lastCat === c.id) SET.lastCat = null;
     if (FILTER === c.id) FILTER = null;
