@@ -37,8 +37,8 @@ growing set of household tools:
   monthly budget and the change vs the previous month), a category breakdown
   and spending by week (1–7, 8–14, …). **Breakdown** lists the month's expenses grouped by
   category or by date; tap one to edit. **Pots** tracks withdrawals: money taken out
-  or sent, typed as ATM, Western Union, bank transfer, other or any Breakdown
-  category (stored as `kind: "cat:<id>"`), each in ₱ or £; the
+  or sent, each typed with one of the Breakdown categories
+  (`kind: "cat:<id>"`; older ones may carry a retired fixed type), in ₱ or £; the
   month's total is always in pesos, with £ entries converted at the one
   exchange rate set on that tab (`£1 = ₱…`, stored in settings and synced), so
   changing the rate re-totals every month; the card also shows the total in £.
