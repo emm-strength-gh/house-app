@@ -151,7 +151,7 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   console.log("\nExpenses: withdrawals");
   const doc = page.w.document, wd = () => doc.getElementById("view-wd");
   doc.querySelector('[data-tab="wd"]').click();
-  check("the Withdrawal tab sits between Expenses and Settings", [...doc.querySelectorAll("[data-tab]")].map(b => b.textContent).join() === "Overview,Expenses,Withdrawal,Settings");
+  check("the tabs read Overview, Breakdown, Pots, Settings", [...doc.querySelectorAll("[data-tab]")].map(b => b.textContent).join() === "Overview,Breakdown,Pots,Settings");
   check("...and opens, with the month switcher", !wd().hidden && !doc.getElementById("monthBar").hidden);
   // A £ one with no rate yet: kept out of the peso total, and said so.
   doc.getElementById("fab").click();
@@ -213,7 +213,8 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   doc.querySelector('.cur-pick [data-cur="PHP"]').click();
   doc.getElementById("wdAmount").value = "12000"; submit("wdSheet");
   check("each pot shows its own total for the month", /₱12,000/.test(potRows()[0].textContent) && /₱20,000/.test(potRows()[1].textContent), potRows().map(r => r.textContent).join(" | "));
-  check("...and its all-time total", /All time ₱12,000 · 1 withdrawal/.test(potRows()[0].textContent));
+  check("...and its all-time total, in pesos and pounds, with its count", /House build1All time ₱12,000≈ £150.00/.test(potRows()[0].textContent), potRows()[0].textContent);
+  check("this month in pounds too", /₱20,000≈ £250.00 in /.test(potRows()[1].textContent), potRows()[1].textContent);
   check("the list narrows to the picked pot", doc.querySelectorAll("#wdList .wd-row").length === 1 && /House build · 1 · ₱12,000/.test(doc.getElementById("wdCount").textContent), doc.getElementById("wdCount").textContent);
   check("...while the month's total still covers everything", doc.getElementById("wdTotal").textContent === "₱45,000.00", doc.getElementById("wdTotal").textContent);
   potRows()[0].click();

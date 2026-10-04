@@ -361,6 +361,7 @@
   @media (hover: hover) { .pot-row:hover { background: rgba(245,240,232,.6); } }
   .pot-row.on { background: var(--surface-2); }
   .pot-row .t { font-size: 15px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; line-height: 1.3; }
+  .pot-row .t .n { color: var(--ink-3); font-weight: 500; font-size: 12.5px; margin-left: 5px; }
   .pot-row .s { font-size: 12.5px; color: var(--ink-3); margin-top: 1px; }
   .pot-row .a { text-align: right; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .pot-row .a small { display: block; font-size: 11.5px; font-weight: 500; color: var(--ink-3); }
@@ -407,8 +408,8 @@
 
   <div class="seg" role="tablist" aria-label="Sections">
     <button type="button" role="tab" data-tab="overview">Overview</button>
-    <button type="button" role="tab" data-tab="list">Expenses</button>
-    <button type="button" role="tab" data-tab="wd">Withdrawal</button>
+    <button type="button" role="tab" data-tab="list">Breakdown</button>
+    <button type="button" role="tab" data-tab="wd">Pots</button>
     <button type="button" role="tab" data-tab="settings">Settings</button>
   </div>
 
@@ -1166,11 +1167,17 @@
       bl.style.background = blobBg(p.color);
       row.appendChild(bl);
       var b = el("div");
-      b.appendChild(el("div", "t", p.name));
-      b.appendChild(el("div", "s", mine.length ? "All time " + peso(wdSum(mine)) + " · " + mine.length + " withdrawal" + (mine.length === 1 ? "" : "s") : "Nothing in it yet"));
+      var nm = el("div", "t", p.name);
+      // How many withdrawals, small beside the name (as By type does), so the lines below stay short.
+      if (mine.length) { var cnt = el("span", "n", String(mine.length)); cnt.setAttribute("aria-label", mine.length + " withdrawal" + (mine.length === 1 ? "" : "s")); nm.appendChild(cnt); }
+      b.appendChild(nm);
+      var all = wdSum(mine), mon = wdSum(month), mo = MON3[+VIEW.slice(5, 7) - 1];
+      // Two short lines rather than one that wraps mid-amount on a phone.
+      b.appendChild(el("div", "s", mine.length ? "All time " + peso(all) : "Nothing in it yet"));
+      if (mine.length && gbpApprox(all)) b.appendChild(el("div", "s", gbpApprox(all)));
       row.appendChild(b);
-      var a = el("div", "a", peso(wdSum(month)));
-      a.appendChild(el("small", null, "in " + MON3[+VIEW.slice(5, 7) - 1]));
+      var a = el("div", "a", peso(mon));
+      a.appendChild(el("small", null, gbpApprox(mon) ? gbpApprox(mon) + " in " + mo : "in " + mo));
       row.appendChild(a);
       var ed = el("button", "edit");
       ed.type = "button";
@@ -1187,6 +1194,11 @@
     add.appendChild(el("div", "blob", "+"));
     add.appendChild(el("div", null, "New pot"));
     box.appendChild(add);
+  }
+  // A peso amount in pounds at the current rate ("" while no rate is set).
+  function gbpApprox(c) {
+    if (!rate() || !c) return "";
+    return "≈ £" + (Math.round(c / rate()) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
   function wdAmount(w) { return w.currency === "GBP" ? pound(w.amount) : peso(w.amount); }
 
@@ -1209,9 +1221,8 @@
       : list.length + " withdrawal" + (list.length === 1 ? "" : "s") +
         (gbp && rate() ? " · includes " + pound(gbp) + " at ₱" + fmtRate(rate()) + " per £1" : "");
     // The same total in pounds, at the same rate (pesos included), for a feel of it in £.
-    var inGbp = rate() && total ? Math.round(total / rate()) : 0;
-    $("wdGbp").hidden = !inGbp;
-    $("wdGbp").textContent = "≈ £" + (inGbp / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    $("wdGbp").hidden = !gbpApprox(total);
+    $("wdGbp").textContent = gbpApprox(total);
     $("wdWarn").hidden = !waiting;
     $("wdWarn").textContent = "Set the exchange rate below to add " + pound(waiting) + " to this total";
 
@@ -1545,7 +1556,7 @@
     });
     var pots = $("wdPots");
     clear(pots);
-    if (!POTS.length) pots.appendChild(el("div", "pick-hint", "Make pots under Pots on the Withdrawal tab."));
+    if (!POTS.length) pots.appendChild(el("div", "pick-hint", "Make pots on the Pots tab, under Pots."));
     else [{ id: null, name: "No pot", emoji: "", color: null }].concat(POTS).forEach(function (p) {
       var on = (wdPot || null) === p.id, b = el("button", on ? "on" : "");
       b.type = "button";
@@ -1570,7 +1581,7 @@
     $("wdSave").disabled = !(c > 0);
     var conv = $("wdConv");
     if (wdCur !== "GBP") conv.textContent = "";
-    else if (!rate()) conv.textContent = "Set the exchange rate on the Withdrawal tab to see this in pesos.";
+    else if (!rate()) conv.textContent = "Set the exchange rate on the Pots tab to see this in pesos.";
     else conv.textContent = c > 0 ? "≈ " + peso(Math.round(c * rate()), true) + " at ₱" + fmtRate(rate()) + " per £1" : "At ₱" + fmtRate(rate()) + " per £1";
   }
   document.querySelector(".cur-pick").addEventListener("click", function (e) {
