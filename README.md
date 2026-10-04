@@ -35,14 +35,14 @@ growing set of household tools:
 - **Expenses** (`expenses.html`) — a monthly expenses tracker in a light,
   watercolour style. **Overview** shows the month's total (with an optional
   monthly budget and the change vs the previous month), a category breakdown
-  and spending by week (1–7, 8–14, …). **Expenses** lists the month grouped by
-  category or by date; tap one to edit. **Withdrawal** tracks money taken out
+  and spending by week (1–7, 8–14, …). **Breakdown** lists the month's expenses grouped by
+  category or by date; tap one to edit. **Pots** tracks withdrawals: money taken out
   or sent (ATM, Western Union, bank transfer, other), each in ₱ or £; the
   month's total is always in pesos, with £ entries converted at the one
   exchange rate set on that tab (`£1 = ₱…`, stored in settings and synced), so
   changing the rate re-totals every month; the card also shows the total in £.
-  **Pots** group withdrawals ("House build"), each showing this month's and its
-  all-time total; tap one to narrow the list. Withdrawals are not counted as
+  Pots group withdrawals ("House build"), each showing this month's and its
+  all-time total in ₱ and ≈ £; tap one to narrow the list. Withdrawals are not counted as
   spending. **Settings** holds the budget, the
   categories (emoji, name, colour) and the data tools. **Import CSV** reads a
   sheet like this, skipping subtotal and grand-total rows and checking the rows
@@ -73,7 +73,7 @@ device; signed in, it also syncs through Supabase (see *Accounts + sync*).
 | `oni-orders.html` | Oni Orders tool (ONI / Bukiya order builder). Home button top-left. |
 | `grocery.html` | Grocery Planner tool (Planner / Item Manager / Settings tabs). Home button top-left. |
 | `todo.html` | To Do tool (To Do / Completed tabs, detail sheet with notes). Home button top-left. |
-| `expenses.html` | Expenses tool (Overview / Expenses / Withdrawal / Settings tabs, month switcher). Home button top-left. |
+| `expenses.html` | Expenses tool (Overview / Breakdown / Pots / Settings tabs, month switcher). Home button top-left. |
 | `account.html` | Account & sync: sign in by emailed code, sync status, the people-with-access list. |
 | `cloud.js` | Accounts + shared sync, loaded by every page. Holds the Supabase project URL + publishable key. |
 | `supabase/schema.sql` | The database: tables and the row-level security that enforces the access list. Re-runnable. |
