@@ -356,6 +356,14 @@
     background: rgba(255,253,250,.72); border-radius: 999px; padding: 3px 10px;
   }
   .cur-pick { margin-bottom: 14px; }
+  /* A section heading that folds its card away (Pots > By type). */
+  .sec-toggle {
+    display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; cursor: pointer;
+    font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
+    padding: 8px 4px; margin: -8px -4px; min-height: 36px;
+  }
+  .sec-toggle svg { transition: transform .2s; }
+  .sec-toggle[aria-expanded="false"] svg { transform: rotate(-90deg); }
   .pot-row { display: grid; grid-template-columns: 34px 1fr auto 36px; column-gap: 11px; align-items: center; padding: 10px 8px 10px 16px; cursor: pointer; }
   .pot-row + .pot-row { border-top: 1px solid var(--border); }
   @media (hover: hover) { .pot-row:hover { background: rgba(245,240,232,.6); } }
@@ -504,8 +512,13 @@
     <div class="card" id="potList"></div>
 
     <div id="wdData">
-      <div class="section-head"><h2>By type</h2></div>
-      <div class="card"><ul class="cats" id="wdTypes"></ul></div>
+      <div class="section-head">
+        <h2><button type="button" class="sec-toggle" id="wdTypesToggle" aria-expanded="true" aria-controls="wdTypesCard">By type
+          <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7.5l5 5 5-5"/></svg>
+        </button></h2>
+        <span class="sub" id="wdTypesNote" hidden></span>
+      </div>
+      <div class="card" id="wdTypesCard"><ul class="cats" id="wdTypes"></ul></div>
       <div class="section-head"><h2 id="wdCount">Withdrawals</h2></div>
       <div class="chips" id="potChips"></div>
       <div class="card" id="wdList"></div>
@@ -675,6 +688,7 @@
   var STORE_TAB = "expenses.tab.v1";
   var STORE_MONTH = "expenses.month.v1";
   var STORE_GROUP = "expenses.group.v1";
+  var STORE_BYTYPE = "expenses.byType.v1";     // "closed" while Pots' By type card is folded (per device)
 
   // Watercolour pigments. Light enough that ink text reads on top of them.
   var PALETTE = ["#f2b8a0", "#a9cce3", "#b5d3b0", "#eab4c4", "#f1d99b", "#c9b8e3", "#9fd4cc",
@@ -1262,6 +1276,12 @@
       map[k.id].n++;
     });
     groups.sort(function (a, b) { return b.total - a.total; });
+    // Folded, the heading still says how many types there are.
+    var open = safeRead(STORE_BYTYPE) !== "closed";
+    $("wdTypesToggle").setAttribute("aria-expanded", open ? "true" : "false");
+    $("wdTypesCard").hidden = !open;
+    $("wdTypesNote").hidden = open;
+    $("wdTypesNote").textContent = groups.length + " type" + (groups.length === 1 ? "" : "s");
     var ul = $("wdTypes"), max = groups[0].total || 1;
     clear(ul);
     groups.forEach(function (g) {
@@ -1691,6 +1711,11 @@
     WDPOT = WDPOT === id ? null : id;   // tap again to show everything
     renderWithdrawals();
     if (WDPOT && $("wdList").scrollIntoView && !$("wdData").hidden) $("potChips").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  });
+  $("wdTypesToggle").addEventListener("click", function () {
+    var open = this.getAttribute("aria-expanded") !== "true";
+    safeWrite(STORE_BYTYPE, open ? "open" : "closed");
+    renderWithdrawals();
   });
   $("potChips").addEventListener("click", function (e) {
     var c = e.target.closest("[data-potf]");

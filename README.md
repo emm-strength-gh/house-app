@@ -159,7 +159,7 @@ prefix and the last invoice message). Grocery Planner:
 Expenses: `expenses.items.v1` (amounts in centavos), `expenses.categories.v1`,
 `expenses.settings.v1` (also `gbpRate`, pesos per £1), `expenses.withdrawals.v1` (amount in centavos or pence by `currency`, optional `pot`),
 `expenses.pots.v1`,
-`expenses.tab.v1`, `expenses.month.v1`, `expenses.group.v1`.
+`expenses.tab.v1`, `expenses.month.v1`, `expenses.group.v1`, `expenses.byType.v1` (Pots' By type folded, per device).
 Home screen: `house.installHintDismissed.v1`. Cloud: `house.cloud.v1` (who is
 signed in, what the server last held, sync position), `house.auth` (the
 Supabase session), `house.preCloudBackup.v1` (the device's data before it
