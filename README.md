@@ -40,7 +40,9 @@ growing set of household tools:
   or sent (ATM, Western Union, bank transfer, other), each in ₱ or £; the
   month's total is always in pesos, with £ entries converted at the one
   exchange rate set on that tab (`£1 = ₱…`, stored in settings and synced), so
-  changing the rate re-totals every month. Withdrawals are not counted as
+  changing the rate re-totals every month; the card also shows the total in £.
+  **Pots** group withdrawals ("House build"), each showing this month's and its
+  all-time total; tap one to narrow the list. Withdrawals are not counted as
   spending. **Settings** holds the budget, the
   categories (emoji, name, colour) and the data tools. **Import CSV** reads a
   sheet like this, skipping subtotal and grand-total rows and checking the rows
@@ -154,7 +156,8 @@ prefix and the last invoice message). Grocery Planner:
 `grocery.items.v1`, `grocery.plan.v1`, `grocery.settings.v1`, `grocery.theme.v1`,
 `grocery.tab.v1`. To Do: `todo.items.v1`, `todo.theme.v1`, `todo.tab.v1`.
 Expenses: `expenses.items.v1` (amounts in centavos), `expenses.categories.v1`,
-`expenses.settings.v1` (also `gbpRate`, pesos per £1), `expenses.withdrawals.v1` (amount in centavos or pence by `currency`),
+`expenses.settings.v1` (also `gbpRate`, pesos per £1), `expenses.withdrawals.v1` (amount in centavos or pence by `currency`, optional `pot`),
+`expenses.pots.v1`,
 `expenses.tab.v1`, `expenses.month.v1`, `expenses.group.v1`.
 Home screen: `house.installHintDismissed.v1`. Cloud: `house.cloud.v1` (who is
 signed in, what the server last held, sync position), `house.auth` (the
