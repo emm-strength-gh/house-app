@@ -148,6 +148,43 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   check("a category added elsewhere arrives", /Remote Trips/.test(page.text()));
   check("...and nothing was wrongly flagged as deleted", [...srv.rows.values()].every(r => !r.deleted));
 
+  console.log("\nExpenses: withdrawals");
+  const doc = page.w.document, wd = () => doc.getElementById("view-wd");
+  doc.querySelector('[data-tab="wd"]').click();
+  check("the Withdrawal tab sits between Expenses and Settings", [...doc.querySelectorAll("[data-tab]")].map(b => b.textContent).join() === "Overview,Expenses,Withdrawal,Settings");
+  check("...and opens, with the month switcher", !wd().hidden && !doc.getElementById("monthBar").hidden);
+  // A £ one with no rate yet: kept out of the peso total, and said so.
+  doc.getElementById("fab").click();
+  doc.querySelector('.cur-pick [data-cur="GBP"]').click();
+  doc.getElementById("wdAmount").value = "250";
+  doc.querySelector('#wdKinds [data-kind="wu"]').click();
+  doc.getElementById("wdNote").value = "To Mum";
+  doc.getElementById("wdSheet").dispatchEvent(new page.w.Event("submit", { cancelable: true, bubbles: true }));
+  let stored = page.get("expenses.withdrawals.v1") || [];
+  check("+ Add on this tab adds a withdrawal, kept in pence", stored.length === 1 && stored[0].amount === 25000 && stored[0].currency === "GBP" && stored[0].kind === "wu");
+  check("without a rate, £ isn't guessed into the total", /₱0\.00/.test(doc.getElementById("wdTotal").textContent) && /£250/.test(doc.getElementById("wdWarn").textContent) && !doc.getElementById("wdWarn").hidden);
+  const rateIn = doc.getElementById("rateInput");
+  rateIn.value = "76.25"; rateIn.dispatchEvent(new page.w.Event("change"));
+  check("setting £1 = ₱76.25 converts it", doc.getElementById("wdTotal").textContent === "₱19,062.50" && doc.getElementById("wdWarn").hidden, doc.getElementById("wdTotal").textContent);
+  check("...the row shows both: £250 and ≈ ₱19,062.50", /£250≈ ₱19,062\.50/.test(doc.getElementById("wdList").textContent), doc.getElementById("wdList").textContent);
+  // Pesos straight in, then the total adds both.
+  doc.getElementById("fab").click();
+  check("the next one starts like the last: pounds, Western Union", doc.querySelector('.cur-pick [data-cur="GBP"]').classList.contains("on") && doc.querySelector('#wdKinds [data-kind="wu"]').classList.contains("on"));
+  doc.querySelector('.cur-pick [data-cur="PHP"]').click();
+  doc.querySelector('#wdKinds [data-kind="atm"]').click();
+  doc.getElementById("wdAmount").value = "5,000";
+  doc.getElementById("wdSheet").dispatchEvent(new page.w.Event("submit", { cancelable: true, bubbles: true }));
+  check("₱ and £ withdrawals add up to one peso total", doc.getElementById("wdTotal").textContent === "₱24,062.50", doc.getElementById("wdTotal").textContent);
+  check("by type, in pesos", /Western Union1₱19,062\.50/.test(doc.getElementById("wdTypes").textContent) && /ATM1₱5,000/.test(doc.getElementById("wdTypes").textContent), doc.getElementById("wdTypes").textContent);
+  check("withdrawals don't count as spending", !/24,062/.test(doc.getElementById("heroTotal").textContent));
+  await page.sync();
+  check("withdrawals and the rate are uploaded", [...srv.rows.keys()].filter(k => k.startsWith("expenses.withdrawals.v1|")).length === 2 && srv.rows.get("expenses.settings.v1|_").data.gbpRate === 76.25);
+  srv.put("expenses.settings.v1", "_", Object.assign({}, srv.rows.get("expenses.settings.v1|_").data, { gbpRate: 80 }));
+  srv.put("expenses.withdrawals.v1", "w9", { id: "w9", date: today(), kind: "bank", note: "Remote transfer", amount: 10000, currency: "GBP", createdAt: 1 });
+  await page.sync();
+  check("a withdrawal and a new rate from another device arrive and re-total", /Remote transfer/.test(wd().textContent) && doc.getElementById("wdTotal").textContent === "₱33,000.00", doc.getElementById("wdTotal").textContent);
+  check("...without disturbing anything else", [...srv.rows.values()].every(r => !r.deleted));
+
   console.log("\nEnergy Tracker");
   srv = server();
   page = await open("energy-tracker.html", srv, { "energy.bills.v1": [{ id: "b1", date: "2026-08-24", php: 13415.27, kwh: 788, meter: null, note: "", kwhManual: true }] });

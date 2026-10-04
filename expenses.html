@@ -335,10 +335,27 @@
     background: #9fc2d9; color: var(--ink); padding: 5px 12px; cursor: pointer;
   }
 
+  /* withdrawals */
+  .rate-row .money-in { width: 158px; }
+  .rate-row .money-in span { white-space: nowrap; font-size: 14px; }
+  .cat-row.static { cursor: default; }
+  @media (hover: hover) { .cat-row.static:hover { background: none; } }
+  .wd-row { display: grid; grid-template-columns: 34px 1fr auto; column-gap: 11px; align-items: center; padding: 11px 16px; cursor: pointer; }
+  .wd-row + .wd-row { border-top: 1px solid var(--border); }
+  @media (hover: hover) { .wd-row:hover { background: rgba(245,240,232,.6); } }
+  .wd-row .t { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.3; }
+  .wd-row .s { font-size: 12.5px; color: var(--ink-3); margin-top: 1px; }
+  .wd-row .a { text-align: right; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .wd-row .a small { display: block; font-size: 12px; color: var(--ink-3); }
+  .wd-row.enter { animation: enter .5s ease; }
+  .warn-line { font-size: 13px; color: var(--danger); font-weight: 600; margin-top: 8px; }
+  .cur-pick { margin-bottom: 14px; }
+  .conv { font-size: 13.5px; color: var(--ink-2); margin-top: 8px; min-height: 1.3em; }
+
   .banner { background: var(--surface-2); border: 1px solid var(--danger); color: var(--danger); padding: 10px 14px; border-radius: 12px; margin-bottom: 14px; font-size: 13.5px; }
 
   @media (prefers-reduced-motion: reduce) {
-    .item.enter { animation: none; }
+    .item.enter, .wd-row.enter { animation: none; }
     .sheet, .scrim { transition: none; }
   }
 </style>
@@ -371,6 +388,7 @@
   <div class="seg" role="tablist" aria-label="Sections">
     <button type="button" role="tab" data-tab="overview">Overview</button>
     <button type="button" role="tab" data-tab="list">Expenses</button>
+    <button type="button" role="tab" data-tab="wd">Withdrawal</button>
     <button type="button" role="tab" data-tab="settings">Settings</button>
   </div>
 
@@ -442,6 +460,40 @@
     </div>
   </section>
 
+  <!-- ============ Withdrawals ============ -->
+  <section id="view-wd" role="tabpanel" hidden>
+    <div class="card hero">
+      <div class="wash" style="background: radial-gradient(42% 58% at 86% 16%, #a9cce3d0, transparent 70%), radial-gradient(40% 50% at 60% 108%, #f1d99bb0, transparent 70%), radial-gradient(30% 48% at 102% 82%, #b5d3b0a0, transparent 70%)"></div>
+      <div class="k" id="wdK">Withdrawn</div>
+      <div class="big" id="wdTotal"></div>
+      <div class="meta" id="wdMeta"></div>
+      <div class="warn-line" id="wdWarn" hidden></div>
+    </div>
+    <div class="card">
+      <div class="set-row rate-row">
+        <div class="b">
+          <div class="t">Exchange rate</div>
+          <div class="s" id="rateSub"></div>
+        </div>
+        <label class="money-in"><span>£1 = ₱</span><input id="rateInput" inputmode="decimal" placeholder="Set" aria-label="Pesos for one pound"></label>
+      </div>
+    </div>
+    <div id="wdData">
+      <div class="section-head"><h2>By type</h2></div>
+      <div class="card"><ul class="cats" id="wdTypes"></ul></div>
+      <div class="section-head"><h2 id="wdCount">Withdrawals</h2></div>
+      <div class="card" id="wdList"></div>
+    </div>
+    <div class="card" id="wdEmpty" hidden>
+      <div class="empty">
+        <div class="glyph">🏧</div>
+        <b id="wdEmptyTitle">No withdrawals</b>
+        <p>ATM withdrawals, Western Union, bank transfers and more, in pounds or pesos.</p>
+        <button type="button" class="btn" id="wdEmptyAdd">Add withdrawal</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ Settings ============ -->
   <section id="view-settings" role="tabpanel" hidden>
     <div class="section-head" style="margin-top:0"><h2>Budget</h2></div>
@@ -496,6 +548,33 @@
       <button type="button" class="btn danger slim" id="expDelete" hidden>Delete</button>
       <button type="button" class="btn" id="expCancel">Cancel</button>
       <button type="submit" class="btn primary" id="expSave">Save</button>
+    </div>
+  </form>
+</div>
+
+<!-- ============ Withdrawal sheet ============ -->
+<div class="scrim" id="wdScrim" aria-hidden="true">
+  <form class="sheet" id="wdSheet" role="dialog" aria-modal="true" aria-labelledby="wdTitle" autocomplete="off">
+    <div class="grab"></div>
+    <div class="sheet-body">
+      <div class="s-title" id="wdTitle">New withdrawal</div>
+      <div class="seg small cur-pick" role="group" aria-label="Currency">
+        <button type="button" data-cur="PHP">₱ Pesos</button>
+        <button type="button" data-cur="GBP">£ Pounds</button>
+      </div>
+      <div class="amount-in"><span id="wdSym">₱</span><input id="wdAmount" inputmode="decimal" placeholder="0.00" aria-label="Amount" enterkeyhint="next"></div>
+      <div class="conv" id="wdConv"></div>
+      <div class="lbl">Type</div>
+      <div class="pick" id="wdKinds"></div>
+      <div class="lbl">Note</div>
+      <input class="field" id="wdNote" maxlength="120" placeholder="e.g. BPI ATM, sent to Mum" enterkeyhint="done">
+      <div class="lbl">Date</div>
+      <input class="field" type="date" id="wdDate">
+    </div>
+    <div class="foot">
+      <button type="button" class="btn danger slim" id="wdDelete" hidden>Delete</button>
+      <button type="button" class="btn" id="wdCancel">Cancel</button>
+      <button type="submit" class="btn primary" id="wdSave">Add</button>
     </div>
   </form>
 </div>
@@ -558,7 +637,10 @@
   // Every tool in House App shares one origin, so keys carry the tool prefix.
   var STORE_ITEMS = "expenses.items.v1";       // [{ id, date: "YYYY-MM-DD", cat, item, amount (cents), createdAt }]
   var STORE_CATS = "expenses.categories.v1";   // [{ id, name, emoji, color }]
-  var STORE_SETTINGS = "expenses.settings.v1"; // { budget: cents|null, lastCat }
+  var STORE_SETTINGS = "expenses.settings.v1"; // { budget: cents|null, lastCat, gbpRate: pesos per £1|null, gbpRateAt, lastWd: {cur, kind} }
+  // Money taken out or sent: amount is in the smallest unit of its own currency
+  // (centavos or pence), so a £ withdrawal keeps its real value whatever the rate.
+  var STORE_WD = "expenses.withdrawals.v1";    // [{ id, date, kind, note, amount, currency: "PHP"|"GBP", createdAt }]
   var STORE_TAB = "expenses.tab.v1";
   var STORE_MONTH = "expenses.month.v1";
   var STORE_GROUP = "expenses.group.v1";
@@ -584,6 +666,13 @@
     { id: "education", name: "Education", emoji: "🎓", color: "#f5c9a8" },
     { id: "medical", name: "Medical", emoji: "🩺", color: "#a8d0d8" },
     { id: "other", name: "Other", emoji: "🏷️", color: "#d4cdc3" }
+  ];
+
+  var WD_KINDS = [
+    { id: "atm", name: "ATM", emoji: "🏧", color: "#a9cce3" },
+    { id: "wu", name: "Western Union", emoji: "💸", color: "#f1d99b" },
+    { id: "bank", name: "Bank transfer", emoji: "🏦", color: "#b5d3b0" },
+    { id: "other", name: "Other", emoji: "💱", color: "#d4cdc3" }
   ];
 
   var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -638,6 +727,16 @@
     return "₱" + Math.round(v);
   }
   function plainAmount(c) { return (c / 100).toFixed(c % 100 ? 2 : 0); }
+  function pound(p) {
+    var dp = p % 100 !== 0 ? 2 : 0;
+    return "£" + (p / 100).toLocaleString("en-GB", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+  }
+  // "76.5", "₱76.50" -> 76.5; up to 4 decimals, as banks quote them.
+  function parseRate(v) {
+    var n = parseFloat(String(v == null ? "" : v).replace(/[₱,\s]|php/gi, ""));
+    return isFinite(n) && n > 0 ? Math.round(n * 10000) / 10000 : null;
+  }
+  function fmtRate(r) { return r.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 4 }); }
 
   // ---------- dates ("YYYY-MM-DD" strings, local) ----------
   function pad2(n) { return (n < 10 ? "0" : "") + n; }
@@ -698,8 +797,10 @@
     if (changed) save();
   }
   function loadItems() { var v = readJson(STORE_ITEMS, []); return Array.isArray(v) ? v : []; }
+  function loadWd() { var v = readJson(STORE_WD, []); return Array.isArray(v) ? v : []; }
   var CATS = loadCats();
   var ITEMS = loadItems();
+  var WD = loadWd();
   var SET = Object.assign({ budget: null, lastCat: null }, readJson(STORE_SETTINGS, {}));
   mergeNewDefaults();
   var VIEW = safeRead(STORE_MONTH) || thisMonth();
@@ -712,13 +813,14 @@
     safeWrite(STORE_ITEMS, JSON.stringify(ITEMS));
     safeWrite(STORE_CATS, JSON.stringify(CATS));
     safeWrite(STORE_SETTINGS, JSON.stringify(SET));
+    safeWrite(STORE_WD, JSON.stringify(WD));
   }
   // Returns an undo function that puts everything back as it is right now.
   function snapshot() {
-    var s = JSON.stringify({ i: ITEMS, c: CATS, s: SET });
+    var s = JSON.stringify({ i: ITEMS, c: CATS, s: SET, w: WD });
     return function () {
       var o = JSON.parse(s);
-      ITEMS = o.i; CATS = o.c; SET = o.s;
+      ITEMS = o.i; CATS = o.c; SET = o.s; WD = o.w;
       save(); renderAll();
     };
   }
@@ -986,6 +1088,100 @@
     });
   }
 
+  // ---------- render: withdrawals ----------
+  function kindOf(w) {
+    for (var i = 0; i < WD_KINDS.length; i++) if (WD_KINDS[i].id === w.kind) return WD_KINDS[i];
+    return WD_KINDS[WD_KINDS.length - 1];
+  }
+  function wdById(id) {
+    for (var i = 0; i < WD.length; i++) if (WD[i].id === id) return WD[i];
+    return null;
+  }
+  function rate() { return SET.gbpRate > 0 ? SET.gbpRate : null; }
+  // Pesos for a withdrawal: £ ones at the current rate, or null while no rate is set.
+  function wdPeso(w) { return w.currency === "GBP" ? (rate() ? Math.round(w.amount * rate()) : null) : w.amount; }
+  function wdIn(m) { return WD.filter(function (w) { return monthOf(w.date) === m; }); }
+  function wdAmount(w) { return w.currency === "GBP" ? pound(w.amount) : peso(w.amount); }
+
+  function renderWithdrawals(flashId) {
+    var list = wdIn(VIEW).sort(newest), total = 0, gbp = 0, waiting = 0;
+    list.forEach(function (w) {
+      var p = wdPeso(w);
+      if (p == null) waiting += w.amount; else total += p;
+      if (w.currency === "GBP") gbp += w.amount;
+    });
+    $("wdK").textContent = "Withdrawn in " + monthName(VIEW);
+    var big = $("wdTotal");
+    clear(big);
+    big.appendChild(el("span", "cur", "₱"));
+    big.appendChild(document.createTextNode(Math.floor(total / 100).toLocaleString("en-PH")));
+    big.appendChild(el("span", "dp", "." + pad2(total % 100)));
+    $("wdMeta").textContent = !list.length ? "No withdrawals logged"
+      : list.length + " withdrawal" + (list.length === 1 ? "" : "s") +
+        (gbp && rate() ? " · includes " + pound(gbp) + " at ₱" + fmtRate(rate()) + " per £1" : "");
+    $("wdWarn").hidden = !waiting;
+    $("wdWarn").textContent = "Set the exchange rate below to add " + pound(waiting) + " to this total";
+
+    if (document.activeElement !== $("rateInput")) $("rateInput").value = rate() ? String(rate()) : "";
+    $("rateSub").textContent = rate()
+      ? "Pesos for £1 · set " + (SET.gbpRateAt ? fmtDay(SET.gbpRateAt) : "")
+      : "Pesos for £1, to turn £ withdrawals into pesos";
+
+    $("wdData").hidden = !list.length;
+    $("wdEmpty").hidden = !!list.length;
+    $("wdEmptyTitle").textContent = "No withdrawals in " + monthName(VIEW);
+    if (!list.length) return;
+
+    // By type, in pesos (a £ one without a rate yet can't be weighed, so it waits).
+    var map = {}, groups = [];
+    list.forEach(function (w) {
+      var k = kindOf(w);
+      if (!map[k.id]) { map[k.id] = { kind: k, total: 0, n: 0 }; groups.push(map[k.id]); }
+      map[k.id].total += wdPeso(w) || 0;
+      map[k.id].n++;
+    });
+    groups.sort(function (a, b) { return b.total - a.total; });
+    var ul = $("wdTypes"), max = groups[0].total || 1;
+    clear(ul);
+    groups.forEach(function (g) {
+      var li = el("li", "cat-row static");
+      var bl = el("div", "blob", g.kind.emoji);
+      bl.style.background = blobBg(g.kind.color);
+      li.appendChild(bl);
+      var nm = el("div", "nm", g.kind.name);
+      nm.appendChild(el("span", null, String(g.n)));
+      li.appendChild(nm);
+      li.appendChild(el("div", "amt", peso(g.total)));
+      var bar = el("div", "bar"), fill = el("i");
+      fill.style.width = Math.max(2, g.total / max * 100) + "%";
+      fill.style.background = wash(g.kind.color);
+      bar.appendChild(fill);
+      li.appendChild(bar);
+      ul.appendChild(li);
+    });
+
+    $("wdCount").textContent = list.length + " · " + peso(total, true);
+    var box = $("wdList");
+    clear(box);
+    list.forEach(function (w) {
+      var k = kindOf(w), row = el("div", "wd-row" + (w.id === flashId && !reduceMotion ? " enter" : ""));
+      row.setAttribute("data-id", w.id);
+      row.setAttribute("role", "button");
+      row.setAttribute("tabindex", "0");
+      var bl = el("div", "blob", k.emoji);
+      bl.style.background = blobBg(k.color);
+      row.appendChild(bl);
+      var b = el("div");
+      b.appendChild(el("div", "t", w.note || k.name));
+      b.appendChild(el("div", "s", fmtDay(w.date, true) + (w.note ? " · " + k.name : "")));
+      row.appendChild(b);
+      var a = el("div", "a", wdAmount(w));
+      if (w.currency === "GBP") a.appendChild(el("small", null, rate() ? "≈ " + peso(wdPeso(w)) : "no rate yet"));
+      row.appendChild(a);
+      box.appendChild(row);
+    });
+  }
+
   // ---------- render: settings ----------
   function renderSettings() {
     if (document.activeElement !== $("budgetInput")) $("budgetInput").value = SET.budget ? plainAmount(SET.budget) : "";
@@ -1031,12 +1227,13 @@
     renderMonth();
     renderOverview();
     renderList(flashId);
+    renderWithdrawals(flashId);
     renderSettings();
   }
 
   // ---------- tabs + month ----------
   function showTab(name) {
-    if (["overview", "list", "settings"].indexOf(name) < 0) name = "overview";
+    if (["overview", "list", "wd", "settings"].indexOf(name) < 0) name = "overview";
     TAB = name;
     Array.prototype.forEach.call(document.querySelectorAll("[data-tab]"), function (b) {
       var on = b.getAttribute("data-tab") === name;
@@ -1045,9 +1242,11 @@
     });
     $("view-overview").hidden = name !== "overview";
     $("view-list").hidden = name !== "list";
+    $("view-wd").hidden = name !== "wd";
     $("view-settings").hidden = name !== "settings";
     $("monthBar").hidden = name === "settings";
     $("fab").hidden = name === "settings";
+    $("fab").setAttribute("aria-label", name === "wd" ? "Add withdrawal" : "Add expense");
     safeWrite(STORE_TAB, name);
   }
   Array.prototype.forEach.call(document.querySelectorAll("[data-tab]"), function (b) {
@@ -1116,7 +1315,7 @@
     document.body.classList.remove("locked");
     openScrim = null;
   }
-  ["expScrim", "catScrim", "impScrim"].forEach(function (id) {
+  ["expScrim", "wdScrim", "catScrim", "impScrim"].forEach(function (id) {
     $(id).addEventListener("click", function (e) { if (e.target === this) hideSheet(); });
   });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") hideSheet(); });
@@ -1207,9 +1406,128 @@
     renderAll();
     toast("Deleted " + it.item, "Undo", undo);
   });
-  $("fab").addEventListener("click", function () { openExpense(null); });
+  $("fab").addEventListener("click", function () { if (TAB === "wd") openWithdrawal(null); else openExpense(null); });
   $("ovEmptyAdd").addEventListener("click", function () { openExpense(null); });
   $("listEmptyBtn").addEventListener("click", function () { openExpense(null); });
+
+  // ---------- withdrawal sheet ----------
+  var wdEdit = null, wdCur = "PHP", wdKind = "atm";
+  function renderWdPick() {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-cur]"), function (b) {
+      var on = b.getAttribute("data-cur") === wdCur;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    $("wdSym").textContent = wdCur === "GBP" ? "£" : "₱";
+    $("wdAmount").setAttribute("aria-label", wdCur === "GBP" ? "Amount in pounds" : "Amount in pesos");
+    var box = $("wdKinds");
+    clear(box);
+    WD_KINDS.forEach(function (k) {
+      var on = wdKind === k.id, b = el("button", on ? "on" : "");
+      b.type = "button";
+      b.setAttribute("data-kind", k.id);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.appendChild(el("span", null, k.emoji));
+      b.appendChild(document.createTextNode(k.name));
+      if (on) { b.style.background = mix(k.color, "#ffffff", 0.3); b.style.borderColor = mix(k.color, "#5a4a40", 0.25); }
+      box.appendChild(b);
+    });
+    validateWd();
+  }
+  function validateWd() {
+    var c = toCents($("wdAmount").value);
+    $("wdSave").disabled = !(c > 0);
+    var conv = $("wdConv");
+    if (wdCur !== "GBP") conv.textContent = "";
+    else if (!rate()) conv.textContent = "Set the exchange rate on the Withdrawal tab to see this in pesos.";
+    else conv.textContent = c > 0 ? "≈ " + peso(Math.round(c * rate()), true) + " at ₱" + fmtRate(rate()) + " per £1" : "At ₱" + fmtRate(rate()) + " per £1";
+  }
+  document.querySelector(".cur-pick").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-cur]");
+    if (!b) return;
+    wdCur = b.getAttribute("data-cur");
+    renderWdPick();
+    $("wdAmount").focus();
+  });
+  $("wdKinds").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-kind]");
+    if (!b) return;
+    wdKind = b.getAttribute("data-kind");
+    renderWdPick();
+  });
+  $("wdAmount").addEventListener("input", validateWd);
+  $("wdAmount").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); $("wdNote").focus(); } });
+
+  function openWithdrawal(id) {
+    var w = id ? wdById(id) : null, last = SET.lastWd || {};
+    wdEdit = w ? w.id : null;
+    // A new one starts like the last one added: same currency, same type.
+    wdCur = w ? w.currency : (last.cur === "GBP" ? "GBP" : "PHP");
+    wdKind = w ? kindOf(w).id : (last.kind || "atm");
+    $("wdTitle").textContent = w ? "Edit withdrawal" : "New withdrawal";
+    $("wdAmount").value = w ? plainAmount(w.amount) : "";
+    $("wdNote").value = w ? (w.note || "") : "";
+    $("wdDate").value = w ? w.date : (VIEW === thisMonth() ? todayYmd() : VIEW + "-01");
+    $("wdDelete").hidden = !w;
+    $("wdCancel").hidden = !!w;
+    $("wdSave").textContent = w ? "Save" : "Add";
+    renderWdPick();
+    showSheet("wdScrim");
+    if (!w) setTimeout(function () { $("wdAmount").focus(); }, 60);
+  }
+  $("wdSheet").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var amount = toCents($("wdAmount").value);
+    if (!(amount > 0)) return;
+    var date = validYmd($("wdDate").value) ? $("wdDate").value : todayYmd();
+    var note = $("wdNote").value.replace(/\s+/g, " ").trim();
+    var undo = snapshot(), id;
+    if (wdEdit) {
+      var w = wdById(wdEdit);
+      if (!w) { hideSheet(); return; }
+      w.amount = amount; w.currency = wdCur; w.kind = wdKind; w.note = note; w.date = date;
+      id = w.id;
+    } else {
+      id = uid();
+      WD.push({ id: id, date: date, kind: wdKind, note: note, amount: amount, currency: wdCur, createdAt: Date.now() });
+      SET.lastWd = { cur: wdCur, kind: wdKind };
+    }
+    save();
+    hideSheet();
+    var moved = monthOf(date) !== VIEW;
+    if (moved) { VIEW = monthOf(date); safeWrite(STORE_MONTH, VIEW); }
+    renderAll(id);
+    var shown = wdCur === "GBP" ? pound(amount) : peso(amount);
+    toast((wdEdit ? "Saved" : "Added " + shown) + (moved ? " · " + monthLabel(VIEW) : ""), "Undo", undo);
+  });
+  $("wdCancel").addEventListener("click", hideSheet);
+  $("wdDelete").addEventListener("click", function () {
+    var w = wdById(wdEdit);
+    if (!w) return;
+    var undo = snapshot();
+    WD = WD.filter(function (x) { return x.id !== w.id; });
+    save();
+    hideSheet();
+    renderAll();
+    toast("Deleted " + wdAmount(w) + " withdrawal", "Undo", undo);
+  });
+  $("wdList").addEventListener("click", function (e) {
+    var r = e.target.closest(".wd-row");
+    if (r) openWithdrawal(r.getAttribute("data-id"));
+  });
+  $("wdEmptyAdd").addEventListener("click", function () { openWithdrawal(null); });
+
+  // One rate for every £ withdrawal: change it and every peso total follows.
+  $("rateInput").addEventListener("change", function () {
+    var v = this.value.trim(), r = parseRate(v);
+    if (v && !r) { toast("Enter the rate as a number, e.g. 76.25"); this.value = rate() ? String(rate()) : ""; return; }
+    SET.gbpRate = r;
+    SET.gbpRateAt = r ? todayYmd() : null;
+    save();
+    renderAll();
+    toast(r ? "Rate set: £1 = ₱" + fmtRate(r) : "Rate removed");
+  });
+  $("rateInput").addEventListener("keydown", function (e) { if (e.key === "Enter") this.blur(); });
 
   // ---------- settings: budget ----------
   $("budgetInput").addEventListener("change", function () {
@@ -1487,7 +1805,7 @@
   $("exportBtn").addEventListener("click", function () {
     download("expenses-backup-" + todayYmd() + ".json", JSON.stringify({
       kind: "expenses-backup", version: 1, exportedAt: new Date().toISOString(),
-      categories: CATS, items: ITEMS, settings: SET
+      categories: CATS, items: ITEMS, withdrawals: WD, settings: SET
     }, null, 2), "application/json");
     toast("Backup saved");
   });
@@ -1504,11 +1822,14 @@
         toast("That isn't an Expenses backup");
         return;
       }
-      if (!confirm("Replace everything here with this backup (" + o.items.length + " expenses)? You can undo straight after.")) return;
+      var nw = Array.isArray(o.withdrawals) ? ", " + o.withdrawals.length + " withdrawals" : "";
+      if (!confirm("Replace everything here with this backup (" + o.items.length + " expenses" + nw + ")? You can undo straight after.")) return;
       var undo = snapshot();
       ITEMS = o.items.filter(function (it) { return it && validYmd(it.date) && it.amount > 0; });
       CATS = o.categories.length ? o.categories : loadCats();
       SET = Object.assign({ budget: null, lastCat: null }, o.settings || {});
+      // Backups from before withdrawals existed leave the ones here alone.
+      if (Array.isArray(o.withdrawals)) WD = o.withdrawals.filter(function (w) { return w && validYmd(w.date) && w.amount > 0; });
       save();
       renderAll();
       toast("Backup restored", "Undo", undo);
@@ -1540,8 +1861,8 @@
 
   // Another tab may have changed the data.
   window.addEventListener("storage", function (e) {
-    if ([STORE_ITEMS, STORE_CATS, STORE_SETTINGS].indexOf(e.key) < 0) return;
-    CATS = loadCats(); ITEMS = loadItems();
+    if ([STORE_ITEMS, STORE_CATS, STORE_SETTINGS, STORE_WD].indexOf(e.key) < 0) return;
+    CATS = loadCats(); ITEMS = loadItems(); WD = loadWd();
     SET = Object.assign({ budget: null, lastCat: null }, readJson(STORE_SETTINGS, {}));
     mergeNewDefaults();
     renderAll();

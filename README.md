@@ -36,7 +36,12 @@ growing set of household tools:
   watercolour style. **Overview** shows the month's total (with an optional
   monthly budget and the change vs the previous month), a category breakdown
   and spending by week (1–7, 8–14, …). **Expenses** lists the month grouped by
-  category or by date; tap one to edit. **Settings** holds the budget, the
+  category or by date; tap one to edit. **Withdrawal** tracks money taken out
+  or sent (ATM, Western Union, bank transfer, other), each in ₱ or £; the
+  month's total is always in pesos, with £ entries converted at the one
+  exchange rate set on that tab (`£1 = ₱…`, stored in settings and synced), so
+  changing the rate re-totals every month. Withdrawals are not counted as
+  spending. **Settings** holds the budget, the
   categories (emoji, name, colour) and the data tools. **Import CSV** reads a
   sheet like this, skipping subtotal and grand-total rows and checking the rows
   add up to the grand total:
@@ -66,7 +71,7 @@ device; signed in, it also syncs through Supabase (see *Accounts + sync*).
 | `oni-orders.html` | Oni Orders tool (ONI / Bukiya order builder). Home button top-left. |
 | `grocery.html` | Grocery Planner tool (Planner / Item Manager / Settings tabs). Home button top-left. |
 | `todo.html` | To Do tool (To Do / Completed tabs, detail sheet with notes). Home button top-left. |
-| `expenses.html` | Expenses tool (Overview / Expenses / Settings tabs, month switcher). Home button top-left. |
+| `expenses.html` | Expenses tool (Overview / Expenses / Withdrawal / Settings tabs, month switcher). Home button top-left. |
 | `account.html` | Account & sync: sign in by emailed code, sync status, the people-with-access list. |
 | `cloud.js` | Accounts + shared sync, loaded by every page. Holds the Supabase project URL + publishable key. |
 | `supabase/schema.sql` | The database: tables and the row-level security that enforces the access list. Re-runnable. |
@@ -149,7 +154,8 @@ prefix and the last invoice message). Grocery Planner:
 `grocery.items.v1`, `grocery.plan.v1`, `grocery.settings.v1`, `grocery.theme.v1`,
 `grocery.tab.v1`. To Do: `todo.items.v1`, `todo.theme.v1`, `todo.tab.v1`.
 Expenses: `expenses.items.v1` (amounts in centavos), `expenses.categories.v1`,
-`expenses.settings.v1`, `expenses.tab.v1`, `expenses.month.v1`, `expenses.group.v1`.
+`expenses.settings.v1` (also `gbpRate`, pesos per £1), `expenses.withdrawals.v1` (amount in centavos or pence by `currency`),
+`expenses.tab.v1`, `expenses.month.v1`, `expenses.group.v1`.
 Home screen: `house.installHintDismissed.v1`. Cloud: `house.cloud.v1` (who is
 signed in, what the server last held, sync position), `house.auth` (the
 Supabase session), `house.preCloudBackup.v1` (the device's data before it
