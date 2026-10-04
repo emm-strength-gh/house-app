@@ -97,7 +97,7 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   PAGES.forEach(f => (read(f).match(/"[a-z]+\.[A-Za-z]+\.v\d+"/g) || []).forEach(k => used.add(k.slice(1, -1))));
   check("every synced store is one a page really uses", stores.every(k => used.has(k)), stores.filter(k => !used.has(k)).join());
   const LOCAL = ["energy.theme.v1", "energy.savedAt.v1", "energy.groups.v1", "energy.summary.v1", "grocery.theme.v1", "grocery.tab.v1",
-                 "todo.theme.v1", "todo.tab.v1", "expenses.tab.v1", "expenses.month.v1", "expenses.group.v1", "house.installHintDismissed.v1"];
+                 "todo.theme.v1", "todo.tab.v1", "expenses.tab.v1", "expenses.month.v1", "expenses.group.v1", "expenses.byType.v1", "house.installHintDismissed.v1"];
   const unknown = [...used].filter(k => !stores.includes(k) && !LOCAL.includes(k));
   check("every other store is knowingly per-device", unknown.length === 0, "decide: synced or local? " + unknown.join());
 
@@ -177,6 +177,14 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   check("₱ and £ withdrawals add up to one peso total", doc.getElementById("wdTotal").textContent === "₱24,062.50", doc.getElementById("wdTotal").textContent);
   check("by type, in pesos", /Medical1₱19,062\.50/.test(doc.getElementById("wdTypes").textContent) && /Education1₱5,000/.test(doc.getElementById("wdTypes").textContent), doc.getElementById("wdTypes").textContent);
   check("withdrawals don't count as spending", !/24,062/.test(doc.getElementById("heroTotal").textContent));
+  const typesToggle = doc.getElementById("wdTypesToggle");
+  typesToggle.click();
+  check("tapping By type folds it away, leaving a count", doc.getElementById("wdTypesCard").hidden && typesToggle.getAttribute("aria-expanded") === "false"
+    && doc.getElementById("wdTypesNote").textContent === "2 types" && !doc.getElementById("wdTypesNote").hidden);
+  doc.getElementById("nextMonth").click(); doc.getElementById("prevMonth").click();
+  check("...and it stays folded (remembered on this device)", doc.getElementById("wdTypesCard").hidden && page.w.localStorage.getItem("expenses.byType.v1") === "closed");
+  typesToggle.click();
+  check("tapping again opens it", !doc.getElementById("wdTypesCard").hidden && doc.getElementById("wdTypesNote").hidden);
   await page.sync();
   check("withdrawals and the rate are uploaded", [...srv.rows.keys()].filter(k => k.startsWith("expenses.withdrawals.v1|")).length === 2 && srv.rows.get("expenses.settings.v1|_").data.gbpRate === 76.25);
   srv.put("expenses.settings.v1", "_", Object.assign({}, srv.rows.get("expenses.settings.v1|_").data, { gbpRate: 80 }));
