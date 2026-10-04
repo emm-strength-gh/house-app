@@ -59,6 +59,7 @@
     "todo.items.v1":          { kind: "list", ordered: true },
     "expenses.categories.v1": { kind: "list", ordered: true },
     "expenses.items.v1":      { kind: "list", refs: { cat: "expenses.categories.v1" } },
+    "expenses.withdrawals.v1": { kind: "list" },
     "expenses.settings.v1":   { kind: "doc", local: ["lastCat"] }
   };
   var STORE_KEYS = Object.keys(STORES);
