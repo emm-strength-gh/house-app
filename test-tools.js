@@ -229,6 +229,35 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   check("deleting a pot keeps its withdrawals, just without a pot", !(page.get("expenses.pots.v1") || []).some(p => p.name === "Mum")
     && page.get("expenses.withdrawals.v1").find(w => w.id === toMum.id).pot === null && page.get("expenses.withdrawals.v1").length === 4);
 
+  console.log("\nExpenses: categories as pot types");
+  doc.getElementById("fab").click();
+  const types = [...doc.querySelectorAll("#wdKinds [data-kind]")].map(b => b.textContent);
+  // This page's categories, whatever earlier checks left them as.
+  const pageCats = page.get("expenses.categories.v1").filter(c => c.id !== "other");
+  check("the type list is the withdrawal types, then the Breakdown categories", types.slice(0, 4).join() === "🏧ATM,💸Western Union,🏦Bank transfer,💱Other"
+    && types.slice(4).join() === pageCats.map(c => c.emoji + c.name).join(), types.join());
+  check("...without a second \"Other\"", types.filter(x => /Other$/.test(x)).length === 1);
+  doc.querySelector('#wdKinds [data-kind="cat:therapy"]').click();
+  doc.querySelector('.cur-pick [data-cur="PHP"]').click();
+  doc.getElementById("wdAmount").value = "1500"; doc.getElementById("wdNote").value = "Session cash"; submit("wdSheet");
+  const g = page.get("expenses.withdrawals.v1").find(w => w.note === "Session cash");
+  check("a withdrawal can be typed with a category", g && g.kind === "cat:therapy");
+  check("...and By type shows it under that category", /🌱Therapy1₱1,500/.test(doc.getElementById("wdTypes").textContent), doc.getElementById("wdTypes").textContent);
+  // Renaming the category shows up in Pots; deleting it moves the withdrawal like its expenses.
+  doc.querySelector('[data-tab="settings"]').click();
+  doc.querySelector('#catSettings [data-cat="therapy"]').click();
+  doc.getElementById("catName").value = "Counselling"; submit("catSheet");
+  doc.querySelector('[data-tab="wd"]').click();
+  check("renaming the category renames the type", /Counselling1/.test(doc.getElementById("wdTypes").textContent));
+  const before = page.get("expenses.categories.v1");
+  const dest = before.some(c => c.id === "other") ? "other" : before.filter(c => c.id !== "therapy")[0].id;
+  doc.querySelector('[data-tab="settings"]').click();
+  doc.querySelector('#catSettings [data-cat="therapy"]').click();
+  doc.getElementById("catDelete").click();
+  check("deleting it moves the withdrawal where its expenses go", page.get("expenses.withdrawals.v1").find(w => w.id === g.id).kind === (dest === "other" ? "other" : "cat:" + dest),
+    page.get("expenses.withdrawals.v1").find(w => w.id === g.id).kind);
+  doc.querySelector('[data-tab="wd"]').click();
+
   console.log("\nEnergy Tracker");
   srv = server();
   page = await open("energy-tracker.html", srv, { "energy.bills.v1": [{ id: "b1", date: "2026-08-24", php: 13415.27, kwh: 788, meter: null, note: "", kwhManual: true }] });
