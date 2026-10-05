@@ -231,6 +231,26 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   await page.sync();
   check("pots and the withdrawals' pots are uploaded", [...srv.rows.keys()].filter(k => k.startsWith("expenses.pots.v1|")).length === 3
     && srv.rows.get("expenses.withdrawals.v1|" + toMum.id).data.pot === pots[1].id);
+
+  console.log("\nExpenses: a pot shown in Breakdown");
+  const spent = () => +doc.getElementById("heroTotal").textContent.replace(/[^\d.]/g, "");
+  const spentBefore = spent();
+  potRows()[1].querySelector(".edit").click();
+  check("the pot sheet has a Show in Breakdown switch, off to start", !doc.getElementById("potBdWrap").hidden && !doc.getElementById("potBd").checked);
+  doc.getElementById("potBd").checked = true; submit("catSheet");
+  check("switched on, the pot is marked", /In Breakdown/.test(potRows()[1].textContent) && page.get("expenses.pots.v1")[1].inBreakdown === true);
+  check("its £250 (at ₱80) now counts as spending on Overview", spent() === spentBefore + 20000, spentBefore + " -> " + spent());
+  const listText = () => doc.getElementById("listCard").textContent;
+  check("...and is listed in Breakdown under its type's category, saying which pot", /Medical/.test(listText()) && /To Mum/.test(listText()) && /👵|Mum/.test(listText()) && /£250/.test(listText()), listText());
+  doc.querySelector('#listCard [data-id="wd:' + toMum.id + '"]').click();
+  check("tapping it there opens the withdrawal itself", doc.getElementById("wdScrim").classList.contains("on") && doc.getElementById("wdAmount").value === "250");
+  doc.getElementById("wdScrim").click();
+  check("the category sheet doesn't show the switch", (doc.querySelector('[data-tab="settings"]').click(), doc.querySelector("#catSettings [data-cat]").click(), doc.getElementById("potBdWrap").hidden));
+  doc.getElementById("catCancel").click();
+  doc.querySelector('[data-tab="wd"]').click();
+  potRows()[1].querySelector(".edit").click();
+  doc.getElementById("potBd").checked = false; submit("catSheet");
+  check("switched off, it stops counting", spent() === spentBefore && !/To Mum/.test(listText()));
   potRows()[1].querySelector(".edit").click();
   check("the pencil opens the pot to edit", doc.getElementById("catTitle").textContent === "Edit pot" && doc.getElementById("catName").value === "Mum");
   doc.getElementById("catDelete").click();
