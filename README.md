@@ -44,7 +44,9 @@ growing set of household tools:
   changing the rate re-totals every month; the card also shows the total in £.
   Pots group withdrawals ("House build"), each showing this month's and its
   all-time total in ₱ and ≈ £; tap one to narrow the list. Withdrawals are not counted as
-  spending. **Settings** holds the budget, the
+  spending unless their pot has **Show in Breakdown** on (`inBreakdown`): then
+  they count on Overview and in Breakdown under their type's category (`potSpending()`,
+  rows made on the fly, never stored). **Settings** holds the budget, the
   categories (emoji, name, colour) and the data tools. **Import CSV** reads a
   sheet like this, skipping subtotal and grand-total rows and checking the rows
   add up to the grand total:
