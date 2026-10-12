@@ -51,6 +51,7 @@
     "oni.catalog.v1":         { kind: "list", natural: lowerName },
     "oni.orders.v1":          { kind: "list", ordered: true },
     "oni.invoices.v1":        { kind: "list" },
+    "oni.vouchers.v1":        { kind: "list" },
     "oni.settings.v1":        { kind: "doc", local: ["theme"] },
     "grocery.items.v1":       { kind: "list", natural: lowerName },
     "grocery.plan.v1":        { kind: "list", ordered: true, refs: { itemId: "grocery.items.v1" },

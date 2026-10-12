@@ -158,6 +158,20 @@
   .savedorder .top .grow{flex:1;min-width:0}
   .savedorder .oname{font-weight:700}
   .savedorder .ometa{color:var(--muted);font-size:13px;margin-top:2px}
+  /* Voucher preview + records */
+  .vpreview{display:flex;justify-content:center;margin-top:4px}
+  .vpreview canvas{width:100%;max-width:360px;height:auto;border-radius:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);background:#0d0d0d;display:block}
+  .vrec{border-top:1px solid var(--border);padding:12px 0}
+  .vrec:first-of-type{border-top:none}
+  .vrec .top{display:flex;align-items:center;gap:10px}
+  .vrec .top .grow{flex:1;min-width:0}
+  .vrec .vcode{font-weight:800;letter-spacing:.03em}
+  .vrec .vmeta{color:var(--muted);font-size:13px;margin-top:2px}
+  .vstat{font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+  .vstat.active{color:var(--ok);background:color-mix(in srgb,var(--ok) 16%,transparent)}
+  .vstat.claimed{color:var(--accent);background:var(--accent-soft)}
+  .vstat.expired{color:var(--danger);background:color-mix(in srgb,var(--danger) 16%,transparent)}
   .hidden{display:none !important}
   .toast{
     position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
@@ -280,6 +294,7 @@
   <button data-tab="invoices">Invoices</button>
   <button data-tab="catalog">Items</button>
   <button data-tab="saved">Saved</button>
+  <button data-tab="vouchers">Vouchers</button>
   <button data-tab="backup">Backup</button>
 </nav>
 
@@ -530,11 +545,53 @@
     </div>
   </section>
 
+  <!-- ============ VOUCHERS ============ -->
+  <section class="panel" id="tab-vouchers">
+    <div class="card">
+      <h2>Create a voucher</h2>
+      <p class="sub">Oni Philippines discount voucher. Fill it in, generate, then download the image to send.</p>
+      <div class="field">
+        <label for="vCode">Voucher code</label>
+        <input id="vCode" type="text" placeholder="e.g. ONI500" autocapitalize="characters" />
+      </div>
+      <div class="field">
+        <label for="vHandle">Instagram / Facebook handle</label>
+        <input id="vHandle" type="text" placeholder="@customerhandle" />
+      </div>
+      <div class="row">
+        <div class="col field">
+          <label for="vPrice">Voucher value (₱)</label>
+          <input id="vPrice" type="number" min="0" step="1" placeholder="500" inputmode="numeric" />
+        </div>
+        <div class="col field">
+          <label for="vExpiry">Expiry date</label>
+          <input id="vExpiry" type="date" />
+        </div>
+      </div>
+      <button class="btn primary block" id="vGenBtn">🎟️ Generate &amp; save voucher</button>
+    </div>
+
+    <div class="card hidden" id="vPreviewCard">
+      <h2>Voucher</h2>
+      <p class="sub">This is the image customers receive.</p>
+      <div class="vpreview"><canvas id="vCanvas" width="1080" height="1350"></canvas></div>
+      <div class="btnrow" style="justify-content:center;margin-top:14px">
+        <button class="btn primary" id="vDownloadBtn">⬇️ Download image (PNG)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Voucher records</h2>
+      <p class="sub">Every voucher you generated. Mark them Claimed or Expired as you go.</p>
+      <div id="vList"></div>
+    </div>
+  </section>
+
   <!-- ============ BACKUP ============ -->
   <section class="panel" id="tab-backup">
     <div class="card">
       <h2>Save everything to a file</h2>
-      <p class="sub">Downloads one JSON file with <b>all</b> your items, saved orders, invoices and settings. Keep it somewhere safe (iCloud, Drive, email to yourself) — this is your real backup, not just browser storage.</p>
+      <p class="sub">Downloads one JSON file with <b>all</b> your items, saved orders, invoices, vouchers and settings. Keep it somewhere safe (iCloud, Drive, email to yourself) — this is your real backup, not just browser storage.</p>
       <button class="btn primary block" id="exportAllBtn">💾 Save backup (.json)</button>
       <div class="divider"></div>
       <h2 style="font-size:15px">Restore from a file</h2>
@@ -581,7 +638,7 @@
   function clear(n){ while(n.firstChild) n.removeChild(n.firstChild); }
 
   /* ---------- storage (localStorage is a convenience cache only) ---------- */
-  var STORE = { catalog:"oni.catalog.v1", orders:"oni.orders.v1", settings:"oni.settings.v1", invoices:"oni.invoices.v1" };
+  var STORE = { catalog:"oni.catalog.v1", orders:"oni.orders.v1", settings:"oni.settings.v1", invoices:"oni.invoices.v1", vouchers:"oni.vouchers.v1" };
   function safeRead(key, fallback){
     try{ var v=localStorage.getItem(key); return v==null? fallback : JSON.parse(v); }
     catch(e){ return fallback; }
@@ -628,6 +685,7 @@
   // Invoices: [{ id, no, customer, contact, date:"YYYY-MM-DD", status, lines:[{name,size,colour,qty,price}],
   //              shipping, discount, message, createdAt, updatedAt }] — all money in PHP.
   var invoices = safeRead(STORE.invoices, []);
+  var vouchers = safeRead(STORE.vouchers, []);
   function fillInvoiceSettings(){
     // Settings saved before invoices existed (or restored from an old backup) lack these.
     if(settings.shopName==null) settings.shopName="";
@@ -644,6 +702,7 @@
   function persistOrders(){ safeWrite(STORE.orders, orders); }
   function persistSettings(){ safeWrite(STORE.settings, settings); }
   function persistInvoices(){ safeWrite(STORE.invoices, invoices); }
+  function persistVouchers(){ safeWrite(STORE.vouchers, vouchers); }
 
   /* ---------- toast ---------- */
   var toastTimer=null;
@@ -675,6 +734,7 @@
       $("tab-"+btn.getAttribute("data-tab")).classList.add("active");
       if(btn.getAttribute("data-tab")==="catalog") renderCatalog();
       if(btn.getAttribute("data-tab")==="saved") renderSaved();
+      if(btn.getAttribute("data-tab")==="vouchers") renderVouchers();
       if(btn.getAttribute("data-tab")==="invoices"){ renderInvoices(); if(inv) renderInvItemSelect(); }
     });
   });
@@ -1417,10 +1477,244 @@
     r.readAsText(f);
   });
 
+  /* ---------- vouchers (Oni Philippines) ---------- */
+  // The Oni logo is drawn onto the voucher canvas; preload it so the first
+  // draw isn't blank, and redraw once it arrives.
+  var oniLogo = new Image(); var oniLogoReady=false;
+  oniLogo.onload=function(){ oniLogoReady=true; if(lastVoucher) drawVoucher(lastVoucher); };
+  oniLogo.src="oni-logo.png";
+  var lastVoucher=null; // the record currently shown in the preview canvas
+
+  function fmtPeso(n){
+    var v=Number(n)||0;
+    try{ return "₱"+v.toLocaleString("en-PH"); }catch(e){ return "₱"+v; }
+  }
+  function fmtDate(iso){
+    if(!iso) return "";
+    var p=iso.split("-"); if(p.length!==3) return iso;
+    var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return parseInt(p[2],10)+" "+months[parseInt(p[1],10)-1]+" "+p[0];
+  }
+  // Manual status wins; otherwise a past expiry counts as expired.
+  function effStatus(rec){
+    if(rec.status==="claimed") return "claimed";
+    if(rec.status==="expired") return "expired";
+    if(rec.expiry){
+      var d=new Date(rec.expiry+"T23:59:59");
+      if(!isNaN(d) && d<new Date()) return "expired";
+    }
+    return "active";
+  }
+
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function drawVoucher(rec){
+    lastVoucher=rec;
+    var cv=$("vCanvas"); if(!cv || !cv.getContext) return;
+    var ctx=cv.getContext("2d"); if(!ctx) return;
+    var W=cv.width, H=cv.height, cx=W/2;
+    var RED="#d62828", REDL="#e0554f", INK="#ffffff", MUT="#9a8b80";
+
+    // background: warm-tinted near-black with a soft red glow up top
+    var bg=ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,"#17100e"); bg.addColorStop(1,"#0b0b0b");
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    var glow=ctx.createRadialGradient(cx,230,40,cx,230,620);
+    glow.addColorStop(0,"rgba(214,40,40,.22)"); glow.addColorStop(1,"rgba(214,40,40,0)");
+    ctx.fillStyle=glow; ctx.fillRect(0,0,W,H);
+
+    // red frame
+    ctx.strokeStyle=RED; ctx.lineWidth=4;
+    roundRect(ctx,40,40,W-80,H-80,34); ctx.stroke();
+
+    ctx.textAlign="center"; ctx.textBaseline="alphabetic";
+
+    // logo on its own black panel (the logo's own black bg merges cleanly)
+    ctx.fillStyle="#000"; roundRect(ctx,cx-165,95,330,300,26); ctx.fill();
+    if(oniLogoReady){
+      ctx.drawImage(oniLogo, cx-150, 110, 270, 270);
+    } else {
+      ctx.fillStyle=RED; ctx.font="900 120px Arial, Helvetica, sans-serif";
+      ctx.fillText("ONI", cx, 290);
+    }
+
+    // PHILIPPINES wordmark
+    ctx.fillStyle=INK; ctx.font="800 46px Arial, Helvetica, sans-serif";
+    try{ ctx.letterSpacing="16px"; }catch(e){}
+    ctx.fillText("PHILIPPINES", cx+8, 470);
+    try{ ctx.letterSpacing="0px"; }catch(e){}
+
+    // divider
+    ctx.strokeStyle=RED; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(cx-230,512); ctx.lineTo(cx+230,512); ctx.stroke();
+
+    // "DISCOUNT VOUCHER"
+    ctx.fillStyle=REDL; ctx.font="800 34px Arial, Helvetica, sans-serif";
+    try{ ctx.letterSpacing="10px"; }catch(e){}
+    ctx.fillText("DISCOUNT VOUCHER", cx+5, 575);
+    try{ ctx.letterSpacing="0px"; }catch(e){}
+
+    // big value
+    ctx.fillStyle=INK; ctx.font="900 170px Arial, Helvetica, sans-serif";
+    ctx.fillText(fmtPeso(rec.price), cx, 735);
+    ctx.fillStyle=MUT; ctx.font="600 30px Arial, Helvetica, sans-serif";
+    try{ ctx.letterSpacing="8px"; }catch(e){}
+    ctx.fillText("VOUCHER VALUE", cx+6, 785);
+    try{ ctx.letterSpacing="0px"; }catch(e){}
+
+    // code ticket (dashed)
+    ctx.strokeStyle=RED; ctx.lineWidth=3;
+    if(ctx.setLineDash) ctx.setLineDash([14,10]);
+    roundRect(ctx,180,835,W-360,160,20); ctx.stroke();
+    if(ctx.setLineDash) ctx.setLineDash([]);
+    ctx.fillStyle=REDL; ctx.font="700 26px Arial, Helvetica, sans-serif";
+    try{ ctx.letterSpacing="6px"; }catch(e){}
+    ctx.fillText("CODE", cx, 885);
+    try{ ctx.letterSpacing="0px"; }catch(e){}
+    ctx.fillStyle=INK; ctx.font="900 66px 'Courier New', monospace";
+    ctx.fillText((rec.code||"").toUpperCase(), cx, 960);
+
+    // handle
+    var y=1070;
+    if(rec.handle){
+      ctx.fillStyle=INK; ctx.font="600 40px Arial, Helvetica, sans-serif";
+      ctx.fillText("For: "+rec.handle, cx, y); y+=70;
+    }
+    // expiry
+    ctx.fillStyle=REDL; ctx.font="700 36px Arial, Helvetica, sans-serif";
+    ctx.fillText(rec.expiry ? ("Valid until "+fmtDate(rec.expiry)) : "No expiry date", cx, y);
+
+    // footer
+    ctx.fillStyle=MUT; ctx.font="500 26px Arial, Helvetica, sans-serif";
+    ctx.fillText("Oni Philippines  ·  onibukiya.net", cx, H-80);
+
+    // status watermark for claimed / expired
+    var st=effStatus(rec);
+    if(st!=="active"){
+      ctx.save();
+      ctx.translate(cx,H/2); ctx.rotate(-20*Math.PI/180);
+      ctx.globalAlpha=0.16;
+      ctx.fillStyle = st==="claimed" ? REDL : "#c0c0c0";
+      ctx.font="900 150px Arial, Helvetica, sans-serif";
+      ctx.fillText(st.toUpperCase(), 0, 55);
+      ctx.restore();
+    }
+  }
+
+  function showVoucherPreview(rec){
+    $("vPreviewCard").classList.remove("hidden");
+    drawVoucher(rec);
+  }
+
+  $("vGenBtn").addEventListener("click", function(){
+    var code=$("vCode").value.trim();
+    var price=$("vPrice").value.trim();
+    if(!code){ toast("Enter a voucher code"); return; }
+    if(price==="" || isNaN(Number(price))){ toast("Enter a voucher value"); return; }
+    var rec={
+      code:code,
+      handle:$("vHandle").value.trim(),
+      price:Number(price),
+      expiry:$("vExpiry").value || "",
+      status:"active",
+      createdAt:new Date().toISOString()
+    };
+    // regenerating with an existing code updates that record instead of duplicating
+    var existing=null;
+    for(var i=0;i<vouchers.length;i++){
+      if((vouchers[i].code||"").toLowerCase()===code.toLowerCase()){ existing=vouchers[i]; break; }
+    }
+    if(existing){
+      existing.handle=rec.handle; existing.price=rec.price; existing.expiry=rec.expiry;
+      rec=existing; toast("Voucher updated");
+    } else {
+      rec.id=uid(); vouchers.unshift(rec); toast("Voucher saved");
+    }
+    persistVouchers();
+    showVoucherPreview(rec);
+    renderVouchers();
+    $("vPreviewCard").scrollIntoView({ behavior:"smooth", block:"start" });
+  });
+
+  $("vDownloadBtn").addEventListener("click", function(){
+    if(!lastVoucher) return;
+    var cv=$("vCanvas");
+    try{
+      var url=cv.toDataURL("image/png");
+      var a=el("a"); a.href=url; a.download="oni-voucher-"+slug(lastVoucher.code)+".png";
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ document.body.removeChild(a); }, 100);
+      toast("Image downloaded");
+    }catch(e){ toast("Couldn't export image"); }
+  });
+
+  function setVoucherStatus(rec, st){
+    rec.status=st; persistVouchers(); renderVouchers();
+    if(lastVoucher && lastVoucher.id===rec.id) drawVoucher(rec);
+  }
+
+  function renderVouchers(){
+    var box=$("vList"); clear(box);
+    if(!vouchers.length){ box.appendChild(el("div","empty","No vouchers generated yet.")); return; }
+    vouchers.forEach(function(rec, idx){
+      var st=effStatus(rec);
+      var wrap=el("div","vrec");
+      var top=el("div","top");
+      var grow=el("div","grow");
+      grow.appendChild(el("div","vcode", (rec.code||"").toUpperCase() + "  ·  " + fmtPeso(rec.price)));
+      var bits=[];
+      if(rec.handle) bits.push(rec.handle);
+      bits.push(rec.expiry ? ("exp "+fmtDate(rec.expiry)) : "no expiry");
+      grow.appendChild(el("div","vmeta", bits.join("   ·   ")));
+      top.appendChild(grow);
+      top.appendChild(el("span","vstat "+st, st));
+      wrap.appendChild(top);
+
+      var btns=el("div","btnrow");
+      var prev=el("button","btn sm","Preview"); prev.addEventListener("click", function(){
+        showVoucherPreview(rec); $("vPreviewCard").scrollIntoView({behavior:"smooth",block:"start"});
+      });
+      var png=el("button","btn sm","PNG"); png.addEventListener("click", function(){
+        showVoucherPreview(rec); $("vDownloadBtn").click();
+      });
+      btns.appendChild(prev); btns.appendChild(png);
+      if(rec.status!=="claimed"){
+        var cl=el("button","btn sm","✓ Claimed"); cl.addEventListener("click", function(){ setVoucherStatus(rec,"claimed"); });
+        btns.appendChild(cl);
+      }
+      if(rec.status!=="expired"){
+        var ex=el("button","btn sm","⌛ Expired"); ex.addEventListener("click", function(){ setVoucherStatus(rec,"expired"); });
+        btns.appendChild(ex);
+      }
+      if(rec.status!=="active"){
+        var ac=el("button","btn sm ghost","↻ Active"); ac.addEventListener("click", function(){ setVoucherStatus(rec,"active"); });
+        btns.appendChild(ac);
+      }
+      var del=el("button","btn sm ghost danger","Delete");
+      del.addEventListener("click", function(){
+        if(!confirm("Delete voucher "+(rec.code||"").toUpperCase()+"?")) return;
+        vouchers.splice(idx,1); persistVouchers();
+        if(lastVoucher && lastVoucher.id===rec.id){ lastVoucher=null; $("vPreviewCard").classList.add("hidden"); }
+        renderVouchers();
+      });
+      btns.appendChild(del);
+      wrap.appendChild(btns);
+      box.appendChild(wrap);
+    });
+  }
+
   /* ---------- full backup ---------- */
   $("exportAllBtn").addEventListener("click", function(){
     var payload={ kind:"oni-backup", version:1, exportedAt:new Date().toISOString(),
-      catalog:catalog, orders:orders, invoices:invoices, settings:settings };
+      catalog:catalog, orders:orders, invoices:invoices, vouchers:vouchers, settings:settings };
     download("oni-order-builder-backup-"+new Date().toISOString().slice(0,10)+".json", payload);
     toast("Backup saved");
   });
@@ -1438,26 +1732,29 @@
     r.onload=function(){
       try{
         var data=JSON.parse(r.result);
-        if(!data || (!data.catalog && !data.orders && !data.invoices)){ toast("Not a valid backup file"); $("fileBackup").value=""; return; }
+        if(!data || (!data.catalog && !data.orders && !data.invoices && !data.vouchers)){ toast("Not a valid backup file"); $("fileBackup").value=""; return; }
         if(pendingMode==="replace"){
           catalog = Array.isArray(data.catalog)? data.catalog : [];
           orders  = Array.isArray(data.orders)? data.orders : [];
           invoices = Array.isArray(data.invoices)? data.invoices : [];
+          vouchers = Array.isArray(data.vouchers)? data.vouchers : [];
           if(data.settings) settings = data.settings;
         } else {
           mergeCatalog(data.catalog||[]);
           mergeOrders(data.orders||[]);
           mergeInvoices(data.invoices||[]);
+          mergeVouchers(data.vouchers||[]);
         }
         // ensure ids exist
         catalog.forEach(function(c){ if(!c.id) c.id=uid(); if(!c.sizes)c.sizes=[]; if(!c.colours)c.colours=[]; });
         orders.forEach(function(o){ if(!o.id) o.id=uid(); });
+        vouchers.forEach(function(v){ if(!v.id) v.id=uid(); if(!v.status) v.status="active"; });
         invoices = invoices.filter(function(v){ return v && typeof v==="object"; }).map(normalizeInvoice);
         fillInvoiceSettings();
-        persistCatalog(); persistOrders(); persistInvoices(); persistSettings();
+        persistCatalog(); persistOrders(); persistInvoices(); persistVouchers(); persistSettings();
         applyTheme(settings.theme||"dark");
         $("setShop").value=settings.shopName; $("setHandle").value=settings.shopHandle; $("setPrefix").value=settings.invPrefix;
-        renderItemSelect(); renderCatalog(); renderSaved(); renderInvoices();
+        renderItemSelect(); renderCatalog(); renderSaved(); renderInvoices(); renderVouchers();
         toast(pendingMode==="replace" ? "Backup restored" : "Backup merged in");
       }catch(err){ toast("Couldn't read that backup"); }
       $("fileBackup").value="";
@@ -1493,6 +1790,17 @@
       if(!dup) orders.unshift(inc);
     });
   }
+  function mergeVouchers(incoming){
+    incoming.forEach(function(inc){
+      if(!inc) return;
+      var dup=false;
+      for(var i=0;i<vouchers.length;i++){
+        if((inc.id && vouchers[i].id===inc.id) ||
+           (inc.code && (vouchers[i].code||"").toLowerCase()===inc.code.toLowerCase())){ dup=true; break; }
+      }
+      if(!dup) vouchers.unshift(inc);
+    });
+  }
   // Same invoice (by id) already here: keep whichever was edited last.
   function mergeInvoices(incoming){
     incoming.forEach(function(inc){
@@ -1511,15 +1819,16 @@
   $("resetBtn").addEventListener("click", function(){
     if(!confirm("Delete ALL items, saved orders and invoices from this app? Your downloaded backup files are not affected.")) return;
     if(!confirm("Really delete everything?")) return;
-    try{ localStorage.removeItem(STORE.catalog); localStorage.removeItem(STORE.orders); localStorage.removeItem(STORE.settings); localStorage.removeItem(STORE.invoices); }catch(e){}
-    catalog=seedCatalog(); orders=[]; invoices=[]; settings={toEmail:"bukiyaorder@gmail.com",ccEmail:"onibukiya@gmail.com",fromName:"",theme:settings.theme||"dark"};
+    try{ localStorage.removeItem(STORE.catalog); localStorage.removeItem(STORE.orders); localStorage.removeItem(STORE.settings); localStorage.removeItem(STORE.invoices); localStorage.removeItem(STORE.vouchers); }catch(e){}
+    catalog=seedCatalog(); orders=[]; invoices=[]; vouchers=[]; settings={toEmail:"bukiyaorder@gmail.com",ccEmail:"onibukiya@gmail.com",fromName:"",theme:settings.theme||"dark"};
     fillInvoiceSettings();
-    persistCatalog(); persistOrders(); persistInvoices(); persistSettings();
+    persistCatalog(); persistOrders(); persistInvoices(); persistVouchers(); persistSettings();
     draft={ id:uid(), name:"", lines:[] };
     inv=null; invDirty=false; showInvView(false);
+    lastVoucher=null; $("vPreviewCard").classList.add("hidden");
     $("setShop").value=settings.shopName; $("setHandle").value=settings.shopHandle; $("setPrefix").value=settings.invPrefix;
     $("inShipTo").value=""; $("inNotes").value=""; $("emailCard").classList.add("hidden");
-    renderItemSelect(); renderLines(); renderCatalog(); renderSaved(); renderInvoices();
+    renderItemSelect(); renderLines(); renderCatalog(); renderSaved(); renderInvoices(); renderVouchers();
     toast("Reset to defaults");
   });
 
@@ -1529,6 +1838,7 @@
   window.addEventListener("storage", function(e){
     if(e.key===STORE.catalog){ catalog=safeRead(STORE.catalog, catalog) || []; renderItemSelect(); renderCatalog(); if(inv) renderInvItemSelect(); }
     else if(e.key===STORE.orders){ orders=safeRead(STORE.orders, orders) || []; renderSaved(); }
+    else if(e.key===STORE.vouchers){ vouchers=safeRead(STORE.vouchers, vouchers) || []; renderVouchers(); }
     else if(e.key===STORE.invoices){
       invoices=(safeRead(STORE.invoices, invoices) || []).filter(function(v){ return v && typeof v==="object"; }).map(normalizeInvoice);
       renderInvoices();
@@ -1546,6 +1856,7 @@
   renderItemSelect();
   renderLines();
   renderInvoices();
+  renderVouchers();
 
   /* ---------- service worker (PWA) ---------- */
   // House App's shared worker. Only over http(s) — opened as a local file
