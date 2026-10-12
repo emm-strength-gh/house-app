@@ -14,7 +14,7 @@
  * them up.
  */
 
-var CACHE_VERSION = "v6";
+var CACHE_VERSION = "v7";
 var CACHE_SHELL = "house-app-shell-" + CACHE_VERSION;
 
 // Sign-in + sync library, loaded by cloud.js. Version-pinned on jsdelivr, so
@@ -32,6 +32,7 @@ var SHELL_ASSETS = [
   "./expenses.html",
   "./account.html",
   "./cloud.js",
+  "./oni-logo.png",
   "./manifest.webmanifest",
   "./icons/house.svg",
   "./icons/house-32.png",
