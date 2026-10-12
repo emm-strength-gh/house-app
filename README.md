@@ -14,6 +14,12 @@ growing set of household tools:
   discount. **Preview invoice** shows it full-screen on light "paper", shrunk
   to fit one phone screen so a single screenshot can be sent to the customer.
   Invoices ride in the same **Save backup** file as everything else.
+  **Vouchers** generates an *Oni Philippines* discount voucher: enter a code,
+  an Instagram/Facebook handle, a value in ₱ and an expiry date, and it draws
+  an Oni-branded voucher (real logo, black/red theme) on a canvas to download
+  as a PNG. Each generated voucher is kept in a records list and can be marked
+  **Claimed** or **Expired** (a past expiry shows as Expired automatically);
+  vouchers ride in the same backup file too.
 - **Grocery Planner** (`grocery.html`) — an Item Manager of groceries with
   peso prices, and a Planner that builds a shopping list with quantities,
   line totals and a running total. Can show everything in British pounds
@@ -154,8 +160,8 @@ before. Signed in, `cloud.js` uploads each change and pulls everyone else's.
 Energy Tracker: `energy.bills.v1`, `energy.forecast.v1`, `energy.groups.v1`,
 `energy.theme.v1`, `energy.savedAt.v1`, `energy.summary.v1` (snapshot the home
 widget reads). Oni Orders: `oni.catalog.v1` (item `price` in ₱ is optional), `oni.orders.v1`,
-`oni.invoices.v1`, `oni.settings.v1` (also shop name/handle, invoice number
-prefix and the last invoice message). Grocery Planner:
+`oni.invoices.v1`, `oni.vouchers.v1`, `oni.settings.v1` (also shop name/handle,
+invoice number prefix and the last invoice message). Grocery Planner:
 `grocery.items.v1`, `grocery.plan.v1`, `grocery.settings.v1`, `grocery.theme.v1`,
 `grocery.tab.v1`. To Do: `todo.items.v1`, `todo.theme.v1`, `todo.tab.v1`.
 Expenses: `expenses.items.v1` (amounts in centavos), `expenses.categories.v1`,
