@@ -79,6 +79,12 @@
           <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
           <span class="spin" aria-hidden="true"></span>
         </button>
+        <!-- Face ID / Touch ID / Windows Hello, once turned on for this device -->
+        <button class="btn alt hidden" type="button" id="bioBtn">
+          <svg class="arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M9 9.5v1M15 9.5v1M12 9.5V13h-1"/><path d="M9.5 16a4 4 0 0 0 5 0"/></svg>
+          <span id="bioLabel">Unlock with Face ID</span>
+          <span class="spin" aria-hidden="true"></span>
+        </button>
       </form>
       <div class="links">
         <button class="link-btn" type="button" id="forgotBtn">Forgot it?</button>
@@ -107,6 +113,9 @@
     <button class="btn hidden" id="openBtn2" title="Load another file">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0L7 8m5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
       <span class="lbl">Load file</span>
+    </button>
+    <button class="btn icon-only hidden" id="bioToggle" title="Face ID" aria-label="Face ID" aria-pressed="false">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M9 9.5v1M15 9.5v1M12 9.5V13h-1"/><path d="M9.5 16a4 4 0 0 0 5 0"/></svg>
     </button>
     <button class="btn icon-only" id="lockBtn" title="Lock" aria-label="Lock">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>

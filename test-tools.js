@@ -108,7 +108,34 @@ function ppServer() {
     },
   };
 }
+// A device's built-in authenticator (Face ID and the like) as WebAuthn sees it:
+// each passkey keeps a secret, and PRF answers HMAC(secret, salt) once the
+// person passes. `dev.cancel` is the person cancelling; `dev.prf` false is a
+// browser without PRF. Passkeys live in `dev.creds`, so they outlast a reload.
+function fakeAuthenticator(w, dev) {
+  const nc = require("crypto");
+  const no = msg => new w.DOMException(msg, "NotAllowedError");
+  w.PublicKeyCredential = { isUserVerifyingPlatformAuthenticatorAvailable: async () => true };
+  Object.defineProperty(w.navigator, "credentials", { configurable: true, value: {
+    async create({ publicKey: o }) {
+      if (dev.cancel) throw no("cancelled");
+      const id = nc.randomBytes(16);
+      dev.creds.set(id.toString("base64"), nc.randomBytes(32));
+      dev.created = o;
+      return { rawId: new Uint8Array(id).buffer, getClientExtensionResults: () => ({ prf: dev.prf === false ? {} : { enabled: true } }) };
+    },
+    async get({ publicKey: o }) {
+      if (dev.cancel) throw no("cancelled");
+      const secret = dev.creds.get(Buffer.from(o.allowCredentials[0].id).toString("base64"));
+      if (!secret) throw no("no passkey on this device");
+      dev.uses = (dev.uses || 0) + 1;
+      const first = new Uint8Array(nc.createHmac("sha256", secret).update(Buffer.from(o.extensions.prf.eval.first)).digest()).buffer;
+      return { getClientExtensionResults: () => ({ prf: { results: { first } } }) };
+    },
+  } });
+}
 // powerpass.html on a device: its own localStorage (kept across reopen), the real powerpass.js, real Web Crypto.
+// `opts.device` gives it a Face ID authenticator (see fakeAuthenticator).
 async function openPP(srv, user, storage = {}, opts = {}) {
   const html = read("powerpass.html")
     .replace('<script src="vendor/supabase.js"></script>', "")
@@ -124,6 +151,7 @@ async function openPP(srv, user, storage = {}, opts = {}) {
       for (const [k, v] of Object.entries(storage)) w.localStorage.setItem(k, v);
       Object.defineProperty(w.crypto, "subtle", { value: require("crypto").webcrypto.subtle });
       w.__powerpassCloud = api || { session: async () => null };
+      if (opts.device) fakeAuthenticator(w, opts.device);
       w.matchMedia = w.matchMedia || (() => ({ matches: false, addEventListener() {}, addListener() {} }));
       w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
       w.HTMLDialogElement.prototype.close = function () { if (this.hasAttribute("open")) { this.removeAttribute("open"); this.dispatchEvent(new w.Event("close")); } };
@@ -496,6 +524,78 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   pg2 = await openPP(pps, PP_ME, pg2.storageNow());
   check("...and the other device, reopened, drops its old copy and asks to create one too", /Create/.test(pg2.d.getElementById("gHeading").textContent)
     && !/Shop|offline/.test(JSON.stringify(Object.values(pg2.storageNow()))));
+
+  console.log("\nPowerPass: Face ID");
+  const fsrv = ppServer(), FACE = { id: "33333333-3333-4333-8333-333333333333", email: "face@test.invalid" };
+  const phone = { creds: new Map() };
+  const dlgOpen = p => p.d.getElementById("confirmDlg").hasAttribute("open");
+  const toastText = p => p.d.getElementById("toast").textContent;
+  const bioCopy = p => JSON.parse(p.storageNow()["powerpass.cache.v1." + FACE.id] || "{}").bio;
+  check("no authenticator: Face ID never shows", !pg.visible("bioBtn") && pg.d.getElementById("bioToggle").classList.contains("hidden"));
+  let fp = await openPP(fsrv, FACE, {}, { device: phone });
+  check("with one, there's still no Face ID button before it's turned on", fp.visible("gLock") && !fp.visible("bioBtn"));
+  await fp.master("face id master pw", "face id master pw");
+  await fp.until(() => dlgOpen(fp));
+  check("after the master password opens the vault, it offers Face ID", fp.visible("app") && dlgOpen(fp) && /Unlock with/.test(fp.d.getElementById("cTitle").textContent));
+  fp.d.getElementById("cOk").click();
+  await fp.until(() => /is on for this device/.test(toastText(fp)));
+  check("...turned on: a passkey that needs the person (user verification), with PRF", phone.creds.size === 1
+    && phone.created.authenticatorSelection.userVerification === "required" && !!phone.created.extensions.prf);
+  check("...this device keeps a sealed copy of the vault key, never the password", !!(bioCopy(fp) && bioCopy(fp).data) && !/face id master pw/.test(JSON.stringify(fp.storageNow())));
+  check("...and the toolbar shows it's on", fp.visible("bioToggle") && fp.d.getElementById("bioToggle").classList.contains("on"));
+  await fp.pp.importText(EXPORT_1P);
+  fp.d.getElementById("lockBtn").click();
+  check("locked: Unlock with Face ID is offered", fp.visible("gLock") && fp.visible("bioBtn") && fp.rows() === 0);
+  phone.cancel = true;
+  fp.d.getElementById("bioBtn").click();
+  await sleep(50);
+  check("cancelling Face ID leaves it locked, quietly, button still there", fp.visible("gLock") && fp.visible("bioBtn") && fp.d.getElementById("lockError").classList.contains("hidden"));
+  phone.cancel = false;
+  fp.d.getElementById("bioBtn").click();
+  await fp.until(() => fp.visible("app"));
+  check("Face ID opens the vault, every login there", fp.visible("app") && fp.rows() === 2);
+  await fp.pp.sync();
+
+  fp = await openPP(fsrv, FACE, fp.storageNow(), { device: phone });
+  check("reopened: Face ID is on the lock screen", fp.visible("bioBtn"));
+  fp.d.getElementById("bioBtn").click();
+  await fp.until(() => fp.visible("app"));
+  check("...and opens it", fp.visible("app") && fp.rows() === 2);
+  fp.d.getElementById("lockBtn").click();
+  await fp.master("face id master pw");
+  await sleep(50);
+  check("the master password still works, and Face ID isn't offered again", fp.visible("app") && !dlgOpen(fp));
+
+  const stolen = await openPP(fsrv, FACE, fp.storageNow(), { device: { creds: new Map() } });
+  stolen.d.getElementById("bioBtn").click();
+  await sleep(100);
+  check("this device's storage, copied elsewhere, can't be opened without its passkey", stolen.visible("gLock") && !stolen.visible("app"));
+
+  fp.d.getElementById("bioToggle").click();
+  await sleep(0);
+  fp.d.getElementById("cOk").click();
+  await fp.until(() => /is off/.test(toastText(fp)));
+  fp.d.getElementById("lockBtn").click();
+  check("turned off from the toolbar: the sealed key is gone, the lock screen asks for the password only", !bioCopy(fp) && fp.visible("gLock") && !fp.visible("bioBtn"));
+
+  const laptop = { creds: new Map() };
+  const lp = await openPP(fsrv, FACE, {}, { device: laptop });
+  await lp.master("face id master pw");
+  await lp.until(() => dlgOpen(lp));
+  lp.d.getElementById("cCancel").click();
+  lp.d.getElementById("lockBtn").click();
+  await lp.master("face id master pw");
+  await sleep(50);
+  check("Not now: no passkey made, and not asked again on that device", laptop.creds.size === 0 && lp.visible("app") && !dlgOpen(lp));
+
+  const noPrf = { creds: new Map(), prf: false };
+  const op = await openPP(fsrv, FACE, {}, { device: noPrf });
+  await op.master("face id master pw");
+  await op.until(() => dlgOpen(op));
+  op.d.getElementById("cOk").click();
+  await op.until(() => /can’t unlock/.test(toastText(op)));
+  check("a browser without PRF says it can't, and keeps nothing", /can’t unlock/.test(toastText(op)) && !bioCopy(op));
+  check("Face ID: no errors", [fp, stolen, lp, op].every(p => p.errors.length === 0), [fp, stolen, lp, op].flatMap(p => p.errors).join("\n"));
 
   pg = await openPP(ppServer(), PP_ME, {}, { member: false });
   check("an account not on the access list is told so", pg.visible("gNoAccess") && /access list/.test(pg.text()));
