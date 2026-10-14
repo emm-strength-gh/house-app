@@ -165,3 +165,76 @@ begin
     end loop;
   end if;
 end $$;
+
+---------------------------------------------------------------- PowerPass
+-- Logins for PowerPass (powerpass.html here, and the standalone PowerPass
+-- app, which signs in to this same project). Unlike house_items these are
+-- NOT household data: every row belongs to one account, and nobody else, the
+-- owner included, can read it. Only accounts on the access list can have any.
+--
+-- The server only ever holds ciphertext. Each login is encrypted in the
+-- browser (AES-GCM) with a key derived from the person's master password
+-- (PBKDF2), which never leaves their device. So even someone who can read the
+-- database (a project admin, a leaked backup) sees no passwords, and a
+-- forgotten master password can't be recovered by anyone.
+
+-- One per person: what's needed to turn the master password back into the
+-- key. `check_*` is a known text encrypted with that key, so a wrong master
+-- password is caught before anything else is decrypted.
+create table if not exists public.powerpass_vaults (
+  user_id    uuid primary key default auth.uid(),
+  kdf        text not null check (kdf = 'PBKDF2-SHA256'),
+  iterations integer not null check (iterations between 100000 and 10000000),
+  salt       text not null check (char_length(salt) between 16 and 100),
+  check_iv   text not null check (char_length(check_iv) between 12 and 40),
+  check_data text not null check (char_length(check_data) between 16 and 200),
+  created_at timestamptz not null default now()
+);
+
+-- One row per login. `data` is the encrypted login, `iv` its nonce. Deleted
+-- logins are flagged (data emptied) so other devices see they were removed.
+create table if not exists public.powerpass_items (
+  user_id    uuid not null default auth.uid(),
+  id         text not null check (char_length(id) between 1 and 100),
+  iv         text not null default '' check (char_length(iv) <= 40),
+  data       text not null default '' check (char_length(data) <= 20000),
+  deleted    boolean not null default false,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
+);
+create index if not exists powerpass_items_updated_idx on public.powerpass_items (user_id, updated_at);
+
+-- The real caller and the server's clock, whatever the client sent.
+create or replace function private.powerpass_owner() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  new.user_id := auth.uid();
+  if tg_table_name = 'powerpass_items' then new.updated_at := now(); end if;
+  return new;
+end $$;
+
+drop trigger if exists powerpass_vaults_owner on public.powerpass_vaults;
+create trigger powerpass_vaults_owner before insert on public.powerpass_vaults
+  for each row execute function private.powerpass_owner();
+drop trigger if exists powerpass_items_owner on public.powerpass_items;
+create trigger powerpass_items_owner before insert or update on public.powerpass_items
+  for each row execute function private.powerpass_owner();
+
+alter table public.powerpass_vaults enable row level security;
+alter table public.powerpass_items enable row level security;
+
+-- A vault is never edited in place: changing it would strand every login
+-- encrypted under it. Deleting it (with the logins) is how someone who forgot
+-- their master password starts again.
+revoke all on public.powerpass_vaults, public.powerpass_items from anon, authenticated;
+grant select, insert, delete on public.powerpass_vaults to authenticated;
+grant select, insert, update, delete on public.powerpass_items to authenticated;
+
+drop policy if exists powerpass_vaults_own on public.powerpass_vaults;
+create policy powerpass_vaults_own on public.powerpass_vaults for all to authenticated
+  using (user_id = (select auth.uid()) and (select private.is_member()))
+  with check (user_id = (select auth.uid()) and (select private.is_member()));
+drop policy if exists powerpass_items_own on public.powerpass_items;
+create policy powerpass_items_own on public.powerpass_items for all to authenticated
+  using (user_id = (select auth.uid()) and (select private.is_member()))
+  with check (user_id = (select auth.uid()) and (select private.is_member()));

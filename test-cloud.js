@@ -129,7 +129,9 @@ async function pgServer() {
     return api;
   }
   const sql = async (q, args) => plain((await db.query(q, args)).rows);
-  return { db, device, sql, userFor };
+  // Raw SQL as a signed-in user, for tables the sync engine doesn't use.
+  const as = async (uid, q, args) => plain((await asUser(uid, tx => tx.query(q, args))).rows);
+  return { db, device, sql, as, userFor };
 }
 
 // A browser on some device: its own localStorage, the real cloud.js.
@@ -395,6 +397,51 @@ const names = list => (list || []).map(r => r.title || r.name || r.item || r.dat
   check("signed out: the app keeps working on the device, nothing uploads", phone.api.state.upserts === ups && phone.HC.status().user === null);
   await phone.HC.verifyCode(OWNER_EMAIL, GOOD_CODE); await phone.sync(); await tablet.sync();
   check("signing back in picks up where it left off", tablet.get("todo.items.v1").some(t => t.id === "so"));
+
+  console.log("\nPowerPass: each person's own encrypted logins");
+  const ppOwner = await server.userFor(OWNER_EMAIL);
+  await sql("insert into house_members (email) values ('pp-member@test.invalid') on conflict do nothing");
+  const ppMember = await server.userFor("pp-member@test.invalid"), ppStranger = await server.userFor("pp-stranger@test.invalid");
+  const vault = (uid, forged) => server.as(uid, `insert into powerpass_vaults (user_id, kdf, iterations, salt, check_iv, check_data)
+    values ($1, 'PBKDF2-SHA256', 600000, 'c2FsdHNhbHRzYWx0c2FsdA==', 'aXZpdml2aXZpdml2', 'Y2lwaGVydGV4dGNpcGhlcnRleHQ=')`, [forged || uid]);
+  const item = (uid, id, data, at) => server.as(uid, `insert into powerpass_items (user_id, id, iv, data, updated_at) values ($1, $2, 'aXZpdml2aXZpdml2', $3, $4)
+    on conflict (user_id, id) do update set data = excluded.data, updated_at = excluded.updated_at`, [uid, id, data, at || "2000-01-01T00:00:00Z"]);
+  const fails = async fn => { try { await fn(); return null; } catch (e) { return e.message; } };
+
+  let anonPP = null;
+  try { await db.transaction(async tx => { await tx.query("set local role anon"); await tx.query("select * from public.powerpass_items"); }); }
+  catch (e) { anonPP = e.message; }
+  check("signed out: no PowerPass data", /permission denied/.test(anonPP || ""), anonPP);
+  check("a member can set up a vault", (await fails(() => vault(ppMember))) === null);
+  check("the owner too, even naming someone else as its owner...", (await fails(() => vault(ppOwner, ppMember))) === null);
+  check("...which the server ignores: each vault is the caller's own", (await sql("select count(*)::int n from powerpass_vaults where user_id = $1", [ppOwner]))[0].n === 1);
+  await item(ppOwner, "o1", "b3duZXItY2lwaGVydGV4dA==");
+  await item(ppMember, "m1", "bWVtYmVyLWNpcGhlcnRleHQ=");
+  const mine = await server.as(ppMember, "select id from powerpass_items");
+  check("unlike household data, a member sees only their own logins", mine.length === 1 && mine[0].id === "m1", JSON.stringify(mine));
+  check("...and only their own vault", (await server.as(ppMember, "select user_id from powerpass_vaults")).every(v => v.user_id === ppMember));
+  check("the owner can't read a member's logins either", !(await server.as(ppOwner, "select id from powerpass_items")).some(r => r.id === "m1"));
+  await server.as(ppOwner, "update powerpass_items set data = 'aGFja2Vk' where id = 'm1'");
+  await server.as(ppOwner, "delete from powerpass_items where id = 'm1'");
+  check("...nor change or delete them", (await sql("select data from powerpass_items where id = 'm1'"))[0].data === "bWVtYmVyLWNpcGhlcnRleHQ=");
+  check("the server stamps the time, whatever the device says", (await sql("select updated_at from powerpass_items where id = 'o1'"))[0].updated_at > "2020");
+  let ppr = await fails(() => server.as(ppMember, "update powerpass_vaults set salt = 'b3RoZXJzYWx0b3RoZXJzYWx0' where user_id = $1", [ppMember]));
+  check("a vault can't be edited in place (it would strand every login)", /permission denied/.test(ppr || ""), ppr);
+  ppr = await fails(() => vault(ppStranger));
+  check("an account not on the access list can't have a vault", /row-level security/.test(ppr || ""), ppr);
+  ppr = await fails(() => item(ppStranger, "s1", "eA=="));
+  check("...or any logins", /row-level security/.test(ppr || ""), ppr);
+  ppr = await fails(() => item(ppMember, "big", "x".repeat(20001)));
+  check("one login can't be huge", /check constraint/.test(ppr || ""), ppr);
+  await server.as(ppMember, "delete from powerpass_items where user_id = $1", [ppMember]);
+  await server.as(ppMember, "delete from powerpass_vaults where user_id = $1", [ppMember]);
+  check("starting again (forgot the master password) deletes your own vault and logins",
+    (await sql("select count(*)::int n from powerpass_items where user_id = $1", [ppMember]))[0].n === 0
+    && (await sql("select count(*)::int n from powerpass_vaults where user_id = $1", [ppMember]))[0].n === 0
+    && (await sql("select count(*)::int n from powerpass_items where user_id = $1", [ppOwner]))[0].n === 1);
+  await vault(ppMember);
+  await sql("delete from house_members where email = 'pp-member@test.invalid'");
+  check("taken off the access list, a member can't reach even their own vault", (await server.as(ppMember, "select * from powerpass_vaults")).length === 0);
 
   console.log("\nLive updates");
   const a = await browser(server, "live-a", {}, { live: true }), b = await browser(server, "live-b", {}, { live: true });

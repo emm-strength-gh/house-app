@@ -10,6 +10,7 @@
  *   grocery-* the Grocery Planner app tile
  *   todo-*    the To Do app tile
  *   expenses-* the Expenses app tile
+ *   powerpass-* the PowerPass app tile
  *
  * Variants:
  *   *-180.png           apple-touch-icon: full-bleed square, iOS rounds it itself
@@ -89,6 +90,17 @@ var ICONS = {
       { rect: [0.56, 0.62, 0.08, 0.06, 0.03], color: "#7fa1bd", alpha: 0.8 }
     ],
     scaleAny: 0.95, scaleMask: 0.78
+  },
+  powerpass: {
+    // A padlock: the shackle is a ring whose lower half hides behind the body.
+    bg: ["#6d6af7", "#3b2fc9"],
+    shapes: [
+      { ring: [0.50, 0.40, 0.165, 0.18, 0.07], color: "#ffffff" },
+      { rect: [0.26, 0.44, 0.48, 0.38, 0.08], color: "#ffffff" },
+      { rect: [0.455, 0.545, 0.09, 0.09, 0.045], color: "#3b2fc9" },
+      { rect: [0.477, 0.60, 0.046, 0.12, 0.023], color: "#3b2fc9" }
+    ],
+    scaleAny: 0.92, scaleMask: 0.74
   },
   cloud: {
     // Account & sync: a cloud built from three circles on a flat base.
