@@ -19,6 +19,11 @@
  * stay in this page's memory, gone on Lock, reload or after five minutes in
  * the background. Rows belong to one account: not shared with the household.
  *
+ * Face ID (optional, per device; Touch ID or Windows Hello elsewhere): a
+ * passkey with the WebAuthn PRF extension hands back the same secret each
+ * time the person passes the check. That secret, never stored, seals a copy
+ * of the vault key kept with this device's copy. See "Face ID" below.
+ *
  * Offline: localStorage holds the same ciphertext as a working copy, so the
  * vault opens and takes changes offline. Changes wait in `pending` and are
  * uploaded later; a pull never overwrites a login with a change still waiting.
@@ -248,11 +253,13 @@
     return crypto.subtle;
   }
 
+  // Extractable so Face ID can seal a copy of it. No weaker: while unlocked it
+  // sits in this page's memory, which can decrypt every login anyway.
   async function deriveKey(password, vault) {
     const base = await subtle().importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveKey']);
     return subtle().deriveKey(
       { name: 'PBKDF2', hash: 'SHA-256', salt: b64.decode(vault.salt), iterations: vault.iterations },
-      base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+      base, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
   }
 
   // `aad` ties a ciphertext to its place (e.g. its row id), so rows can't be swapped around.
@@ -266,6 +273,97 @@
     return decoder.decode(pt);
   }
   const itemAad = id => 'login:' + id;
+
+  /* ================================================================ Face ID */
+  // A passkey on this device (Face ID, Touch ID, Windows Hello) whose PRF
+  // extension returns 32 secret bytes for a given salt, only after the person
+  // passes the check. HKDF turns them into a key that seals the vault key; the
+  // sealed copy is `cache.bio`, bound to this account and vault. The device
+  // never holds anything that opens the vault on its own, and the copy goes
+  // when the vault is reset, on sign-out, or when turned off.
+  //   cache.bio = { cred, salt, iv, data }   (base64)
+
+  const isCancel = e => !!e && (e.name === 'NotAllowedError' || e.name === 'AbortError');
+  const bioAad = () => 'bio:' + me.id + ':' + cache.vault.check_data;
+
+  // A user-verifying authenticator built into this device, and PRF unless the
+  // browser says outright it has none (older ones can't say; creating tells).
+  async function bioAvailable() {
+    const PKC = window.PublicKeyCredential;
+    if (!PKC || !navigator.credentials || !PKC.isUserVerifyingPlatformAuthenticatorAvailable) return false;
+    try {
+      if (PKC.getClientCapabilities) {
+        const caps = await PKC.getClientCapabilities();
+        if (caps && caps['extension:prf'] === false) return false;
+      }
+      return await PKC.isUserVerifyingPlatformAuthenticatorAvailable();
+    } catch (_) { return false; }
+  }
+
+  function bioName() {
+    const ua = navigator.userAgent || '';
+    if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'Face ID';
+    if (/Macintosh/.test(ua)) return 'Touch ID';
+    if (/Windows/.test(ua)) return 'Windows Hello';
+    return 'fingerprint or face';
+  }
+
+  async function bioWrapKey(secret) {
+    const base = await subtle().importKey('raw', secret, 'HKDF', false, ['deriveKey']);
+    return subtle().deriveKey(
+      { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: encoder.encode('powerpass-bio-v1') },
+      base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+
+  // Asks for Face ID and returns the passkey's secret for `salt`.
+  async function bioSecret(credId, salt) {
+    const a = await navigator.credentials.get({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials: [{ type: 'public-key', id: credId }],
+      userVerification: 'required',
+      timeout: 60000,
+      extensions: { prf: { eval: { first: salt } } },
+    } });
+    const r = (a.getClientExtensionResults().prf || {}).results;
+    if (!r || !r.first) throw Object.assign(new Error('No PRF result'), { code: 'unsupported' });
+    return new Uint8Array(r.first);
+  }
+
+  // Makes the passkey and seals `key` (the vault key) with its secret.
+  async function bioCreate(key) {
+    const salt = crypto.getRandomValues(new Uint8Array(32));
+    const cred = await navigator.credentials.create({ publicKey: {
+      rp: { name: 'PowerPass' },
+      // Per home: both share this site, and one handle would replace the other's passkey.
+      user: { id: encoder.encode(CFG.mode + ':' + me.id), name: me.email || 'PowerPass',
+              displayName: CFG.mode === 'house' ? 'PowerPass (House App)' : 'PowerPass' },
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', residentKey: 'preferred', userVerification: 'required' },
+      timeout: 60000,
+      extensions: { prf: { eval: { first: salt } } },
+    } });
+    const credId = new Uint8Array(cred.rawId);
+    const prf = cred.getClientExtensionResults().prf || {};
+    let secret = prf.results && prf.results.first ? new Uint8Array(prf.results.first) : null;
+    if (!secret && !prf.enabled) throw Object.assign(new Error('No PRF'), { code: 'unsupported' });
+    // Some browsers only give the secret on use, not on creation: a second check.
+    if (!secret) secret = await bioSecret(credId, salt);
+    const raw = new Uint8Array(await subtle().exportKey('raw', key));
+    const box = await seal(await bioWrapKey(secret), b64.encode(raw), bioAad());
+    return { cred: b64.encode(credId), salt: b64.encode(salt), iv: box.iv, data: box.data };
+  }
+
+  // Face ID -> the vault key, checked against the vault like a master password.
+  async function bioOpen(b) {
+    const secret = await bioSecret(b64.decode(b.cred), b64.decode(b.salt));
+    const raw = b64.decode(await unseal(await bioWrapKey(secret), b, bioAad()));
+    const key = await subtle().importKey('raw', raw, 'AES-GCM', true, ['encrypt', 'decrypt']);
+    if (await unseal(key, { iv: cache.vault.check_iv, data: cache.vault.check_data }, 'check') !== CHECK_TEXT) {
+      throw new Error('Not this vault’s key');
+    }
+    return key;
+  }
 
   /* ================================================================ cloud */
 
@@ -329,7 +427,7 @@
   }
 
   /* ================================================================ this device's copy */
-  // { user, member, vault, rows: { id: { iv, data, deleted } }, pending: { id: 1 }, cursor, lastSync, lastError }
+  // { user, member, vault, rows: { id: { iv, data, deleted } }, pending: { id: 1 }, cursor, lastSync, lastError, bio, bioAsked }
   // Ciphertext only, like the server. One per account, so two people on one
   // device never see each other's.
 
@@ -343,7 +441,7 @@
     try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (_) { return false; }
   }
   function emptyCache(user) {
-    return { user, member: false, vault: null, rows: {}, pending: {}, cursor: '', lastSync: '', lastError: '' };
+    return { user, member: false, vault: null, rows: {}, pending: {}, cursor: '', lastSync: '', lastError: '', bio: null, bioAsked: false };
   }
   function loadCache(user) {
     const c = readJson(cacheKey(user.id));
@@ -377,6 +475,7 @@
   let vaultKey = null;   // CryptoKey while unlocked; never stored
   let items = new Map(); // id -> Login, decrypted, while unlocked
   let hiddenAt = 0;
+  let bioOk = false;     // this device can do Face ID with PRF, as far as it can tell
   const state = {
     revealed: new Set(),
     query: '',
@@ -395,6 +494,7 @@
     trash: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
     dice: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>',
     warn: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>',
+    face: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M9 9.5v1M15 9.5v1M12 9.5V13h-1"/><path d="M9.5 16a4 4 0 0 0 5 0"/></svg>',
     alert: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>',
   };
 
@@ -474,7 +574,8 @@
     $('gate').classList.remove('hidden');
     $('app').classList.add('hidden');
     for (const d of document.querySelectorAll('dialog[open]')) d.close();
-    const focus = { gEmail: 'email', gCode: 'code', gLock: 'pw' }[step];
+    let focus = { gEmail: 'email', gCode: 'code', gLock: 'pw' }[step];
+    if (step === 'gLock' && !$('bioBtn').classList.contains('hidden')) focus = 'bioBtn'; // no keyboard popping up
     if (focus) setTimeout(() => $(focus) && $(focus).focus(), 30);
   }
   function setGateText(heading, lead) {
@@ -587,11 +688,13 @@
     try { subtle(); } catch (err) { return showOffline(err.message); }
 
     let user = null, offline = false;
+    const bioCheck = bioAvailable();
     try {
       user = await api().session();
     } catch (err) {
       offline = true;
     }
+    bioOk = await bioCheck;
     // Offline with an expired token can come back empty: use the last account
     // here while its session is still stored, and sync once it can refresh.
     if (!user && hasStoredSession()) {
@@ -676,6 +779,10 @@
     $('unlockLabel').textContent = creating ? 'Create and unlock' : 'Unlock';
     $('forgotBtn').classList.toggle('hidden', creating);
     $('lockWho').textContent = me ? me.email : '';
+    const bio = !creating && bioOk && !!(cache && cache.bio);
+    $('bioBtn').classList.toggle('hidden', !bio);
+    $('bioLabel').textContent = 'Unlock with ' + bioName();
+    setBusy($('bioBtn'), false);
     setReveal(false);
     setLockError('');
     setLockBusy(false);
@@ -725,7 +832,8 @@
     } catch (_) { /* wrong key: the check doesn't decrypt */ }
     if (ok) {
       failures = 0;
-      return openVault(key);
+      await openVault(key);
+      return offerBio();
     }
     failures += 1;
     setLockBusy(false);
@@ -763,7 +871,8 @@
     }
     cache.vault = vault;
     saveCache();
-    return openVault(key);
+    await openVault(key);
+    return offerBio();
   }
 
   async function forgot() {
@@ -783,6 +892,91 @@
     cache.member = true;
     saveCache();
     showLock('create');
+  }
+
+  async function unlockWithBio() {
+    if (!cache || !cache.bio || $('bioBtn').disabled) return;
+    const name = bioName();
+    setLockError('');
+    setBusy($('bioBtn'), true);
+    let key;
+    try {
+      key = await bioOpen(cache.bio);
+    } catch (err) {
+      setBusy($('bioBtn'), false);
+      if (isCancel(err)) return; // cancelled, or the passkey is gone: the master password still works
+      cache.bio = null;
+      saveCache();
+      $('bioBtn').classList.add('hidden');
+      return setLockError(`${name} couldn’t unlock PowerPass on this device. Use your master password, then turn ${name} on again.`);
+    }
+    failures = 0;
+    setBusy($('bioBtn'), false);
+    return openVault(key);
+  }
+
+  /* ---------------------------------------------------------------- Face ID on this device */
+
+  // Asked once per device, right after the master password opens the vault.
+  async function offerBio() {
+    if (!bioOk || !cache || cache.bio || cache.bioAsked || !vaultKey) return;
+    const name = bioName(), mine = cache;
+    const yes = await confirmDialog({
+      title: `Unlock with ${name}?`,
+      text: `Open PowerPass on this device with ${name} instead of typing your master password.`,
+      details: [el('p', 'fine', 'Your master password still works, and other devices still need it. You can turn this off from the toolbar.')],
+      confirmLabel: 'Use ' + name, cancelLabel: 'Not now', icon: 'face', danger: false,
+    });
+    if (cache !== mine) return; // signed out meanwhile
+    cache.bioAsked = true;
+    saveCache();
+    if (yes && vaultKey) await enableBio();
+  }
+
+  async function enableBio() {
+    const name = bioName(), mine = cache, key = vaultKey;
+    if (!key) return;
+    try {
+      const bio = await bioCreate(key);
+      if (cache !== mine || vaultKey !== key) return; // locked or signed out meanwhile
+      cache.bio = bio;
+      cache.bioAsked = true;
+      saveCache();
+      paintBio();
+      toast(`${name} is on for this device`);
+    } catch (err) {
+      if (isCancel(err)) return;
+      toast(err && err.code === 'unsupported'
+        ? `This browser can’t unlock PowerPass with ${name} yet`
+        : `Couldn’t turn on ${name}: ${(err && err.message) || err}`, { error: true, ms: 4000 });
+    }
+  }
+
+  async function toggleBio() {
+    if (!cache || !vaultKey) return;
+    if (!cache.bio) return enableBio();
+    const name = bioName();
+    const ok = await confirmDialog({
+      title: `Turn off ${name}?`,
+      text: 'PowerPass will ask for your master password on this device again.',
+      details: [el('p', 'fine', 'To remove the passkey too, delete “PowerPass” from this device’s saved passwords.')],
+      confirmLabel: 'Turn off', icon: 'face', danger: false,
+    });
+    if (!ok || !cache) return;
+    cache.bio = null;
+    saveCache();
+    paintBio();
+    toast(`${name} is off for this device`);
+  }
+
+  function paintBio() {
+    const b = $('bioToggle');
+    const on = !!(cache && cache.bio);
+    b.classList.toggle('hidden', !bioOk);
+    b.classList.toggle('on', on);
+    b.title = on ? `${bioName()} is on: tap to turn off` : `Unlock with ${bioName()}`;
+    b.setAttribute('aria-label', b.title);
+    b.setAttribute('aria-pressed', String(on));
   }
 
   /* ---------------------------------------------------------------- unlocked */
@@ -943,13 +1137,16 @@
     return [...items.values()].sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
   }
 
-  function confirmDialog({ title, text, details, confirmLabel }) {
+  function confirmDialog({ title, text, details, confirmLabel, cancelLabel = 'Cancel', icon = 'warn', danger = true }) {
     const dlg = $('confirmDlg');
-    $('cIcon').innerHTML = ICONS.warn;
+    $('cIcon').innerHTML = ICONS[icon];
+    $('cIcon').classList.toggle('danger', danger);
     $('cTitle').textContent = title;
     $('cText').textContent = text;
     $('cDetails').replaceChildren(...(details || []));
     $('cOk').textContent = confirmLabel;
+    $('cOk').className = 'btn ' + (danger ? 'danger' : 'primary');
+    $('cCancel').textContent = cancelLabel;
     return new Promise(resolve => {
       const done = ok => {
         dlg.removeEventListener('close', onClose);
@@ -973,6 +1170,7 @@
     $('searchBox').classList.toggle('hidden', empty);
     $('openBtn2').classList.toggle('hidden', empty);
     paintSync();
+    paintBio();
     if (empty) { $('list').replaceChildren(); return; }
 
     const list = $('list');
@@ -1220,6 +1418,7 @@
     on('pwReveal', 'click', () => setReveal($('pw').type === 'password'));
     on('pw', 'input', () => { if (!$('unlockBtn').disabled) setLockError(''); });
     on('forgotBtn', 'click', forgot);
+    on('bioBtn', 'click', unlockWithBio);
     on('retryBtn', 'click', () => location.reload());
     for (const id of ['signOutLock', 'signOutNoAccess', 'signOutApp']) on(id, 'click', signOut);
 
@@ -1228,6 +1427,7 @@
     $('addBtn').onclick = openAdd;
     $('saveBtn').onclick = exportFile;
     $('lockBtn').onclick = () => lock();
+    $('bioToggle').onclick = toggleBio;
     $('fileInput').onchange = e => { loadFile(e.target.files[0]); e.target.value = ''; };
     $('search').oninput = e => { state.query = e.target.value; render(); };
 

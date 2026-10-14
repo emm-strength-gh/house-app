@@ -173,6 +173,11 @@ PowerPass doesn't use `cloud.js` or `house_items`: passwords aren't household da
 - **Sync:** `powerpass.js` keeps the same ciphertext in `powerpass.cache.v1.<account id>`,
   so it opens and takes changes offline; changes wait in `pending` and upload
   later, and a pull never overwrites a login with a change still waiting.
+- **Face ID (optional, per device):** a passkey with the WebAuthn PRF extension.
+  Its secret, released only after Face ID / Touch ID / Windows Hello passes, seals
+  a copy of the vault key, kept as `bio` in the cache above; the master password
+  still works. Offered once after a master-password unlock; the face button in
+  the toolbar turns it on or off. Tested with a fake authenticator in `test-tools.js`.
 - **Locked down:** the page's Content-Security-Policy runs only this site's own
   scripts (hence `vendor/supabase.js` instead of the CDN) and can only connect to
   the House App Supabase project. If the project changes, update `connect-src` and
