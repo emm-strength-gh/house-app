@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="house"
+      data-cloud-url="https://nmukdaojabgozomkaeuw.supabase.co"
+      data-cloud-key="sb_publishable_F5mlTgUuqPFiEW0z_EJsVQ_DdLfjQGA"
+      data-auth-key="house.auth"
+      data-cache-key="powerpass.cache.v1">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- A password page: only this site's own files run, and the only place it can
+     talk to is the House App Supabase project (to sync ciphertext). Unlike the
+     other tools it doesn't load cloud.js, so no third-party script is ever on
+     this page: the Supabase library is a pinned copy in vendor/. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://nmukdaojabgozomkaeuw.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#f6f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d10" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PowerPass">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/powerpass.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/powerpass-32.png">
+<link rel="apple-touch-icon" href="icons/powerpass-180.png">
+<title>PowerPass</title>
+<link rel="stylesheet" href="powerpass.css">
+</head>
+<body>
+
+<!-- ============ Gate: sign-in check, master password ============ -->
+<div class="gate" id="gate">
+  <a href="index.html" class="home-btn" aria-label="Back to House App" title="Back to House App">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L10 3l7 6.5V17a1 1 0 0 1-1 1h-3.5v-5h-5v5H4a1 1 0 0 1-1-1z"/></svg>
+  </a>
+  <main class="card" id="gateCard">
+    <div class="logo" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    </div>
+    <h1 id="gHeading">PowerPass</h1>
+    <p class="lead" id="gLead"></p>
+
+    <section id="gLoading" class="loading" aria-label="Loading"><span class="spin"></span></section>
+
+    <!-- Not signed in: House App's Account page does that -->
+    <section id="gHouse" class="hidden">
+      <a class="btn" href="account.html">Sign in on Account
+        <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+      </a>
+    </section>
+
+    <section id="gNoAccess" class="hidden">
+      <a class="btn" href="account.html">Open Account</a>
+    </section>
+
+    <section id="gOffline" class="hidden">
+      <button class="btn" type="button" id="retryBtn">Try again</button>
+    </section>
+
+    <!-- Master password: unlock, or create on first use -->
+    <section id="gLock" class="hidden">
+      <span class="who" id="lockWho"></span>
+      <form id="lockForm" novalidate>
+        <label class="label"><span id="pwLabel">Master password</span>
+          <span class="input" id="pwBox">
+            <input id="pw" type="password" autocomplete="current-password" spellcheck="false" autocapitalize="off" required>
+            <button type="button" class="icon-btn" id="pwReveal" aria-label="Show password" title="Show password"></button>
+          </span>
+        </label>
+        <label class="label hidden" id="confirmRow">Confirm master password
+          <span class="input">
+            <input id="pwConfirm" type="password" autocomplete="new-password" spellcheck="false" autocapitalize="off">
+          </span>
+        </label>
+        <p class="hint hidden" id="createHint"></p>
+        <p class="form-error hidden" id="lockError" role="alert"></p>
+        <button class="btn" type="submit" id="unlockBtn">
+          <span id="unlockLabel">Unlock</span>
+          <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+          <span class="spin" aria-hidden="true"></span>
+        </button>
+      </form>
+      <div class="links">
+        <button class="link-btn" type="button" id="forgotBtn">Forgot it?</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ============ App ============ -->
+<div id="app" class="hidden">
+<header id="header">
+  <div class="wrap bar">
+    <a href="index.html" class="home-btn" aria-label="Back to House App" title="Back to House App">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L10 3l7 6.5V17a1 1 0 0 1-1 1h-3.5v-5h-5v5H4a1 1 0 0 1-1-1z"/></svg>
+    </a>
+    <div class="brand"><span class="brand-name">PowerPass</span></div>
+    <label class="search hidden" id="searchBox">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="search" type="search" placeholder="Search sites, labels, usernames…" autocomplete="off" spellcheck="false">
+      <kbd>/</kbd>
+    </label>
+    <button class="btn primary" id="addBtn" title="Add a new login">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="lbl">Add</span>
+    </button>
+    <button class="btn hidden" id="openBtn2" title="Load another file">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0L7 8m5-5 5 5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+      <span class="lbl">Load file</span>
+    </button>
+    <button class="btn icon-only" id="lockBtn" title="Lock" aria-label="Lock">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="empty" class="drop">
+    <div class="icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M12 18v-6m0 0-2.5 2.5M12 12l2.5 2.5"/></svg>
+    </div>
+    <h1>Load your 1Password export</h1>
+    <p>Drop a <code>.json</code> or <code>.1pif</code> file on this page, or choose one. You can also add logins one at a time with <b>Add</b>.</p>
+    <button class="btn primary" id="openBtn">Choose file</button>
+    <div id="error" class="error hidden" role="alert"></div>
+    <div class="note">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Encrypted on this device before it’s saved or synced.
+    </div>
+  </section>
+
+  <section id="results" class="hidden">
+    <div class="meta">
+      <span class="sync" id="syncState"></span>
+      <div class="meta-right">
+        <span><strong id="count">0</strong> <span id="countLabel">logins</span></span>
+        <button class="btn sm" id="saveBtn" title="Download your logins as an unencrypted JSON file">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          <span>Export</span>
+        </button>
+      </div>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+</main>
+</div>
+
+<!-- Add login -->
+<dialog id="addDlg" aria-labelledby="addTitle">
+  <form id="addForm" class="dlg-body" novalidate autocomplete="off">
+    <div class="dlg-head">
+      <div class="dlg-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </div>
+      <div>
+        <h2 id="addTitle">Add a login</h2>
+        <p>Save a username and password for a website.</p>
+      </div>
+    </div>
+    <div class="form">
+      <label>Website URL
+        <div class="input"><input id="fUrl" type="text" inputmode="url" placeholder="example.com" spellcheck="false" autocapitalize="off"></div>
+      </label>
+      <div class="two">
+        <label>Name
+          <div class="input"><input id="fTitle" type="text" placeholder="Example"></div>
+        </label>
+        <label><span>Label <span class="opt">· optional</span></span>
+          <div class="input"><input id="fLabel" type="text" placeholder="website" value="website"></div>
+        </label>
+      </div>
+      <label>Username or email
+        <div class="input"><input id="fUser" type="text" spellcheck="false" autocapitalize="off" autocomplete="off"></div>
+      </label>
+      <label>Password
+        <div class="input">
+          <input id="fPass" type="password" class="mono" spellcheck="false" autocapitalize="off" autocomplete="new-password">
+          <button type="button" class="icon-btn" id="fReveal" title="Show password" aria-label="Show password"></button>
+          <button type="button" class="icon-btn" id="fGen" title="Generate a strong password" aria-label="Generate a strong password"></button>
+        </div>
+      </label>
+      <p class="form-error hidden" id="fError" role="alert"></p>
+    </div>
+    <div class="dlg-actions flush">
+      <button type="button" class="btn" data-close>Cancel</button>
+      <button type="submit" class="btn primary">Add login</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Confirmation -->
+<dialog id="confirmDlg" aria-labelledby="cTitle" aria-describedby="cText">
+  <div class="dlg-body">
+    <div class="dlg-head">
+      <div class="dlg-icon danger" id="cIcon"></div>
+      <div>
+        <h2 id="cTitle"></h2>
+        <p id="cText"></p>
+      </div>
+    </div>
+    <div id="cDetails"></div>
+  </div>
+  <div class="dlg-actions">
+    <button type="button" class="btn" id="cCancel">Cancel</button>
+    <button type="button" class="btn danger" id="cOk"></button>
+  </div>
+</dialog>
+
+<input type="file" id="fileInput" accept=".json,.1pif,application/json,text/plain" hidden>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="vendor/supabase.js"></script>
+<script src="powerpass.js"></script>
+</body>
+</html>

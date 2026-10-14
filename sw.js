@@ -1,7 +1,7 @@
 /* Service worker for House App (home screen + every tool page).
  *
  * Strategy:
- *   HTML / navigation, cloud.js -> network-first, cache fallback. Online you get the newest
+ *   HTML / navigation, cloud.js, powerpass.js/.css -> network-first, cache fallback. Online you get the newest
  *                        version you deployed; offline you get the last good one.
  *   Icons + manifest  -> cache-first, refreshed in the background.
  *
@@ -14,8 +14,11 @@
  * them up.
  */
 
-var CACHE_VERSION = "v7";
-var CACHE_SHELL = "house-app-shell-" + CACHE_VERSION;
+var CACHE_VERSION = "v8";
+// Other apps can live on the same site (github.io serves every repo from one
+// origin), so only this app's own caches are ever cleared.
+var CACHE_PREFIX = "house-app-shell-";
+var CACHE_SHELL = CACHE_PREFIX + CACHE_VERSION;
 
 // Sign-in + sync library, loaded by cloud.js. Version-pinned on jsdelivr, so
 // the cached copy never goes stale; cached so the app still syncs after an
@@ -31,6 +34,10 @@ var SHELL_ASSETS = [
   "./todo.html",
   "./expenses.html",
   "./account.html",
+  "./powerpass.html",
+  "./powerpass.js",
+  "./powerpass.css",
+  "./vendor/supabase.js",
   "./cloud.js",
   "./oni-logo.png",
   "./manifest.webmanifest",
@@ -64,6 +71,10 @@ var SHELL_ASSETS = [
   "./icons/cloud-32.png",
   "./icons/cloud-180.png",
   "./icons/cloud-192.png",
+  "./icons/powerpass.svg",
+  "./icons/powerpass-32.png",
+  "./icons/powerpass-180.png",
+  "./icons/powerpass-192.png",
   SUPABASE_LIB
 ];
 
@@ -83,7 +94,7 @@ self.addEventListener("install", function (event) {
 self.addEventListener("activate", function (event) {
   event.waitUntil(
     caches.keys().then(function (keys) {
-      return Promise.all(keys.filter(function (k) { return k !== CACHE_SHELL; })
+      return Promise.all(keys.filter(function (k) { return k.indexOf(CACHE_PREFIX) === 0 && k !== CACHE_SHELL; })
         .map(function (k) { return caches.delete(k); }));
     }).then(function () { return self.clients.claim(); })
   );
@@ -96,7 +107,8 @@ self.addEventListener("fetch", function (event) {
   if (req.url === SUPABASE_LIB) { event.respondWith(cacheFirst(req)); return; }
   if (url.origin !== self.location.origin) return;
 
-  if (req.mode === "navigate" || url.pathname.endsWith(".html") || url.pathname.endsWith("/") || url.pathname.endsWith("/cloud.js")) {
+  if (req.mode === "navigate" || url.pathname.endsWith(".html") || url.pathname.endsWith("/") || url.pathname.endsWith("/cloud.js") ||
+      url.pathname.endsWith("/powerpass.js") || url.pathname.endsWith("/powerpass.css")) {
     event.respondWith(networkFirst(req));
     return;
   }

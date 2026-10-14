@@ -81,6 +81,75 @@ async function open(file, srv, seed) {
   return { w, api, errors, text: () => w.document.body.textContent, get: k => JSON.parse(w.localStorage.getItem(k)),
            sync: () => w.HouseCloud.syncNow() };
 }
+// PowerPass: the powerpass_* tables, in memory, per account. Same shape as the
+// thin layer powerpass.js puts over Supabase (window.__powerpassCloud).
+function ppServer() {
+  const vaults = new Map(), rows = new Map();
+  let clock = Date.parse("2026-10-01T00:00:00Z");
+  return {
+    vaults, rows,
+    api(user) {
+      const st = { offline: false, member: true };
+      const net = () => st.offline ? Promise.reject(new TypeError("Failed to fetch")) : Promise.resolve();
+      return {
+        st,
+        session: async () => { await net(); return user; },
+        sendCode: async () => { await net(); },
+        verifyCode: async () => { await net(); return user; },
+        signOut: async () => {},
+        whoami: async () => { await net(); return { member: st.member }; },
+        getVault: async () => { await net(); return vaults.get(user.id) || null; },
+        createVault: async v => { await net(); if (vaults.has(user.id)) throw new Error("duplicate key"); const { user_id, ...rest } = v; vaults.set(user.id, rest); },
+        eraseVault: async () => { await net(); for (const k of [...rows.keys()]) if (k.startsWith(user.id + "|")) rows.delete(k); vaults.delete(user.id); },
+        fetchItems: async since => { await net(); return [...rows.values()].filter(r => r.user_id === user.id && (!since || r.updated_at > since))
+          .sort((a, b) => a.updated_at < b.updated_at ? -1 : 1).map(({ user_id, ...r }) => ({ ...r })); },
+        upsertItems: async list => { await net(); list.forEach(r => rows.set(user.id + "|" + r.id, { ...r, user_id: user.id, updated_at: new Date(clock += 1000).toISOString() })); },
+      };
+    },
+  };
+}
+// powerpass.html on a device: its own localStorage (kept across reopen), the real powerpass.js, real Web Crypto.
+async function openPP(srv, user, storage = {}, opts = {}) {
+  const html = read("powerpass.html")
+    .replace('<script src="vendor/supabase.js"></script>', "")
+    .replace('<script src="powerpass.js"></script>', () => "<script>" + read("powerpass.js") + "</script>");
+  const errors = [];
+  const vc = new VirtualConsole();
+  vc.on("jsdomError", e => { if (!/Not implemented/.test(String(e && e.message))) errors.push(String(e && (e.stack || e.message))); });
+  const api = user ? srv.api(user) : null;
+  if (api) { api.st.offline = !!opts.offline; if (opts.member === false) api.st.member = false; }
+  const dom = new JSDOM(html, {
+    url: "https://house.test/powerpass.html", runScripts: "dangerously", pretendToBeVisual: true, virtualConsole: vc,
+    beforeParse(w) {
+      for (const [k, v] of Object.entries(storage)) w.localStorage.setItem(k, v);
+      Object.defineProperty(w.crypto, "subtle", { value: require("crypto").webcrypto.subtle });
+      w.__powerpassCloud = api || { session: async () => null };
+      w.matchMedia = w.matchMedia || (() => ({ matches: false, addEventListener() {}, addListener() {} }));
+      w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+      w.HTMLDialogElement.prototype.close = function () { if (this.hasAttribute("open")) { this.removeAttribute("open"); this.dispatchEvent(new w.Event("close")); } };
+    },
+  });
+  const w = dom.window, d = w.document;
+  const visible = id => !d.getElementById(id).closest(".hidden");
+  const until = async (fn, ms = 8000) => { const t = Date.now(); while (!fn()) { if (Date.now() - t > ms) return false; await sleep(20); } return true; };
+  const submit = id => d.getElementById(id).dispatchEvent(new w.Event("submit", { cancelable: true, bubbles: true }));
+  const storageNow = () => { const o = {}; for (let i = 0; i < w.localStorage.length; i++) { const k = w.localStorage.key(i); o[k] = w.localStorage.getItem(k); } return o; };
+  async function master(pw, confirm) {
+    d.getElementById("pw").value = pw;
+    if (confirm != null) d.getElementById("pwConfirm").value = confirm;
+    submit("lockForm");
+    await until(() => !d.getElementById("unlockBtn").disabled || visible("app"));
+  }
+  await until(() => !visible("gLoading"));
+  return { w, d, api, errors, visible, until, submit, storageNow, master, pp: w.PowerPass,
+           rows: () => d.querySelectorAll("#list .row:not(.head)").length, text: () => d.body.textContent };
+}
+const EXPORT_1P = JSON.stringify([
+  { title: "Bank", location: "https://bank.example", secureContents: { URLs: [{ label: "website", url: "https://bank.example" }],
+    fields: [{ designation: "username", value: "emm" }, { designation: "password", value: "Sup3r-Secret-Bank!" }] } },
+  { title: "Mail", location: "mail.example", secureContents: { fields: [{ designation: "username", value: "emm@mail" }, { designation: "password", value: "Mail-Pass-42" }] } },
+  { title: "Mail", location: "mail.example", secureContents: { fields: [{ designation: "username", value: "emm@mail" }, { designation: "password", value: "Mail-Pass-42" }] } },
+]);
 const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
 
 (async () => {
@@ -330,6 +399,107 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   check("the shop name set elsewhere arrives; this device keeps its theme", d.getElementById("setShop").value === "Shop set elsewhere" && page.get("oni.settings.v1").theme === "light"
     && d.documentElement.getAttribute("data-theme") === "light");
   check("...and nothing was wrongly flagged as deleted", [...srv.rows.values()].every(r => !r.deleted));
+
+  console.log("\nPowerPass");
+  const ppSrc = read("powerpass.html");
+  check("powerpass.html deliberately doesn't load cloud.js (no third-party script on a password page)", !/<script[^>]*cloud\.js/.test(ppSrc));
+  check("...its only scripts are this site's own", [...ppSrc.matchAll(/<script[^>]*src="([^"]+)"/g)].map(m => m[1]).join() === "vendor/supabase.js,powerpass.js");
+  check("...and it can only talk to the House App project", /connect-src https:\/\/nmukdaojabgozomkaeuw\.supabase\.co;/.test(ppSrc) && /script-src 'self';/.test(ppSrc));
+  const cloudUrl = /var CLOUD_URL = "([^"]*)"/.exec(CLOUD_SRC)[1], cloudKey = /var CLOUD_KEY = "([^"]*)"/.exec(CLOUD_SRC)[1];
+  check("...the same project and session as cloud.js", ppSrc.includes('data-cloud-url="' + cloudUrl + '"') && ppSrc.includes('data-cloud-key="' + cloudKey + '"') && /storageKey: "house\.auth"/.test(CLOUD_SRC) && ppSrc.includes('data-auth-key="house.auth"'));
+  const libVersion = /supabase-js@(\d+\.\d+\.\d+)/.exec(CLOUD_SRC)[1];
+  check("the vendored Supabase library is the version cloud.js pins", read("vendor/supabase.js").includes(libVersion));
+  check("sw.js caches PowerPass for offline", ["./powerpass.html", "./powerpass.js", "./powerpass.css", "./vendor/supabase.js"].every(f => read("sw.js").includes('"' + f + '"')));
+  check("no inline styles or scripts for the CSP to block", !/style="/.test(ppSrc) && !/<script>/.test(ppSrc));
+
+  const PP_ME = { id: "22222222-2222-4222-8222-222222222222", email: "me@test.invalid" };
+  const pps = ppServer();
+  let pg = await openPP(pps, null, { "powerpass.cache.v1.old": "{}" });
+  check("signed out: it sends you to House App's Account page", pg.visible("gHouse") && !pg.visible("app"));
+  check("...and drops any encrypted copy left on the device", !Object.keys(pg.storageNow()).some(k => k.startsWith("powerpass.cache")));
+
+  pg = await openPP(pps, PP_ME);
+  check("signed in, first time: asked to create a master password", pg.visible("gLock") && pg.visible("confirmRow") && /Create/.test(pg.d.getElementById("gHeading").textContent));
+  await pg.master("short", "short");
+  check("...at least 8 characters", /at least 8/.test(pg.d.getElementById("lockError").textContent));
+  await pg.master("correct horse battery", "correct horse batteries");
+  check("...typed the same twice", /don’t match/.test(pg.d.getElementById("lockError").textContent));
+  await pg.master("correct horse battery", "correct horse battery");
+  check("...then it opens, and the vault is saved to the cloud", pg.visible("app") && pps.vaults.has(PP_ME.id));
+  check("...holding no password, only a salt and a check value", !JSON.stringify(pps.vaults.get(PP_ME.id)).includes("correct horse"));
+  await pg.pp.importText(EXPORT_1P);
+  check("loading a 1Password export adds its logins, skipping the duplicate", pg.rows() === 2 && /Bank/.test(pg.text()), String(pg.rows()));
+  await pg.pp.sync();
+  const serverRows = [...pps.rows.values()];
+  check("...they're uploaded, one row each", serverRows.length === 2 && serverRows.every(r => r.iv && r.data && !r.deleted));
+  check("...as ciphertext only: no password, username or site on the server", !/Sup3r-Secret-Bank|Mail-Pass|emm@mail|bank\.example/.test(JSON.stringify(serverRows)));
+  check("...or in this device's storage", !/Sup3r-Secret-Bank|Mail-Pass|emm@mail|bank\.example|correct horse/.test(JSON.stringify(pg.storageNow())));
+  check("synced, and says so", /Synced/.test(pg.d.getElementById("syncState").textContent));
+  check("no errors so far", pg.errors.length === 0, pg.errors.join("\n"));
+
+  pg.d.getElementById("lockBtn").click();
+  check("Lock forgets everything decrypted", pg.visible("gLock") && pg.rows() === 0 && !/Sup3r-Secret-Bank/.test(pg.d.body.innerHTML));
+  await pg.master("wrong password!");
+  check("a wrong master password is refused", pg.visible("gLock") && /isn’t right/.test(pg.d.getElementById("lockError").textContent));
+  await pg.master("correct horse battery");
+  check("the right one opens it again", pg.visible("app") && pg.rows() === 2);
+
+  // A second device: nothing on it yet, same account.
+  let pg2 = await openPP(pps, PP_ME);
+  check("another device asks for the master password (not to create one)", pg2.visible("gLock") && pg2.d.getElementById("confirmRow").classList.contains("hidden"));
+  await pg2.master("correct horse battery");
+  await pg2.until(() => pg2.rows() === 2);
+  check("...and shows the same logins, from the cloud", pg2.rows() === 2 && /Mail/.test(pg2.text()));
+  const bankId = [...pg2.d.querySelectorAll("#list .row:not(.head)")].find(r => /Bank/.test(r.textContent)).dataset.id;
+  pg2.d.querySelector('#list .row[data-id="' + bankId + '"] .del').click();
+  await sleep(0);
+  pg2.d.getElementById("cOk").click();
+  await sleep(0);
+  pg2.d.getElementById("addBtn").click();
+  pg2.d.getElementById("fUrl").value = "shop.example"; pg2.d.getElementById("fUser").value = "emm"; pg2.d.getElementById("fPass").value = "Shop-Pass-7";
+  pg2.submit("addForm");
+  await pg2.until(() => pg2.rows() === 2 && /shop\.example/.test(pg2.text()));
+  await pg2.pp.sync();
+  await pg.pp.sync();
+  check("a delete and an add on one device reach the other", pg.rows() === 2 && /shop\.example/.test(pg.text()) && !/Bank/.test(pg.text()), pg.text().slice(0, 300));
+  check("...the deleted one is flagged on the server, emptied", (() => { const r = pps.rows.get(PP_ME.id + "|" + bankId); return r && r.deleted && r.data === ""; })());
+
+  // Offline: changes wait on the device, and go up later.
+  pg.api.st.offline = true;
+  pg.d.getElementById("addBtn").click();
+  pg.d.getElementById("fUrl").value = "offline.example"; pg.d.getElementById("fUser").value = "emm"; pg.d.getElementById("fPass").value = "Off-1";
+  pg.submit("addForm");
+  await pg.until(() => pg.rows() === 3);
+  await pg.pp.sync();
+  check("offline, an added login is kept and waits", pg.rows() === 3 && /Offline · 1 change waiting/.test(pg.d.getElementById("syncState").textContent), pg.d.getElementById("syncState").textContent);
+  pg.api.st.offline = false;
+  await pg.pp.sync();
+  await pg2.pp.sync();
+  check("...back online, it's uploaded and reaches the other device", /offline\.example/.test(pg2.text()) && /Synced/.test(pg.d.getElementById("syncState").textContent));
+
+  // Reopened with no connection at all: it opens from this device's copy.
+  const kept = pg.storageNow();
+  pg = await openPP(pps, PP_ME, Object.assign(kept, { "house.auth": "{}" }), { offline: true });
+  check("reopened offline: still asks for the master password", pg.visible("gLock"));
+  await pg.master("correct horse battery");
+  check("...and opens this device's copy", pg.visible("app") && pg.rows() === 3);
+
+  // Forgot it: start again, which empties the vault everywhere.
+  pg = await openPP(pps, PP_ME, pg.storageNow());
+  pg.d.getElementById("forgotBtn").click();
+  await sleep(0);
+  pg.d.getElementById("cOk").click();
+  await pg.until(() => /Create/.test(pg.d.getElementById("gHeading").textContent));
+  check("Forgot it? deletes the vault and its logins on the server, then asks for a new one",
+    !pps.vaults.has(PP_ME.id) && ![...pps.rows.keys()].some(k => k.startsWith(PP_ME.id)) && /Create/.test(pg.d.getElementById("gHeading").textContent));
+  pg2.d.getElementById("lockBtn").click();
+  pg2 = await openPP(pps, PP_ME, pg2.storageNow());
+  check("...and the other device, reopened, drops its old copy and asks to create one too", /Create/.test(pg2.d.getElementById("gHeading").textContent)
+    && !/Shop|offline/.test(JSON.stringify(Object.values(pg2.storageNow()))));
+
+  pg = await openPP(ppServer(), PP_ME, {}, { member: false });
+  check("an account not on the access list is told so", pg.visible("gNoAccess") && /access list/.test(pg.text()));
+  check("no errors in any of it", pg.errors.length === 0 && pg2.errors.length === 0, pg.errors.concat(pg2.errors).join("\n"));
 
   console.log("\nSigned out");
   const dom = new JSDOM(read("todo.html").replace('<script defer src="cloud.js"></script>', ""), {
