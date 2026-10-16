@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f5f2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Color Grading">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/grade.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/grade-32.png">
+<link rel="apple-touch-icon" href="icons/grade-180.png">
+<title>Premiere Color Grading</title>
+<style>
+  /* No double-tap-to-zoom on phones (it also fires on quick repeated taps of
+     buttons). Pinch-zoom still works. Zero specificity, so any element that
+     sets its own touch-action (drag handles, drawing canvases) still wins. */
+  * { touch-action: manipulation; }
+  :root {
+    color-scheme: light;
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --surface-2: #f0efeb;
+    --border: #e7e5df;
+    --border-strong: #d2cfc7;
+    --ink: #0f0f0e;
+    --ink-2: #57564f;
+    --ink-3: #8a887f;
+    --accent: #dfa64c;          /* film gold: fills (buttons, chips) */
+    --accent-ink: #1f1608;
+    --accent-text: #8a5a12;     /* gold dark enough to read as text on white */
+    --accent-soft: #f7ecd9;
+    --teal: #2a7a75;
+    --danger: #c0352b;
+    --track: #e9e7e1;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
+    --scrim: rgba(15,15,14,.32);
+    --seg-on: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0e1214;
+      --surface: #161b1e;
+      --surface-2: #1e2529;
+      --border: #263035;
+      --border-strong: #3a474d;
+      --ink: #f1f3f1;
+      --ink-2: #bfccd0;
+      --ink-3: #8b9aa2;
+      --accent: #edc17d;
+      --accent-ink: #1b1710;
+      --accent-text: #edc17d;
+      --accent-soft: #2a2418;
+      --teal: #74b5b1;
+      --danger: #f07a70;
+      --track: #263035;
+      --shadow: none;
+      --scrim: rgba(0,0,0,.6);
+      --seg-on: #3a474d;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0e1214;
+    --surface: #161b1e;
+    --surface-2: #1e2529;
+    --border: #263035;
+    --border-strong: #3a474d;
+    --ink: #f1f3f1;
+    --ink-2: #bfccd0;
+    --ink-3: #8b9aa2;
+    --accent: #edc17d;
+    --accent-ink: #1b1710;
+    --accent-text: #edc17d;
+    --accent-soft: #2a2418;
+    --teal: #74b5b1;
+    --danger: #f07a70;
+    --track: #263035;
+    --shadow: none;
+    --scrim: rgba(0,0,0,.6);
+    --seg-on: #3a474d;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body.locked { overflow: hidden; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .wrap {
+    max-width: 560px; margin: 0 auto;
+    padding: 20px 16px 80px; padding-top: max(20px, env(safe-area-inset-top));
+  }
+
+  /* header */
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .home-btn, .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 38px; height: 38px; border-radius: 11px; padding: 0;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+    text-decoration: none; cursor: pointer;
+  }
+  .home-btn:hover, .icon-btn:hover { background: var(--surface-2); }
+  .icon-btn:disabled { opacity: .35; cursor: default; background: var(--surface); }
+  .title { flex: 1; min-width: 0; }
+  h1 { font-size: 21px; margin: 0; letter-spacing: -.02em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { color: var(--ink-3); font-size: 12.5px; margin-top: 1px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    box-shadow: var(--shadow);
+  }
+
+  /* ---------- library ---------- */
+  .search { display: flex; align-items: center; gap: 8px; padding: 0 12px; margin-bottom: 12px; color: var(--ink-3); }
+  .search input {
+    flex: 1; min-width: 0; font-size: 16px; /* 16px stops iOS zooming on focus */
+    border: 0; background: transparent; color: var(--ink); outline: none; padding: 11px 0;
+  }
+  .search input::placeholder { color: var(--ink-3); }
+  .search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+  .search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  .chips {
+    display: flex; gap: 6px; overflow-x: auto; margin: 0 -16px 14px; padding: 0 16px 2px;
+    scrollbar-width: none;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: none; border: 1px solid var(--border); background: var(--surface); color: var(--ink-2);
+    border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .chip .cnt { color: var(--ink-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .chip.on .cnt { color: var(--accent-ink); opacity: .65; }
+
+  .list { list-style: none; margin: 0; padding: 0; overflow: hidden; }
+  .item {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    padding: 10px 12px; border: 0; background: transparent; cursor: pointer; color: var(--ink);
+  }
+  .list li + li .item { border-top: 1px solid var(--border); }
+  @media (hover: hover) { .item:hover { background: var(--surface-2); } }
+  .item.active { background: var(--accent-soft); }
+  .thumb {
+    flex: none; width: 46px; height: 46px; border-radius: 11px;
+    background-size: cover; background-position: center 60%;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+  }
+  .item .body { flex: 1; min-width: 0; }
+  .item .t, .item .d { display: block; }
+  .item .t { font-size: 15px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+  .item .d { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .star { flex: none; color: var(--accent); }
+  .item .chev { flex: none; color: var(--ink-3); }
+  .empty { text-align: center; padding: 34px 24px; color: var(--ink-3); font-size: 14px; }
+  .empty b { color: var(--ink); display: block; font-size: 16px; margin-bottom: 4px; }
+
+  /* ---------- detail ---------- */
+  .dbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .back {
+    display: inline-flex; align-items: center; gap: 2px; border: 0; background: none; cursor: pointer;
+    color: var(--accent-text); font-weight: 600; font-size: 15px; padding: 6px 4px 6px 0;
+  }
+  .dbar .pos { flex: 1; text-align: right; color: var(--ink-3); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .dbar .icon-btn { width: 34px; height: 34px; border-radius: 10px; }
+
+  .hero {
+    position: relative; overflow: hidden; border-radius: 20px; min-height: 230px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    background-size: cover; background-position: center 60%; color: #fff;
+    box-shadow: var(--shadow);
+  }
+  .hero::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(5,9,11,0) 25%, rgba(5,9,11,.78) 100%);
+  }
+  .hero > * { position: relative; }
+  .hero .badge {
+    position: absolute; top: 12px; right: 12px; font-size: 11px; font-weight: 600;
+    background: rgba(8,12,14,.55); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 4px 10px;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  .hero .txt { padding: 18px 18px 16px; }
+  .overline { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #f3cf92; }
+  .hero h2 { font-size: 24px; line-height: 1.2; margin: 4px 0 6px; letter-spacing: -.02em; overflow-wrap: anywhere; }
+  .hero p { margin: 0; font-size: 14px; color: rgba(255,255,255,.86); max-width: 62ch; }
+  .sig { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .sig span {
+    font-size: 12px; font-weight: 650; padding: 3px 9px; border-radius: 999px;
+    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22); font-variant-numeric: tabular-nums;
+  }
+
+  .actions { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; margin: 14px 0; }
+  .btn {
+    font-size: 14.5px; font-weight: 600;
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink);
+    padding: 10px 14px; border-radius: 12px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover { filter: brightness(1.05); background: var(--accent); }
+  .btn.sq { width: 44px; padding: 10px 0; }
+  .btn.fav[aria-pressed="true"] { color: var(--accent-text); border-color: var(--accent); background: var(--accent-soft); }
+  .btn.danger { color: var(--danger); }
+
+  .tip {
+    display: flex; gap: 11px; align-items: flex-start; padding: 13px 14px; margin-bottom: 14px;
+    background: var(--accent-soft); border: 1px solid transparent; border-radius: 14px;
+    color: var(--ink-2); font-size: 14px;
+  }
+  .tip svg { flex: none; color: var(--accent-text); margin-top: 2px; }
+
+  .sections { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  .block { padding: 14px 16px 12px; min-width: 0; }
+  .bhead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .bhead .ord { font-size: 11px; font-weight: 800; color: var(--accent-text); font-variant-numeric: tabular-nums; }
+  .bhead h3 { flex: 1; font-size: 13px; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
+  .copy {
+    border: 0; background: none; cursor: pointer; color: var(--ink-3); font-size: 12.5px; font-weight: 600;
+    padding: 4px 6px; margin: -4px -6px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .copy:hover { color: var(--accent-text); background: var(--surface-2); }
+
+  /* A setting: name, a track showing where the value sits, the number. */
+  .srow { display: grid; grid-template-columns: 94px 1fr 52px; gap: 12px; align-items: center; padding: 7px 0; }
+  .srow + .srow { border-top: 1px solid var(--border); }
+  .srow .k { color: var(--ink-2); font-size: 14px; }
+  .srow .v { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 14.5px; }
+  .srow .v.nil { color: var(--ink-3); font-weight: 500; }
+  .track { position: relative; height: 6px; border-radius: 3px; background: var(--track); }
+  .track.mid::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1.5px; margin-left: -.75px; background: var(--border-strong); border-radius: 1px; }
+  .track .fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--accent); opacity: .55; }
+  .track .knob {
+    position: absolute; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%;
+    background: var(--surface); border: 2.5px solid var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,.25); z-index: 1;
+  }
+  .track.temp { background: linear-gradient(90deg, #4f8fe0, #d8d4c8 50%, #eaa441); }
+  .track.tint { background: linear-gradient(90deg, #4fae62, #d8d4c8 50%, #c45cc0); }
+  .track.sat  { background: linear-gradient(90deg, #8d8d8d, #d8d4c8 50%, #e2605a); }
+  .track.temp .fill, .track.tint .fill, .track.sat .fill { display: none; }
+  .track.temp .knob, .track.tint .knob, .track.sat .knob { border-color: var(--ink); }
+  .none { color: var(--ink-3); font-size: 14px; padding: 6px 0 8px; margin: 0; }
+
+  /* Mix (HSL per colour) */
+  .mix { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .mix th { font-size: 11.5px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; text-align: right; padding: 2px 4px 6px; }
+  .mix th:first-child { text-align: left; }
+  .mix td { padding: 7px 4px; text-align: right; border-top: 1px solid var(--border); font-weight: 650; }
+  .mix td:first-child { text-align: left; font-weight: 500; color: var(--ink-2); }
+  .mix td.zero, .mix td.nil { color: var(--ink-3); font-weight: 500; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 9px; vertical-align: -1px; }
+
+  /* Grading wheels: red at 3 o'clock, hue counter-clockwise, saturation from the centre out. */
+  .wheels { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px 10px; padding: 4px 0 6px; }
+  .wcell { text-align: center; min-width: 0; }
+  .wheel {
+    position: relative; width: 92px; height: 92px; margin: 0 auto 8px; border-radius: 50%;
+    background:
+      radial-gradient(circle closest-side, rgba(128,128,128,1) 0, rgba(128,128,128,0) 100%),
+      conic-gradient(from 90deg, hsl(0 70% 55%), hsl(300 70% 55%), hsl(240 70% 55%), hsl(180 70% 55%), hsl(120 70% 55%), hsl(60 70% 55%), hsl(0 70% 55%));
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.15);
+  }
+  .wheel.off { opacity: .3; filter: grayscale(1); }
+  .wheel .puck {
+    position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+    border: 2.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.45), 0 1px 4px rgba(0,0,0,.4);
+  }
+  .wheel .ctr { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: rgba(255,255,255,.7); }
+  .wcell b { display: block; font-size: 13.5px; }
+  .wcell small { display: block; color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.4; }
+
+  /* My notes */
+  .notes {
+    display: block; width: 100%; min-height: 84px; margin: 0; resize: none; overflow: hidden;
+    font-size: 16px; line-height: 1.5; color: var(--ink);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; outline: none;
+  }
+  .notes:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .notes::placeholder { color: var(--ink-3); }
+  .hint { color: var(--ink-3); font-size: 12.5px; margin: 8px 2px 0; }
+
+  /* Compare */
+  .cmp-ctl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .select {
+    flex: 1; min-width: 0; font-size: 16px; padding: 9px 12px; border-radius: 11px;
+    background: var(--bg); border: 1px solid var(--border-strong); color: var(--ink);
+  }
+  .toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  .toggle input { width: 17px; height: 17px; accent-color: var(--accent); margin: 0; }
+  .cmp-wrap { overflow-x: auto; margin: 12px -16px -12px; }
+  .cmp { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .cmp th, .cmp td { padding: 8px 10px; text-align: right; border-top: 1px solid var(--border); white-space: nowrap; }
+  .cmp th:first-child, .cmp td:first-child { text-align: left; padding-left: 16px; }
+  .cmp th:last-child, .cmp td:last-child { padding-right: 16px; }
+  .cmp thead th { font-size: 12px; color: var(--accent-text); font-weight: 700; border-top: 0; white-space: normal; vertical-align: bottom; }
+  .cmp tr.sec td { background: var(--surface-2); font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
+  .cmp tr.diff td:nth-child(2), .cmp tr.diff td:nth-child(3) { font-weight: 700; }
+  .cmp td.delta { color: var(--ink-3); }
+  .cmp tr.diff td.delta { color: var(--teal); font-weight: 700; }
+
+  .foot { color: var(--ink-3); font-size: 12px; line-height: 1.5; margin: 18px 2px 0; }
+  .linkish { font-size: 13px; color: var(--accent-text); background: none; border: 0; padding: 0; cursor: pointer; font-weight: 600; }
+
+  /* ---------- sheet (bottom sheet on phones, centred dialog on wide screens) ---------- */
+  .scrim {
+    position: fixed; inset: 0; z-index: 30; background: var(--scrim);
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; transition: opacity .2s ease; pointer-events: none;
+  }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .sheet {
+    width: 100%; max-width: 560px;
+    background: var(--surface); border-radius: 20px 20px 0 0;
+    padding: 8px 18px max(16px, env(safe-area-inset-bottom));
+    transform: translateY(24px); transition: transform .24s cubic-bezier(.2,.8,.2,1);
+  }
+  .scrim.on .sheet { transform: none; }
+  @media (min-width: 620px) {
+    .scrim { align-items: center; }
+    .sheet { border-radius: 20px; max-width: 460px; padding-bottom: 18px; }
+    .grab { visibility: hidden; }
+  }
+  .grab { width: 38px; height: 5px; border-radius: 3px; background: var(--border-strong); margin: 0 auto 14px; }
+  .sheet h3 { font-size: 19px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .sheet p { margin: 0 0 14px; color: var(--ink-3); font-size: 13.5px; }
+  .lbl { display: block; font-size: 12px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: .06em; margin: 0 2px 6px; }
+  .field {
+    display: block; width: 100%; font-size: 16px; padding: 11px 13px; border-radius: 12px; outline: none;
+    background: var(--bg); border: 1px solid var(--border-strong); color: var(--ink);
+  }
+  .field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .sheet .orig { font-size: 12.5px; color: var(--ink-3); margin: 8px 2px 0; }
+  .sfoot { display: flex; gap: 10px; margin-top: 18px; }
+  .sfoot .btn { flex: 1; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 40;
+    transform: translateX(-50%) translateY(16px);
+    background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px;
+    font-size: 14px; opacity: 0; transition: all .2s; pointer-events: none;
+    white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis;
+  }
+  .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .banner { background: var(--surface-2); border: 1px solid var(--danger); color: var(--danger); padding: 10px 14px; border-radius: 12px; margin-bottom: 14px; font-size: 13.5px; }
+
+  /* ---------- phone: one view at a time ---------- */
+  @media (max-width: 899px) {
+    .wrap[data-view="list"] .detail { display: none; }
+    .wrap[data-view="detail"] .lib { display: none; }
+    .detail { animation: slide .22s ease; }
+    @keyframes slide { from { opacity: 0; transform: translateX(14px); } }
+  }
+  @media (min-width: 560px) {
+    .wheels { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  /* ---------- wide: library beside the preset ---------- */
+  @media (min-width: 900px) {
+    .wrap { max-width: 1240px; padding-left: 24px; padding-right: 24px; }
+    .layout { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 24px; align-items: start; }
+    .lib { position: sticky; top: 16px; max-height: calc(100vh - 32px); display: flex; flex-direction: column; }
+    .lib .chips { flex-wrap: wrap; overflow: visible; margin: 0 0 12px; padding: 0; }
+    .lib .listcard { overflow-y: auto; min-height: 0; }
+    .back, .item .chev { display: none; }
+    .hero { min-height: 300px; }
+    .hero h2 { font-size: 30px; }
+    .hero .txt { padding: 24px 24px 20px; }
+    .sections {
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas: "light color" "grade grade" "mix vig" "mix grain" "notes notes" "cmp cmp";
+    }
+    #b-light { grid-area: light; } #b-color { grid-area: color; } #b-grade { grid-area: grade; }
+    #b-mix { grid-area: mix; } #b-vig { grid-area: vig; } #b-grain { grid-area: grain; }
+    #b-notes { grid-area: notes; } #b-cmp { grid-area: cmp; }
+  }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    header .icon-btn, header .home-btn, .lib, .dbar, .actions, #b-cmp, .copy, .hint, .foot .linkish { display: none !important; }
+    .wrap { max-width: none; padding: 0; }
+    .wrap[data-view] .detail { display: block !important; }
+    .layout { display: block; }
+    .card { box-shadow: none; break-inside: avoid; }
+    .sections { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .detail { animation: none !important; }
+    .sheet, .scrim, .toast { transition: none; }
+  }
+</style>
+<script defer src="cloud.js"></script>
+</head>
+<body>
+<div class="wrap" id="wrap" data-view="list">
+  <header>
+    <a href="index.html" class="home-btn" aria-label="Back to House App" title="Back to House App">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L10 3l7 6.5V17a1 1 0 0 1-1 1h-3.5v-5h-5v5H4a1 1 0 0 1-1-1z"/></svg>
+    </a>
+    <div class="title">
+      <h1>Color Grading</h1>
+      <div class="sub" id="sub">Adobe Premiere Mobile · Adjust presets</div>
+    </div>
+    <button type="button" id="themeBtn" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">
+      <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7.5"/><path d="M10 2.5v15a7.5 7.5 0 0 0 0-15z" fill="currentColor" stroke="none"/></svg>
+    </button>
+  </header>
+
+  <div id="storageBanner" class="banner" hidden>This browser is blocking local storage (private mode?). Names, favourites and notes won't be kept after you close the page.</div>
+
+  <div class="layout">
+    <!-- ============ Library ============ -->
+    <aside class="lib" aria-label="Presets">
+      <label class="card search">
+        <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4 4"/></svg>
+        <input id="q" type="search" placeholder="Search presets" autocomplete="off" aria-label="Search presets">
+      </label>
+      <div class="chips" id="chips" role="toolbar" aria-label="Filter by category"></div>
+      <div class="card listcard">
+        <ul class="list" id="list"></ul>
+        <div class="empty" id="listEmpty" hidden><b id="emptyTitle">No matches</b><span id="emptyText">Try another word or category.</span></div>
+      </div>
+    </aside>
+
+    <!-- ============ Preset ============ -->
+    <main class="detail" id="detail" aria-live="polite">
+      <div class="dbar">
+        <button type="button" class="back" id="backBtn">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4L6.5 10l6 6"/></svg>
+          Presets
+        </button>
+        <span class="pos" id="pos"></span>
+        <button type="button" class="icon-btn" id="prevBtn" aria-label="Previous preset" title="Previous preset">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4L6.5 10l6 6"/></svg>
+        </button>
+        <button type="button" class="icon-btn" id="nextBtn" aria-label="Next preset" title="Next preset">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4l6 6-6 6"/></svg>
+        </button>
+      </div>
+
+      <section class="hero" id="hero">
+        <span class="badge" id="heroBadge"></span>
+        <div class="txt">
+          <div class="overline" id="dCat"></div>
+          <h2 id="dTitle"></h2>
+          <p id="dDesc"></p>
+          <div class="sig" id="dSig"></div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button type="button" class="btn primary" id="copyAll">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/></svg>
+          Copy all settings
+        </button>
+        <button type="button" class="btn sq fav" id="favBtn" aria-pressed="false" aria-label="Favourite" title="Favourite">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path id="favPath" d="M10 2.8l2.2 4.6 5 .6-3.7 3.5.9 5-4.4-2.4-4.4 2.4.9-5L2.8 8l5-.6z"/></svg>
+        </button>
+        <button type="button" class="btn sq" id="renameBtn" aria-label="Rename" title="Rename">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l3 3L7 16H4v-3z"/></svg>
+        </button>
+        <button type="button" class="btn sq" id="exportBtn" aria-label="Export preset as JSON" title="Export preset (.json)">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M6 9l4 4 4-4M4 16h12"/></svg>
+        </button>
+      </div>
+
+      <div class="tip" id="tip">
+        <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v5M10 6.2v.1"/></svg>
+        <span id="tipText"></span>
+      </div>
+
+      <div class="sections">
+        <section class="card block" id="b-light"></section>
+        <section class="card block" id="b-color"></section>
+        <section class="card block" id="b-grade"></section>
+        <section class="card block" id="b-mix"></section>
+        <section class="card block" id="b-vig"></section>
+        <section class="card block" id="b-grain"></section>
+
+        <section class="card block" id="b-notes">
+          <div class="bhead"><span class="ord">07</span><h3>My notes</h3></div>
+          <textarea class="notes" id="notes" rows="3" maxlength="2000" placeholder="What you changed for your footage, which clips it suits…" aria-label="My notes for this preset"></textarea>
+          <div class="hint">Saved as you type, and synced when you're signed in.</div>
+        </section>
+
+        <section class="card block" id="b-cmp">
+          <div class="bhead"><span class="ord">08</span><h3>Compare</h3></div>
+          <div class="cmp-ctl">
+            <select class="select" id="cmpTo" aria-label="Compare with"></select>
+            <label class="toggle"><input type="checkbox" id="cmpDiff" checked> Only differences</label>
+          </div>
+          <div class="cmp-wrap" id="cmpOut"></div>
+        </section>
+      </div>
+
+      <p class="foot">These are creative estimates from screenshot references, not recovered original editing values. Slider ranges and labels can vary by Premiere Mobile version; the bars here only show direction and rough size. Mix and Grading read Hue / Saturation / Luminance. “—” means the setting wasn't specified. Footage recorded in HDR needs the right colour-space handling before these numbers apply.
+        <button type="button" class="linkish" id="printBtn">Print or save as PDF</button></p>
+    </main>
+  </div>
+</div>
+
+<!-- ============ Rename sheet ============ -->
+<div class="scrim" id="scrim" aria-hidden="true">
+  <form class="sheet" id="renameForm" role="dialog" aria-modal="true" aria-labelledby="renameHead" autocomplete="off">
+    <div class="grab"></div>
+    <h3 id="renameHead">Rename preset</h3>
+    <p>Only the name changes; every setting stays as it is.</p>
+    <label class="lbl" for="renameInput">Name</label>
+    <input class="field" id="renameInput" maxlength="80" required enterkeyhint="done">
+    <div class="orig" id="renameOrig"></div>
+    <div class="sfoot">
+      <button type="button" class="btn" id="renameReset">Restore original</button>
+      <button type="submit" class="btn primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // Every tool in House App shares one origin, so keys carry the tool prefix.
+  // One record per preset you've personalised: { id: preset id, name?, fav?, notes? }.
+  // A record with nothing left in it is dropped. The presets themselves are built in.
+  var STORE_PREFS = "grade.prefs.v1";
+  var STORE_THEME = "grade.theme.v1";
+  var STORE_LAST = "grade.last.v1";     // last preset opened (this device)
+
+  // =====================================================================
+  // The library: Premiere Mobile "Adjust" values. Exposure is in stops;
+  // everything else is a slider value. null = not specified.
+  // =====================================================================
+  var CHANNELS = ["Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Magenta"];
+  var CHANNEL_DOTS = ["#bb5652", "#de8752", "#d6ba4f", "#638c60", "#53aeb4", "#557dbf", "#8865b7", "#bd6c97"];
+  var LIGHT_KEYS = ["Exposure", "Contrast", "Highlights", "Shadows", "Whites", "Blacks"];
+  var COLOR_KEYS = ["Temperature", "Tint", "Vibrance", "Saturation"];
+  var CATEGORIES = ["Gym", "Boat", "Movie", "iPhone", "Afternoon"];
+
+  function fields(keys, vals) {
+    var o = {};
+    keys.forEach(function (k, i) { o[k] = vals && vals[i] != null ? vals[i] : null; });
+    return o;
+  }
+  function mix(rows) { var o = {}; CHANNELS.forEach(function (c, i) { o[c] = rows[i] || null; }); return o; }
+  function grading(sh, mid, hi, glob) { return { Shadows: sh || null, Midtones: mid || null, Highlights: hi || null, Global: glob || null }; }
+  function vignette(amount, midpoint, roundness, feather, highlights) {
+    return fields(["Vignette", "Midpoint", "Roundness", "Feather", "Highlights"], [amount, midpoint, roundness, feather, highlights]);
+  }
+  function grain(amount, size, roughness) { return fields(["Grain", "Size", "Roughness"], [amount, size, roughness]); }
+  function P(id, title, category, desc, light, color, mixRows, grade, vig, gr, tip, ref) {
+    return { id: id, title: title, category: category, desc: desc,
+             light: fields(LIGHT_KEYS, light), color: fields(COLOR_KEYS, color),
+             mix: mixRows || {}, grading: grade || {}, vignette: vig || {}, grain: gr || {}, tip: tip || "", ref: ref || null };
+  }
+
+  var boat1Mix = mix([[5,-12,-5],[-8,12,10],[-25,-18,8],[25,-35,-15],[-15,12,-12],[-20,-20,-20],[0,-50,0],[0,-50,0]]);
+  var boat2Mix = mix([[5,-15,-5],[-10,15,8],[-30,-20,5],[30,-25,-20],[-20,15,-18],[-20,-30,-25],[0,-50,0],[0,-50,0]]);
+  var boat3Mix = mix([[5,-10,5],[-8,12,12],[-20,-15,10],[20,-30,-5],[-15,15,5],[-15,-15,-8],[0,-40,0],[0,-40,0]]);
+  var gymGoldenMix = mix([[5,-10,5],[-5,8,10],[-20,-25,-5],[-25,-40,-15],[-15,-25,-10],[-10,-25,-15],[0,-30,0],[0,-30,0]]);
+  var coldMix = mix([[5,-15,-10],[-5,-12,5],[-20,-45,-15],[35,-65,-25],[-15,-20,-10],[-12,-20,-18],[0,-50,0],[0,-50,0]]);
+  var spidermanMix = mix([[-5,8,-8],[-5,5,8],[-20,-35,-10],[25,-55,-20],[-10,-25,-8],[-10,-25,-15],[0,-45,0],[0,-45,0]]);
+  var guardiansMix = mix([[5,-15,-5],[-5,3,10],[-20,-25,-5],[-25,-35,-12],[-15,-30,-5],[-10,-40,-10],[0,-45,0],[0,-45,0]]);
+  var amberMix = mix([[5,-12,-5],[-8,12,10],[-20,-20,5],[25,-55,-20],[-15,5,-10],[-20,-35,-18],[0,-50,0],[0,-50,0]]);
+  var iphoneMix = mix([[5,-10,-5],[-5,8,8],[-20,-25,-8],[20,-40,-15],[-15,5,-10],[-15,-30,-18],[0,-45,0],[0,-45,0]]);
+  var indoorMix = mix([[5,-10,0],[-5,5,8],[-15,-25,-5],[15,-45,-10],[-10,-15,-8],[-10,-25,-12],[0,-40,0],[0,-40,0]]);
+  var outdoorMix = mix([[5,-10,-5],[-8,10,10],[-20,-20,5],[25,-35,-15],[-15,5,-10],[-20,-25,-18],[0,-45,0],[0,-45,0]]);
+  var cozyMix = mix([[0,-10,-6],[-8,11,8],[-20,-30,-8],[12,-45,-20],[-12,-28,-10],[-10,-35,-18],[0,-45,0],[0,-45,0]]);
+  var cozyOutMix = mix([[0,-10,-5],[-7,9,9],[-20,-25,-4],[15,-42,-15],[-10,-18,-6],[-12,-25,-10],[0,-42,0],[0,-42,0]]);
+  var rooftopMix = mix([[0,12,-4],[0,-8,4],[-15,-40,-12],[15,-40,-18],[-10,-28,-8],[-5,-18,-12],[0,-50,0],[0,-50,0]]);
+  var rooftopIndoorMix = mix([[0,5,-5],[-3,-7,5],[-15,-32,-12],[15,-45,-13],[-10,-25,-8],[-8,-24,-14],[0,-45,0],[0,-45,0]]);
+  var gymGrade = grading([190,8,null],[35,10,null],[45,18,null]);
+  var coldGrade = grading([205,18,-10],[190,10,-3],[165,8,4],[200,3,0]);
+  var COZY = "grade-refs/cozy-apartment.jpg", ROOFTOP = "grade-refs/overcast-rooftop.jpg";
+
+  var PRESETS = [
+    P("gym-golden", "Original gym · Golden cinematic", "Gym", "First golden boat-inspired grade adapted for the original deadlift footage.",
+      [.2,22,-35,12,10,-30], [24,4,12,-8], gymGoldenMix, gymGrade, vignette(-15,45,0,75,25), grain(12,20,35),
+      "Indoor lights can make +24 Temperature overly orange; lower toward +15 if necessary."),
+    P("gym-dark-golden", "Gym variation · Dark golden", "Gym", "Darker variation of the original golden grade.",
+      [-.15,30,-35,-5,10,-38], [18,4,12,-8], gymGoldenMix, gymGrade, vignette(-15,45,0,75,25), grain(12,20,35),
+      "Derived from the original golden preset, changing only the named Light and Temperature controls."),
+    P("gym-soft-vintage", "Gym variation · Soft vintage", "Gym", "Brighter, gently faded film variation.",
+      [.2,8,-35,22,10,-12], [18,4,12,-8], gymGoldenMix, gymGrade, vignette(-15,45,0,75,25), grain(18,20,35),
+      "Derived from the original golden preset; softer contrast and more grain."),
+    P("squat-shadow", "Squat reference · Deep shadows", "Gym", "Deep, slightly crushed shadows from the squat image.",
+      [-.1,25,-25,-35,5,-45], [], null, grading([215,5,-8]), null, null,
+      "For the original deadlift footage, the earlier recommendation was to start instead with Shadows −30 and Blacks −35."),
+    P("boat-1", "Boat 1 · Golden sunlight", "Boat", "Sparkling highlights, rich golden boat details and deep teal water.",
+      [-.2,28,-42,-32,24,-48], [18,3,18,-12], boat1Mix, grading([195,12,-10],[35,10,3],[43,22,8],[40,3,0]), vignette(-12), grain(12),
+      "For dark indoor gym footage, consider Shadows −20 and Blacks −35."),
+    P("boat-2", "Boat 2 · Dark emerald", "Boat", "White-and-blue boat in green water: deepest, moodiest boat look.",
+      [-.3,32,-38,-42,15,-55], [14,-4,12,-15], boat2Mix, grading([185,16,-12],[38,8,0],[42,18,5],[0,0,0]), vignette(-18), grain(15)),
+    P("boat-3", "Boat 3 · Vintage summer", "Boat", "Bright sailboat, turquoise sea and warm rocky coastline.",
+      [.15,18,-32,-12,18,-28], [12,2,16,-8], boat3Mix, grading([205,8,-4],[38,10,5],[45,16,8],[42,3,0]), vignette(-8), grain(10)),
+    P("spiderman-cold", "Spider-Man · Cold blue-gray", "Movie", "Cool metallic city look adapted to the bench-press footage.",
+      [-.25,30,-45,-28,-15,-38], [-18,-6,-20,-12], coldMix, coldGrade, vignette(-18,45,0,75,20), grain(18,22,40),
+      "If your face goes too dark, raise Shadows to −10."),
+    P("spiderman-cold-dark", "Spider-Man variation · Dark gym", "Movie", "Stronger blacks and moodier version of the cold blue-gray preset.",
+      [-.35,38,-45,-35,-15,-48], [-18,-6,-20,-12], coldMix, coldGrade, vignette(-18,45,0,75,20), grain(12,22,40)),
+    P("spiderman-cold-faded", "Spider-Man variation · Faded 2000s", "Movie", "Softer, faded and grainier version of the cold preset.",
+      [-.1,12,-45,5,-15,-15], [-18,-6,-20,-20], coldMix, coldGrade, vignette(-18,45,0,75,20), grain(25,22,40)),
+    P("spiderman-warm", "Spider-Man · Warm cinematic", "Movie", "Warmer Spider-Man still: soft peach highlights, subdued blue shadows and natural skin.",
+      [-.2,20,-40,-18,-20,-32], [9,5,-12,-14], spidermanMix, grading([205,9,-8],[25,12,3],[35,10,4],[30,2,0]), vignette(-12,45,0,75,20), grain(12,20,35),
+      "If skin is too orange, lower Temperature from +9 to +4."),
+    P("guardians", "Guardians · Muted olive", "Movie", "Earthy olive-green palette, soft highlights and muted cool colors.",
+      [-.1,12,-35,8,-18,-22], [8,-9,-18,-12], guardiansMix, grading([75,10,-5],[50,8,3],[42,10,4],[65,3,0]), vignette(-10,45,0,75,20), grain(10,20,30),
+      "If skin looks green, increase Tint from −9 to −4."),
+    P("golden-teal-room", "Golden interior · Amber & teal", "Movie", "Backlit room reference with glowing amber highlights and deep teal interior shadows.",
+      [-.15,28,-38,-25,8,-38], [20,-4,8,-12], amberMix, grading([190,14,-10],[32,12,3],[45,22,8],[38,3,0]), vignette(-18,45,0,75,25), grain(10,20,30),
+      "For the bench press, raise Shadows to −10 if the subject goes too dark."),
+    P("iphone-generic", "iPhone · General cinematic", "iPhone", "General preset for unedited 24mm f/1.78 iPhone video.",
+      [-.2,24,-45,-22,-12,-32], [17,-3,5,-14], iphoneMix, grading([190,12,-8],[35,10,2],[45,18,5],[38,2,0]), vignette(-12,45,0,75,20), grain(8,18,30),
+      "If indoor lighting is already warm, try Temperature +10 instead of +17."),
+    P("iphone-led", "iPhone · Indoor LED", "iPhone", "Best starting point for your bench press or other indoor LED-lit video.",
+      [-.1,22,-45,-12,-20,-28], [12,3,5,-12], indoorMix, grading([195,10,-6],[32,8,3],[43,14,4],[35,2,0]), vignette(-15,45,0,75,20), grain(8,18,30),
+      "Under already-yellow LEDs, start with Temperature +3 or 0; watch face exposure."),
+    P("iphone-outdoor", "iPhone · Outdoor daylight", "iPhone", "Golden daylight, warm skin and deeper blue-teal surroundings.",
+      [-.2,25,-35,-25,5,-35], [18,-3,10,-15], outdoorMix, grading([195,14,-9],[35,12,3],[45,20,7],[38,3,0]), vignette(-12,50,0,80,25), grain(12,20,35),
+      "If filming at golden hour, lower Temperature toward +5–10."),
+    P("afternoon-cozy-indoor", "Afternoon · Warm apartment / Indoor", "Afternoon", "Reference 1: cozy golden lamps, warm wooden floors, dark soft-edged shadows and muted teal accents.",
+      [-.25,27,-38,-30,-12,-42], [14,1,-5,-13], cozyMix, grading([205,10,-9],[33,12,1],[43,22,6],[38,2,0]), vignette(-19,45,0,78,20), grain(9,20,30),
+      "Designed for warm late-afternoon interiors. If lamps or windows blow out, reduce Whites to −22. Keep faces visible; lift Shadows toward −15 as needed.", COZY),
+    P("afternoon-cozy-outdoor", "Afternoon · Warm apartment look / Outdoor", "Afternoon", "An outdoor afternoon adaptation of reference 1: subtle amber sunlight, earthy shadows, muted color and warm surfaces.",
+      [-.15,20,-42,-20,0,-30], [12,2,7,-10], cozyOutMix, grading([200,8,-6],[36,10,1],[44,16,5],[38,2,0]), vignette(-12,50,0,80,22), grain(9,20,30),
+      "Outdoor adaptation of the indoor reference, not an exact match. In direct golden-hour sunlight, lower Temperature to +4–7 to avoid orange skin.", COZY),
+    P("afternoon-rooftop-outdoor", "Afternoon · Overcast rooftop / Outdoor", "Afternoon", "Reference 2: silvery overcast sky, subdued concrete, cooler gray-blue shadows and restrained reds.",
+      [-.1,14,-32,8,-15,-26], [-5,1,-14,-16], rooftopMix, grading([205,9,-5],[210,5,0],[40,5,1],[0,0,0]), vignette(-8,50,0,80,15), grain(12,20,35),
+      "Best for overcast or cloudy afternoon light. Preserve the red subject by keeping Red Saturation +12; check sky details after reducing Highlights.", ROOFTOP),
+    P("afternoon-rooftop-indoor", "Afternoon · Overcast film look / Indoor", "Afternoon", "An indoor afternoon LED/window-light adaptation of reference 2: cool neutral gray, soft contrast and minimal warmth.",
+      [-.05,17,-48,4,-25,-26], [-10,2,-15,-15], rooftopIndoorMix, grading([210,12,-5],[205,6,0],[38,6,2],[0,0,0]), vignette(-10,45,0,78,15), grain(9,18,30),
+      "Indoor adaptation of the rooftop reference. If skin looks blue, raise Temperature to −3 or 0. If LED lights look green, add Tint +4–7.", ROOFTOP)
+  ];
+  var DEFAULT_TIP = "Start here, then fine-tune Exposure, Temperature and Shadows to match your shot. These numbers are a creative approximation.";
+
+  // Slider ranges, used only to draw the bars. [min, max]; a min below 0 means
+  // the bar grows out from the middle.
+  var RANGE = { Exposure: [-1, 1], Midpoint: [0, 100], Feather: [0, 100], Grain: [0, 100], Size: [0, 100], Roughness: [0, 100] };
+  var VIG_RANGES = { Highlights: [0, 100] };
+  var TRACK_STYLE = { Temperature: "temp", Tint: "tint", Saturation: "sat" };
+  // Palette previews for presets without a reference photo, by category.
+  var CAT_GRADIENT = { Boat: "#174f59,#285d5a,#b78b58,#f8cf8f", Movie: "#263f43,#506660,#a4774c,#d5ae74",
+    Gym: "#172d34,#3e4541,#a67848,#dcb477", iPhone: "#26454c,#516663,#b08756,#e5bc73", Afternoon: "#192c31,#526d69,#a7784d,#e8bb77" };
+
+  // =====================================================================
+  // helpers
+  // =====================================================================
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, txt) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (txt != null) n.textContent = txt;
+    return n;
+  }
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+  function safeRead(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function safeWrite(key, val) {
+    try { localStorage.setItem(key, val); }
+    catch (e) { $("storageBanner").hidden = false; return false; }
+    if (window.HouseCloud) window.HouseCloud.dirty(key);   // signed in: upload the change (cloud.js)
+    return true;
+  }
+  function readJson(key, fallback) {
+    try { var v = JSON.parse(safeRead(key)); return v == null ? fallback : v; } catch (e) { return fallback; }
+  }
+  function svgIcon(d, size, fill) {
+    var ns = "http://www.w3.org/2000/svg";
+    var s = document.createElementNS(ns, "svg");
+    s.setAttribute("width", size); s.setAttribute("height", size);
+    s.setAttribute("viewBox", "0 0 20 20"); s.setAttribute("fill", fill ? "currentColor" : "none");
+    s.setAttribute("stroke", "currentColor"); s.setAttribute("stroke-width", "1.9");
+    s.setAttribute("stroke-linecap", "round"); s.setAttribute("stroke-linejoin", "round");
+    var p = document.createElementNS(ns, "path"); p.setAttribute("d", d);
+    s.appendChild(p);
+    return s;
+  }
+  var ICON_STAR = "M10 2.8l2.2 4.6 5 .6-3.7 3.5.9 5-4.4-2.4-4.4 2.4.9-5L2.8 8l5-.6z";
+  var ICON_CHEV = "M7.5 4l6 6-6 6";
+  var ICON_COPY = "M7 7h10v10H7zM13 7V3H3v10h4";
+
+  function isSet(v) { return v !== null && v !== undefined; }
+  // Signed, with a real minus sign: +12, −0.15, 0.
+  function fmt(n) { return !isSet(n) ? "—" : n > 0 ? "+" + n : n < 0 ? "−" + Math.abs(n) : "0"; }
+  // 0–100 sliders read as plain numbers (Feather 75), not +75.
+  function fmtFor(key, v, ranges) { var r = (ranges && ranges[key]) || RANGE[key]; return r && r[0] >= 0 && v > 0 ? String(v) : fmt(v); }
+  function setEntries(obj) { return Object.keys(obj || {}).filter(function (k) { return isSet(obj[k]); }); }
+
+  // =====================================================================
+  // per-preset personal touches (synced)
+  // =====================================================================
+  function loadPrefs() {
+    var list = readJson(STORE_PREFS, []), map = {};
+    if (Array.isArray(list)) list.forEach(function (r) { if (r && r.id) map[r.id] = r; });
+    return map;
+  }
+  var PREFS = loadPrefs();
+  function savePrefs() {
+    var out = [];
+    PRESETS.forEach(function (p) { if (PREFS[p.id]) out.push(PREFS[p.id]); });
+    // Keep records for presets this version doesn't know (a newer copy on another device).
+    Object.keys(PREFS).forEach(function (id) { if (!byId(id)) out.push(PREFS[id]); });
+    safeWrite(STORE_PREFS, JSON.stringify(out));
+  }
+  function setPref(id, field, value) {
+    var r = PREFS[id] || { id: id };
+    if (value) r[field] = value; else delete r[field];
+    if (r.name || r.fav || r.notes) PREFS[id] = r; else delete PREFS[id];
+    savePrefs();
+  }
+  function nameOf(p) { var r = PREFS[p.id]; return r && r.name ? r.name : p.title; }
+  function isFav(p) { return !!(PREFS[p.id] && PREFS[p.id].fav); }
+  function notesOf(p) { var r = PREFS[p.id]; return r && r.notes ? r.notes : ""; }
+  function byId(id) {
+    for (var i = 0; i < PRESETS.length; i++) if (PRESETS[i].id === id) return PRESETS[i];
+    return null;
+  }
+
+  // =====================================================================
+  // visuals
+  // =====================================================================
+  // A preset's own palette: its Grading hues from shadows to highlights.
+  function paletteOf(p) {
+    var g = p.grading, sh = g.Shadows, mid = g.Midtones, hi = g.Highlights;
+    if (sh && mid && hi) {
+      return "linear-gradient(110deg, hsl(" + sh[0] + " 38% 17%), hsl(" + sh[0] + " 26% 30%) 30%, hsl(" + mid[0] + " 34% 46%) 64%, hsl(" + hi[0] + " 62% 72%))";
+    }
+    return "linear-gradient(110deg," + (CAT_GRADIENT[p.category] || CAT_GRADIENT.iPhone) + ")";
+  }
+  function backgroundOf(p) { return p.ref ? 'url("' + p.ref + '")' : paletteOf(p); }
+
+  // The three biggest moves in Light + Color, for the at-a-glance line.
+  var SHORT = { Temperature: "Temp", Saturation: "Sat", Highlights: "Highlights" };
+  function signature(p) {
+    var all = [];
+    [p.light, p.color].forEach(function (o) {
+      setEntries(o).forEach(function (k) {
+        var v = o[k], scale = k === "Exposure" ? 1 : 100;
+        if (v) all.push({ k: k, v: v, w: Math.abs(v) / scale });
+      });
+    });
+    all.sort(function (a, b) { return b.w - a.w; });
+    return all.slice(0, 3).map(function (x) { return (SHORT[x.k] || x.k) + " " + fmt(x.v); });
+  }
+
+  function track(key, value, range) {
+    var r = range || RANGE[key] || [-100, 100];
+    var t = el("span", "track" + (r[0] < 0 ? " mid" : "") + (TRACK_STYLE[key] ? " " + TRACK_STYLE[key] : ""));
+    if (!isSet(value)) return t;
+    var pct = (Math.max(r[0], Math.min(r[1], value)) - r[0]) / (r[1] - r[0]) * 100;
+    var origin = r[0] < 0 ? 50 : 0;
+    var fill = el("span", "fill");
+    fill.style.left = Math.min(origin, pct) + "%";
+    fill.style.width = Math.abs(pct - origin) + "%";
+    var knob = el("span", "knob");
+    knob.style.left = pct + "%";
+    t.appendChild(fill); t.appendChild(knob);
+    return t;
+  }
+  function settingRows(box, obj, keys, ranges) {
+    var any = false;
+    keys.forEach(function (k) {
+      var v = obj[k];
+      if (!isSet(v) && obj !== null && !(k in obj)) return;
+      if (isSet(v)) any = true;
+      var row = el("div", "srow");
+      row.appendChild(el("span", "k", k));
+      row.appendChild(track(k, v, ranges && ranges[k]));
+      row.appendChild(el("span", "v" + (isSet(v) ? "" : " nil"), fmtFor(k, v, ranges)));
+      box.appendChild(row);
+    });
+    return any;
+  }
+
+  function blockHead(box, ord, title, copyKey) {
+    var h = el("div", "bhead");
+    h.appendChild(el("span", "ord", ord));
+    h.appendChild(el("h3", null, title));
+    if (copyKey) {
+      var b = el("button", "copy");
+      b.type = "button";
+      b.setAttribute("data-copy", copyKey);
+      b.setAttribute("aria-label", "Copy " + title + " settings");
+      b.appendChild(svgIcon(ICON_COPY, 13));
+      b.appendChild(document.createTextNode("Copy"));
+      h.appendChild(b);
+    }
+    box.appendChild(h);
+  }
+  function noneNote(box) { box.appendChild(el("p", "none", "Not specified for this preset.")); }
+
+  function renderSimple(id, ord, title, copyKey, obj, keys, ranges) {
+    var box = $(id); clear(box);
+    blockHead(box, ord, title, setEntries(obj).length ? copyKey : null);
+    if (!setEntries(obj).length) { noneNote(box); return; }
+    settingRows(box, obj, keys, ranges);
+  }
+
+  function renderMix(p) {
+    var box = $("b-mix"); clear(box);
+    var has = Object.keys(p.mix).some(function (k) { return p.mix[k]; });
+    blockHead(box, "04", "Mix · HSL", has ? "mix" : null);
+    if (!has) { noneNote(box); return; }
+    var t = el("table", "mix"), head = el("tr");
+    ["Colour", "Hue", "Sat", "Lum"].forEach(function (h) { head.appendChild(el("th", null, h)); });
+    var thead = el("thead"); thead.appendChild(head); t.appendChild(thead);
+    var tb = el("tbody");
+    CHANNELS.forEach(function (c, i) {
+      var tr = el("tr"), name = el("td"), dot = el("span", "dot");
+      dot.style.background = CHANNEL_DOTS[i];
+      name.appendChild(dot); name.appendChild(document.createTextNode(c));
+      tr.appendChild(name);
+      (p.mix[c] || [null, null, null]).forEach(function (v) {
+        tr.appendChild(el("td", !isSet(v) ? "nil" : v === 0 ? "zero" : null, fmt(v)));
+      });
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    box.appendChild(t);
+  }
+
+  function renderGrading(p) {
+    var box = $("b-grade"); clear(box);
+    var names = ["Shadows", "Midtones", "Highlights", "Global"];
+    var has = names.some(function (n) { return p.grading[n]; });
+    blockHead(box, "03", "Grading", has ? "grading" : null);
+    if (!has) { noneNote(box); return; }
+    var grid = el("div", "wheels");
+    names.forEach(function (n) {
+      var g = p.grading[n], cell = el("div", "wcell"), w = el("div", "wheel" + (g ? "" : " off"));
+      w.appendChild(el("span", "ctr"));
+      if (g && (g[1] || 0) !== 0) {
+        // Hue 0° (red) sits at 3 o'clock and runs counter-clockwise, like Premiere's wheels.
+        var a = (g[0] || 0) * Math.PI / 180, r = Math.min(100, Math.abs(g[1])) / 100 * 50;
+        var puck = el("span", "puck");
+        puck.style.left = (50 + r * Math.cos(a)) + "%";
+        puck.style.top = (50 - r * Math.sin(a)) + "%";
+        puck.style.background = "hsl(" + g[0] + " 70% 55%)";
+        w.appendChild(puck);
+      }
+      w.setAttribute("role", "img");
+      w.setAttribute("aria-label", n + (g ? ": hue " + g[0] + "°, saturation " + g[1] : ": not set"));
+      cell.appendChild(w);
+      cell.appendChild(el("b", null, n));
+      cell.appendChild(el("small", null, g ? "Hue " + (isSet(g[0]) ? g[0] + "°" : "—") : "Not set"));
+      if (g) cell.appendChild(el("small", null, "Sat " + fmt(g[1]) + " · Lum " + fmt(g[2])));
+      grid.appendChild(cell);
+    });
+    box.appendChild(grid);
+  }
+
+  // =====================================================================
+  // text for the clipboard
+  // =====================================================================
+  function linesOf(obj, ranges) { return setEntries(obj).map(function (k) { return k + ": " + fmtFor(k, obj[k], ranges); }); }
+  function triples(obj) {
+    return Object.keys(obj).filter(function (k) { return obj[k]; })
+      .map(function (k) { return k + ": " + obj[k].map(fmt).join(" / "); });
+  }
+  function sectionText(p, key) {
+    switch (key) {
+      case "light": return ["LIGHT"].concat(linesOf(p.light));
+      case "color": return ["COLOR"].concat(linesOf(p.color));
+      case "mix": return ["MIX (Hue / Saturation / Luminance)"].concat(triples(p.mix));
+      case "grading": return ["GRADING (Hue / Saturation / Luminance)"].concat(triples(p.grading));
+      case "vignette": return ["VIGNETTE"].concat(linesOf(p.vignette, VIG_RANGES));
+      case "grain": return ["GRAIN"].concat(linesOf(p.grain));
+    }
+    return [];
+  }
+  function fullText(p) {
+    var out = [nameOf(p), p.desc];
+    ["light", "color", "mix", "grading", "vignette", "grain"].forEach(function (k) {
+      var s = sectionText(p, k);
+      if (s.length > 1) out.push("", s.join("\n"));
+    });
+    if (p.tip) out.push("", "TIP: " + p.tip);
+    if (notesOf(p)) out.push("", "MY NOTES: " + notesOf(p));
+    return out.join("\n");
+  }
+  function copyText(text, msg) {
+    function fallback() {
+      var area = document.createElement("textarea");
+      area.value = text; area.setAttribute("readonly", "");
+      area.style.position = "fixed"; area.style.opacity = "0";
+      document.body.appendChild(area); area.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      area.remove();
+      toast(msg);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast(msg); }, fallback);
+    } else fallback();
+  }
+
+  // =====================================================================
+  // library list
+  // =====================================================================
+  var filter = "All", selected = null;
+
+  function matches(p) {
+    var q = $("q").value.trim().toLowerCase();
+    if (filter === "Favourites" ? !isFav(p) : filter !== "All" && p.category !== filter) return false;
+    if (!q) return true;
+    return (nameOf(p) + " " + p.title + " " + p.desc + " " + p.category + " " + notesOf(p)).toLowerCase().indexOf(q) >= 0;
+  }
+  function visible() { return PRESETS.filter(matches); }
+
+  function renderChips() {
+    var box = $("chips"); clear(box);
+    var favCount = PRESETS.filter(isFav).length;
+    ["All", "Favourites"].concat(CATEGORIES).forEach(function (c) {
+      if (c === "Favourites" && !favCount && filter !== "Favourites") return;
+      var n = c === "All" ? PRESETS.length : c === "Favourites" ? favCount
+        : PRESETS.filter(function (p) { return p.category === c; }).length;
+      var b = el("button", "chip" + (filter === c ? " on" : ""));
+      b.type = "button";
+      b.setAttribute("data-filter", c);
+      b.setAttribute("aria-pressed", filter === c ? "true" : "false");
+      if (c === "Favourites") b.appendChild(svgIcon(ICON_STAR, 13, true));
+      b.appendChild(document.createTextNode(c === "Favourites" ? "Favourites" : c));
+      b.appendChild(el("span", "cnt", String(n)));
+      box.appendChild(b);
+    });
+  }
+
+  function renderList() {
+    var list = $("list"), shown = visible();
+    clear(list);
+    shown.forEach(function (p) {
+      var li = el("li"), b = el("button", "item" + (p.id === selected ? " active" : ""));
+      b.type = "button";
+      b.setAttribute("data-id", p.id);
+      if (p.id === selected) b.setAttribute("aria-current", "true");
+      var th = el("span", "thumb"); th.style.backgroundImage = backgroundOf(p);
+      var body = el("span", "body");
+      body.appendChild(el("span", "t", nameOf(p)));
+      body.appendChild(el("span", "d", p.category + " · " + p.desc));
+      b.appendChild(th); b.appendChild(body);
+      if (isFav(p)) { var s = el("span", "star"); s.appendChild(svgIcon(ICON_STAR, 15, true)); s.setAttribute("aria-label", "Favourite"); b.appendChild(s); }
+      var ch = el("span", "chev"); ch.appendChild(svgIcon(ICON_CHEV, 15)); b.appendChild(ch);
+      li.appendChild(b);
+      list.appendChild(li);
+    });
+    $("listEmpty").hidden = shown.length > 0;
+    if (!shown.length) {
+      var favEmpty = filter === "Favourites" && !$("q").value.trim();
+      $("emptyTitle").textContent = favEmpty ? "No favourites yet" : "No matches";
+      $("emptyText").textContent = favEmpty ? "Tap the star on a preset to keep it here." : "Try another word or category.";
+    }
+    $("sub").textContent = "Adobe Premiere Mobile · " + PRESETS.length + " presets";
+  }
+
+  // =====================================================================
+  // the open preset
+  // =====================================================================
+  function renderDetail() {
+    var p = byId(selected);
+    if (!p) return;
+    var hero = $("hero");
+    hero.style.backgroundImage = p.ref ? "linear-gradient(90deg, rgba(9,21,27,.45), rgba(9,21,27,0) 70%), " + backgroundOf(p) : backgroundOf(p);
+    $("heroBadge").textContent = p.ref ? "Your reference photo" : "Palette preview · not a render";
+    $("dCat").textContent = p.category + " · Adjust preset";
+    $("dTitle").textContent = nameOf(p);
+    $("dDesc").textContent = p.desc;
+    var sig = $("dSig"); clear(sig);
+    signature(p).forEach(function (s) { sig.appendChild(el("span", null, s)); });
+    $("tipText").textContent = p.tip || DEFAULT_TIP;
+
+    var fav = isFav(p);
+    $("favBtn").setAttribute("aria-pressed", fav ? "true" : "false");
+    $("favBtn").setAttribute("aria-label", fav ? "Remove from favourites" : "Add to favourites");
+    $("favBtn").title = fav ? "Remove from favourites" : "Add to favourites";
+    $("favPath").setAttribute("fill", fav ? "currentColor" : "none");
+
+    renderSimple("b-light", "01", "Light", "light", p.light, LIGHT_KEYS);
+    renderSimple("b-color", "02", "Color", "color", p.color, COLOR_KEYS);
+    renderGrading(p);
+    renderMix(p);
+    renderSimple("b-vig", "05", "Vignette", "vignette", p.vignette, ["Vignette", "Midpoint", "Roundness", "Feather", "Highlights"], VIG_RANGES);
+    renderSimple("b-grain", "06", "Grain", "grain", p.grain, ["Grain", "Size", "Roughness"]);
+
+    var notes = $("notes");
+    if (document.activeElement !== notes) { notes.value = notesOf(p); autosize(notes); }
+
+    var shown = visible(), i = shown.indexOf(p);
+    $("pos").textContent = i >= 0 ? (i + 1) + " of " + shown.length : "";
+    $("prevBtn").disabled = i <= 0;
+    $("nextBtn").disabled = i < 0 || i >= shown.length - 1;
+
+    renderCompareOptions();
+    renderCompare();
+    document.title = nameOf(p) + " · Color Grading";
+  }
+
+  // ---------- compare ----------
+  function flatten(p) {
+    var o = {};
+    [["Light", p.light], ["Color", p.color], ["Vignette", p.vignette], ["Grain", p.grain]].forEach(function (s) {
+      Object.keys(s[1]).forEach(function (k) { o[s[0] + " / " + k] = s[1][k]; });
+    });
+    [["Mix", p.mix], ["Grading", p.grading]].forEach(function (s) {
+      Object.keys(s[1]).forEach(function (k) {
+        if (!s[1][k]) return;
+        ["Hue", "Sat", "Lum"].forEach(function (c, i) { o[s[0] + " / " + k + " " + c] = s[1][k][i]; });
+      });
+    });
+    return o;
+  }
+  function renderCompareOptions() {
+    var sel = $("cmpTo"), keep = sel.value;
+    clear(sel);
+    PRESETS.forEach(function (p) {
+      if (p.id === selected) return;
+      var o = el("option", null, nameOf(p)); o.value = p.id;
+      sel.appendChild(o);
+    });
+    if (keep && keep !== selected && byId(keep)) sel.value = keep;
+    else sel.value = selected === "iphone-outdoor" ? "iphone-led" : "iphone-outdoor";
+  }
+  function renderCompare() {
+    var out = $("cmpOut"); clear(out);
+    var a = byId(selected), b = byId($("cmpTo").value);
+    if (!a || !b) return;
+    var A = flatten(a), B = flatten(b), onlyDiff = $("cmpDiff").checked;
+    var keys = Object.keys(A);
+    Object.keys(B).forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); });
+    var t = el("table", "cmp"), thead = el("thead"), hr = el("tr");
+    [["Setting"], [nameOf(a)], [nameOf(b)], ["Δ"]].forEach(function (h) { hr.appendChild(el("th", null, h[0])); });
+    thead.appendChild(hr); t.appendChild(thead);
+    var tb = el("tbody"), prev = "", rows = 0;
+    keys.forEach(function (k) {
+      var va = isSet(A[k]) ? A[k] : null, vb = isSet(B[k]) ? B[k] : null;
+      var differs = va !== vb;
+      if (onlyDiff && !differs) return;
+      if (!isSet(va) && !isSet(vb)) return;
+      var group = k.split(" / ")[0];
+      if (group !== prev) {
+        var sr = el("tr", "sec"), sc = el("td", null, group); sc.colSpan = 4;
+        sr.appendChild(sc); tb.appendChild(sr); prev = group;
+      }
+      var tr = el("tr", differs ? "diff" : null);
+      tr.appendChild(el("td", null, k.slice(group.length + 3)));
+      tr.appendChild(el("td", null, fmt(va)));
+      tr.appendChild(el("td", null, fmt(vb)));
+      var d = isSet(va) && isSet(vb) ? Math.round((vb - va) * 100) / 100 : null;
+      tr.appendChild(el("td", "delta", differs && isSet(d) ? fmt(d) : differs ? "≠" : "="));
+      tb.appendChild(tr); rows++;
+    });
+    if (!rows) { out.appendChild(el("p", "none", "These two presets have identical settings.")); out.lastChild.style.padding = "0 16px 14px"; return; }
+    t.appendChild(tb);
+    out.appendChild(t);
+  }
+
+  // =====================================================================
+  // navigation: #<preset id> opens a preset. On a phone that's its own
+  // screen (so the back gesture returns to the list); on a wide screen the
+  // list stays beside it.
+  // =====================================================================
+  var wide = window.matchMedia ? matchMedia("(min-width: 900px)") : { matches: true };
+  var pushedDetail = false;
+
+  function show(id, opts) {
+    opts = opts || {};
+    if (!byId(id)) return;
+    var changed = id !== selected;
+    selected = id;
+    safeWrite(STORE_LAST, id);
+    $("wrap").setAttribute("data-view", "detail");
+    renderList();
+    renderDetail();
+    if (location.hash.slice(1) !== id) {
+      if (!wide.matches && !opts.replace && $("wrap").getAttribute("data-shown") !== "detail") {
+        history.pushState(null, "", "#" + id); pushedDetail = true;
+      } else history.replaceState(null, "", "#" + id);
+    }
+    $("wrap").setAttribute("data-shown", "detail");
+    if (changed && !wide.matches && !opts.keepScroll) window.scrollTo(0, 0);
+  }
+  function showList() {
+    $("wrap").setAttribute("data-view", "list");
+    $("wrap").setAttribute("data-shown", "list");
+    renderList();
+    var cur = document.querySelector('.item[data-id="' + selected + '"]');
+    if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: "center" });
+  }
+  function routeFromHash() {
+    var id = location.hash.slice(1);
+    if (byId(id)) show(id, { replace: true });
+    else if (wide.matches) show(selected || safeRead(STORE_LAST) || PRESETS[0].id, { replace: true });
+    else showList();
+  }
+  window.addEventListener("popstate", function () { pushedDetail = false; routeFromHash(); });
+
+  $("backBtn").addEventListener("click", function () {
+    if (pushedDetail) { history.back(); return; }   // popstate shows the list
+    history.replaceState(null, "", location.pathname + location.search);
+    showList();
+  });
+  function step(dir) {
+    var shown = visible(), i = shown.indexOf(byId(selected));
+    var next = shown[i + dir];
+    if (next) show(next.id, { replace: true });
+  }
+  $("prevBtn").addEventListener("click", function () { step(-1); });
+  $("nextBtn").addEventListener("click", function () { step(1); });
+
+  $("list").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-id]");
+    if (b) show(b.getAttribute("data-id"));
+  });
+  $("chips").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-filter]");
+    if (!b) return;
+    filter = b.getAttribute("data-filter");
+    renderChips(); renderList();
+    if (selected && $("wrap").getAttribute("data-view") === "detail") renderDetail();
+  });
+  $("q").addEventListener("input", function () { renderList(); if (selected) renderDetail(); });
+
+  // Arrow keys step through presets on a keyboard (not while typing).
+  document.addEventListener("keydown", function (e) {
+    if (e.target.closest && e.target.closest("input, textarea, select") || $("scrim").classList.contains("on")) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || !selected) return;
+    if (e.key === "ArrowDown" || e.key === "j") { step(1); e.preventDefault(); }
+    if (e.key === "ArrowUp" || e.key === "k") { step(-1); e.preventDefault(); }
+  });
+
+  // ---------- actions ----------
+  $("copyAll").addEventListener("click", function () { copyText(fullText(byId(selected)), "All settings copied"); });
+  document.querySelector(".sections").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-copy]");
+    if (!b) return;
+    var key = b.getAttribute("data-copy");
+    copyText(sectionText(byId(selected), key).join("\n"), key.charAt(0).toUpperCase() + key.slice(1) + " copied");
+  });
+  $("favBtn").addEventListener("click", function () {
+    var p = byId(selected), now = !isFav(p);
+    setPref(p.id, "fav", now);
+    if (!now && filter === "Favourites" && !PRESETS.some(isFav)) filter = "All";
+    renderChips(); renderList(); renderDetail();
+    toast(now ? "Added to favourites" : "Removed from favourites");
+  });
+  $("exportBtn").addEventListener("click", function () {
+    var p = byId(selected);
+    var data = { id: p.id, title: nameOf(p), category: p.category, desc: p.desc, light: p.light, color: p.color,
+                 mix: p.mix, grading: p.grading, vignette: p.vignette, grain: p.grain, note: p.tip };
+    if (nameOf(p) !== p.title) data.originalTitle = p.title;
+    if (notesOf(p)) data.myNotes = notesOf(p);
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = p.id + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    toast("Exported " + p.id + ".json");
+  });
+  $("printBtn").addEventListener("click", function () { window.print(); });
+
+  // ---------- my notes ----------
+  function autosize(t) { t.style.height = "auto"; t.style.height = Math.max(84, t.scrollHeight + 2) + "px"; }
+  var notesTimer = null;
+  function saveNotes() {
+    clearTimeout(notesTimer); notesTimer = null;
+    var p = byId(selected);
+    if (!p) return;
+    var v = $("notes").value.replace(/\s+$/, "");
+    if (v === notesOf(p)) return;
+    setPref(p.id, "notes", v);
+  }
+  $("notes").addEventListener("input", function () {
+    autosize(this);
+    clearTimeout(notesTimer);
+    notesTimer = setTimeout(saveNotes, 600);
+  });
+  $("notes").addEventListener("blur", saveNotes);
+
+  // ---------- compare ----------
+  $("cmpTo").addEventListener("change", renderCompare);
+  $("cmpDiff").addEventListener("change", renderCompare);
+
+  // ---------- rename sheet ----------
+  var lastFocus = null;
+  function openRename() {
+    var p = byId(selected);
+    lastFocus = document.activeElement;
+    $("renameInput").value = nameOf(p);
+    $("renameOrig").textContent = nameOf(p) !== p.title ? "Original: " + p.title : "";
+    $("renameReset").hidden = nameOf(p) === p.title;
+    $("scrim").classList.add("on");
+    $("scrim").setAttribute("aria-hidden", "false");
+    document.body.classList.add("locked");
+    setTimeout(function () { $("renameInput").focus(); $("renameInput").select(); }, 60);
+  }
+  function closeRename() {
+    $("scrim").classList.remove("on");
+    $("scrim").setAttribute("aria-hidden", "true");
+    document.body.classList.remove("locked");
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  function rename(name) {
+    var p = byId(selected);
+    name = (name || "").trim().slice(0, 80);
+    setPref(p.id, "name", name && name !== p.title ? name : "");
+    closeRename();
+    renderList(); renderDetail();
+  }
+  $("renameBtn").addEventListener("click", openRename);
+  $("renameForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = $("renameInput").value.trim();
+    if (!v) { $("renameInput").focus(); return; }
+    rename(v);
+    toast("Preset renamed");
+  });
+  $("renameReset").addEventListener("click", function () { rename(""); toast("Original name restored"); });
+  $("scrim").addEventListener("click", function (e) { if (e.target === $("scrim")) closeRename(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("scrim").classList.contains("on")) closeRename(); });
+
+  // ---------- toast ----------
+  var toastTimer = null;
+  function toast(msg) {
+    $("toast").textContent = msg;
+    $("toast").classList.add("on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { $("toast").classList.remove("on"); }, 2200);
+  }
+
+  // ---------- theme ----------
+  function applyTheme(t) {
+    if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    else document.documentElement.removeAttribute("data-theme");
+    var dark = t === "dark" || (!t && window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+    document.querySelector('meta[name="theme-color"]').setAttribute("content", dark ? "#0e1214" : "#f6f5f2");
+  }
+  $("themeBtn").addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme");
+    var dark = cur ? cur === "dark" : (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+    var next = dark ? "light" : "dark";
+    safeWrite(STORE_THEME, next);
+    applyTheme(next);
+  });
+
+  // ---------- boot ----------
+  applyTheme(safeRead(STORE_THEME));
+  try { localStorage.setItem("grade.probe", "1"); localStorage.removeItem("grade.probe"); }
+  catch (e) { $("storageBanner").hidden = false; }
+  renderChips();
+  routeFromHash();
+  // Crossing the phone / wide breakpoint (rotating a tablet, resizing a window).
+  if (wide.addEventListener) wide.addEventListener("change", function () {
+    if (wide.matches && !selected) routeFromHash();
+    else if (selected && $("wrap").getAttribute("data-view") === "detail") renderDetail();
+  });
+
+  // Another tab, or another device via cloud.js, changed names / favourites / notes.
+  window.addEventListener("storage", function (e) {
+    if (e.key !== STORE_PREFS) return;
+    PREFS = loadPrefs();
+    if (filter === "Favourites" && !PRESETS.some(isFav)) filter = "All";
+    renderChips(); renderList();
+    if (selected) renderDetail();
+  });
+
+  if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
+})();
+</script>
+</body>
+</html>

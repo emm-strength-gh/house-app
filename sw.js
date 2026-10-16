@@ -14,7 +14,7 @@
  * them up.
  */
 
-var CACHE_VERSION = "v8";
+var CACHE_VERSION = "v9";
 // Other apps can live on the same site (github.io serves every repo from one
 // origin), so only this app's own caches are ever cleared.
 var CACHE_PREFIX = "house-app-shell-";
@@ -35,6 +35,9 @@ var SHELL_ASSETS = [
   "./expenses.html",
   "./account.html",
   "./powerpass.html",
+  "./grade.html",
+  "./grade-refs/cozy-apartment.jpg",
+  "./grade-refs/overcast-rooftop.jpg",
   "./powerpass.js",
   "./powerpass.css",
   "./vendor/supabase.js",
@@ -75,6 +78,10 @@ var SHELL_ASSETS = [
   "./icons/powerpass-32.png",
   "./icons/powerpass-180.png",
   "./icons/powerpass-192.png",
+  "./icons/grade.svg",
+  "./icons/grade-32.png",
+  "./icons/grade-180.png",
+  "./icons/grade-192.png",
   SUPABASE_LIB
 ];
 

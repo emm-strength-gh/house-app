@@ -2,7 +2,7 @@
   "id": "./",
   "name": "House App",
   "short_name": "House",
-  "description": "House App — a home screen of household tools, including the Energy Tracker, Oni Orders, Grocery Planner, To Do, Expenses and PowerPass.",
+  "description": "House App — a home screen of household tools, including the Energy Tracker, Oni Orders, Grocery Planner, To Do, Expenses, PowerPass and Premiere Color Grading.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -50,6 +50,12 @@
       "short_name": "PowerPass",
       "url": "./powerpass.html",
       "icons": [{ "src": "icons/powerpass-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Premiere Color Grading",
+      "short_name": "Grading",
+      "url": "./grade.html",
+      "icons": [{ "src": "icons/grade-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

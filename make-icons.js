@@ -11,6 +11,7 @@
  *   todo-*    the To Do app tile
  *   expenses-* the Expenses app tile
  *   powerpass-* the PowerPass app tile
+ *   grade-*   the Premiere Color Grading app tile
  *
  * Variants:
  *   *-180.png           apple-touch-icon: full-bleed square, iOS rounds it itself
@@ -99,6 +100,18 @@ var ICONS = {
       { rect: [0.26, 0.44, 0.48, 0.38, 0.08], color: "#ffffff" },
       { rect: [0.455, 0.545, 0.09, 0.09, 0.045], color: "#3b2fc9" },
       { rect: [0.477, 0.60, 0.046, 0.12, 0.023], color: "#3b2fc9" }
+    ],
+    scaleAny: 0.92, scaleMask: 0.74
+  },
+  grade: {
+    // A colour wheel with its puck pulled toward the warm side, and a slider
+    // below, on a teal -> amber ("teal and orange") gradient.
+    bg: ["#245a5c", "#e2a85a"],
+    shapes: [
+      { ring: [0.50, 0.42, 0.25, 0.25, 0.06], color: "#ffffff" },
+      { rect: [0.523, 0.273, 0.124, 0.124, 0.062], color: "#ffffff" },
+      { rect: [0.22, 0.785, 0.56, 0.05, 0.025], color: "#ffffff", alpha: 0.55 },
+      { rect: [0.36, 0.76, 0.10, 0.10, 0.05], color: "#ffffff" }
     ],
     scaleAny: 0.92, scaleMask: 0.74
   },

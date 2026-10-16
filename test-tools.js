@@ -182,9 +182,9 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
 
 (async () => {
   console.log("\nEvery page is wired in");
-  const PAGES = ["index.html", "account.html", "energy-tracker.html", "oni-orders.html", "grocery.html", "todo.html", "expenses.html"];
+  const PAGES = ["index.html", "account.html", "energy-tracker.html", "oni-orders.html", "grocery.html", "todo.html", "expenses.html", "grade.html"];
   PAGES.forEach(f => check(f + " loads cloud.js", /<script defer src="cloud\.js"><\/script>/.test(read(f))));
-  ["energy-tracker.html", "oni-orders.html", "grocery.html", "todo.html", "expenses.html"].forEach(f => {
+  ["energy-tracker.html", "oni-orders.html", "grocery.html", "todo.html", "expenses.html", "grade.html"].forEach(f => {
     const src = read(f), m = /function safeWrite\([^)]*\)\s*\{[\s\S]*?\n  \}/.exec(src);
     check(f + ": every save is reported to cloud.js", !!m && /HouseCloud\.dirty\(key\)/.test(m[0]));
     check(f + ": no save bypasses safeWrite", (src.match(/localStorage\.setItem\(/g) || []).length <= 2, String((src.match(/localStorage\.setItem\(/g) || []).length));
@@ -194,7 +194,8 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   PAGES.forEach(f => (read(f).match(/"[a-z]+\.[A-Za-z]+\.v\d+"/g) || []).forEach(k => used.add(k.slice(1, -1))));
   check("every synced store is one a page really uses", stores.every(k => used.has(k)), stores.filter(k => !used.has(k)).join());
   const LOCAL = ["energy.theme.v1", "energy.savedAt.v1", "energy.groups.v1", "energy.summary.v1", "grocery.theme.v1", "grocery.tab.v1",
-                 "todo.theme.v1", "todo.tab.v1", "expenses.tab.v1", "expenses.month.v1", "expenses.group.v1", "expenses.byType.v1", "house.installHintDismissed.v1"];
+                 "todo.theme.v1", "todo.tab.v1", "expenses.tab.v1", "expenses.month.v1", "expenses.group.v1", "expenses.byType.v1", "house.installHintDismissed.v1",
+                 "grade.theme.v1", "grade.last.v1"];
   const unknown = [...used].filter(k => !stores.includes(k) && !LOCAL.includes(k));
   check("every other store is knowingly per-device", unknown.length === 0, "decide: synced or local? " + unknown.join());
 
@@ -212,6 +213,28 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   await page.sync();
   check("adding one here uploads it", srv.rows.has("todo.items.v1|" + (page.get("todo.items.v1").find(t => t.title === "Typed here") || {}).id) && page.api.state.upserts > n);
   check("...and the one from elsewhere is still there (the page's copy wasn't stale)", page.get("todo.items.v1").some(t => t.id === "r") && !srv.rows.get("todo.items.v1|r").deleted);
+
+  console.log("\nColor Grading");
+  srv = server();
+  page = await open("grade.html", srv, { "grade.prefs.v1": [{ id: "boat-1", fav: true }] });
+  check("the page boots signed in, without errors", page.errors.length === 0, page.errors.join("\n"));
+  check("its data is uploaded", srv.rows.has("grade.prefs.v1|boat-1"));
+  srv.put("grade.prefs.v1", "guardians", { id: "guardians", name: "Olive gym look" });
+  await page.sync();
+  check("a rename made elsewhere shows in the open page", /Olive gym look/.test(page.w.document.getElementById("list").textContent));
+  page.w.document.querySelector('#list [data-id="iphone-led"]').click();
+  n = page.api.state.upserts;
+  page.w.document.getElementById("favBtn").click();
+  await page.sync();
+  check("favouriting one here uploads it", srv.rows.get("grade.prefs.v1|iphone-led").data.fav === true && page.api.state.upserts > n);
+  check("...and the rename from elsewhere is still there", page.get("grade.prefs.v1").some(r => r.id === "guardians") && !srv.rows.get("grade.prefs.v1|guardians").deleted);
+  page.w.document.getElementById("favBtn").click();
+  await page.sync();
+  check("un-favouriting removes the now-empty record everywhere", srv.rows.get("grade.prefs.v1|iphone-led").deleted && !page.get("grade.prefs.v1").some(r => r.id === "iphone-led"));
+  const notes = page.w.document.getElementById("notes");
+  notes.value = "Temp +8 for the garage clips"; notes.dispatchEvent(new page.w.Event("blur"));
+  await page.sync();
+  check("my notes for a preset sync", srv.rows.get("grade.prefs.v1|iphone-led").data.notes === "Temp +8 for the garage clips" && !srv.rows.get("grade.prefs.v1|iphone-led").deleted);
 
   console.log("\nGrocery");
   srv = server();
