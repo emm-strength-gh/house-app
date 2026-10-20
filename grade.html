@@ -586,7 +586,9 @@
   var rooftopIndoorMix = mix([[0,5,-5],[-3,-7,5],[-15,-32,-12],[15,-45,-13],[-10,-25,-8],[-8,-24,-14],[0,-45,0],[0,-45,0]]);
   var gymGrade = grading([190,8,null],[35,10,null],[45,18,null]);
   var coldGrade = grading([205,18,-10],[190,10,-3],[165,8,4],[200,3,0]);
-  var COZY = "grade-refs/cozy-apartment.jpg", ROOFTOP = "grade-refs/overcast-rooftop.jpg";
+  var sunnyParkMix = mix([[0,5,0],[-4,6,8],[-10,18,5],[-15,25,-5],[10,15,-5],[-8,30,-12],[0,-20,0],[0,-20,0]]);
+  var sunnyIndoorMix = mix([[0,8,0],[-3,4,6],[5,35,-5],[-10,45,-10],[10,10,0],[-8,15,-5],[0,-20,0],[0,-20,0]]);
+  var COZY = "grade-refs/cozy-apartment.jpg", ROOFTOP = "grade-refs/overcast-rooftop.jpg", SUNNY = "grade-refs/sunny-park.jpg";
 
   var PRESETS = [
     P("gym-golden", "Original gym · Golden cinematic", "Gym", "First golden boat-inspired grade adapted for the original deadlift footage.",
@@ -644,7 +646,13 @@
       "Best for overcast or cloudy afternoon light. Preserve the red subject by keeping Red Saturation +12; check sky details after reducing Highlights.", ROOFTOP),
     P("afternoon-rooftop-indoor", "Afternoon · Overcast film look / Indoor", "Afternoon", "An indoor afternoon LED/window-light adaptation of reference 2: cool neutral gray, soft contrast and minimal warmth.",
       [-.05,17,-48,4,-25,-26], [-10,2,-15,-15], rooftopIndoorMix, grading([210,12,-5],[205,6,0],[38,6,2],[0,0,0]), vignette(-10,45,0,78,15), grain(9,18,30),
-      "Indoor adaptation of the rooftop reference. If skin looks blue, raise Temperature to −3 or 0. If LED lights look green, add Tint +4–7.", ROOFTOP)
+      "Indoor adaptation of the rooftop reference. If skin looks blue, raise Temperature to −3 or 0. If LED lights look green, add Tint +4–7.", ROOFTOP),
+    P("afternoon-sunny-park", "Afternoon · Sunny park picnic / Outdoor", "Afternoon", "Reference 3: clear-sky park afternoon with a deep, slightly cyan blue sky, lush yellow-green grass, warm glowing skin and crisp, clean contrast.",
+      [.1,18,-30,10,12,-18], [8,2,28,4], sunnyParkMix, grading([210,6,-4],[40,6,2],[45,14,4],[40,2,0]), vignette(-8,50,0,80,20), grain(6,20,30),
+      "Made for bright, hard sun with a clear sky. If skin turns orange, set Orange Saturation to 0 or Temperature to +4. If the sky goes too cyan, set Blue Hue to 0. Under hazy or overcast skies, lower Vibrance to +15.", SUNNY),
+    P("afternoon-sunny-park-indoor", "Afternoon · Sunny park look / Indoor", "Afternoon", "An indoor adaptation of reference 3, built on an unedited iPhone shot under warm string lights: clean white walls, lush green leaves, warm skin and crisp contrast.",
+      [.15,22,-40,15,8,-20], [-20,0,25,5], sunnyIndoorMix, grading([200,8,-3],[40,5,1],[50,8,3],[40,2,0]), vignette(-8,50,0,80,20), grain(6,20,30),
+      "Warm bulbs make raw indoor shots yellow, so Temperature goes cool (−20) before the warm Grading adds sunlight back. Set Temperature by eye until white walls look white (usually −15 to −25). If wood or beige seats turn too orange, lower Orange Saturation to 0.", SUNNY)
   ];
   var DEFAULT_TIP = "Start here, then fine-tune Exposure, Temperature and Shadows to match your shot. These numbers are a creative approximation.";
 
