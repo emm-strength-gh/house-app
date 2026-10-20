@@ -96,6 +96,40 @@ growing set of household tools:
   preset are separate screens (the back gesture returns to the list); from 900px
   wide they sit side by side.
 
+  **Grade a video** (the camera button, or *Grade a video with this preset*) applies
+  a preset to a clip, entirely on the device: nothing is uploaded and nothing is
+  synced. Pick a video, choose a filter on a still from the middle (every filter
+  tile is that still, graded), turn the **Vignette** on or off, then **Export
+  video**: 1080p (short side 1080, the long side cropped by a few pixels at most
+  to keep the shape exact), exactly 30 fps, HEVC at ~20 Mbps, MP4 with Fast Start.
+  The work is in `grade-video.js`, loaded only when this screen opens:
+
+  - **Decode** with the browser's decoders (WebCodecs, through the bundled
+    Mediabunny library), reading the frames' own YCbCr planes at 8, 10 or 12 bits
+    with the file's matrix, range and primaries. Rotation is baked into the frames.
+  - **Scale** with Lanczos-3 in linear light (sharp, no shimmer on fine detail).
+  - **Grade** on the GPU in 16-bit floating point: white balance, exposure, tone,
+    HSL mix, vibrance / saturation, the grading wheels, vignette and per-frame
+    film grain. It follows how each Premiere slider behaves; Adobe doesn't publish
+    its maths, so the result is close to Premiere, not pixel-identical.
+  - **Encode** our own YCbCr 4:2:0 (proper chroma siting, dithered): SDR is BT.709
+    8-bit; HDR is BT.2020 HLG 10-bit (HEVC Main 10), graded in BT.2020 so wide-gamut
+    colours survive. HDR is used only when the clip is HDR, the browser hands over
+    its 10-bit frames, and a test frame proves it can encode Main 10; otherwise
+    HDR clips are tone-mapped to SDR (highlights rolled off, not clipped) and the
+    screen says why. If the browser can't encode HEVC at all, it offers H.264
+    (~24 Mbps, SDR) and waits for you to choose.
+  - **Frame rate**: frame sampling to 30 fps (each output frame is the nearest
+    source frame: 60 fps keeps every other frame, 24 fps repeats one in four).
+  - **Audio** is copied untouched when it's AAC, MP3, AC-3 or E-AC-3; anything
+    else is re-encoded to AAC 320 kbps.
+  - **Storage**: the MP4 is written as it renders into the site's private
+    on-device storage (OPFS, via the `grade-writer.js` worker), so long clips
+    don't have to fit in memory. **Save video** opens the Share sheet (*Save
+    Video* puts it in Photos); **Download** saves the file. The export is removed
+    from device storage when you export again, pick another video, or reopen the
+    screen later.
+
 No build step and no server of our own. Data lives in `localStorage` on the
 device; signed in, it also syncs through Supabase (see *Accounts + sync*).
 
@@ -111,6 +145,9 @@ device; signed in, it also syncs through Supabase (see *Accounts + sync*).
 | `expenses.html` | Expenses tool (Overview / Breakdown / Pots / Settings tabs, month switcher). Home button top-left. |
 | `grade.html` | Color Grading tool (preset library + preset detail). Home button top-left. Presets live in the page (`PRESETS`). |
 | `grade-refs/` | Reference photos shown on the Afternoon presets. |
+| `grade-video.js` | Color Grading's video engine (ES module): decode, Lanczos scaling, the grade, YCbCr packing, 30 fps sampling, MP4 export. Its pure helpers are tested in `test-tools.js`. |
+| `grade-writer.js` | Worker that writes the export into on-device storage (OPFS). |
+| `vendor/mediabunny-1.61.6.min.js` | Mediabunny (MPL-2.0, licence in `vendor/mediabunny-LICENSE.txt`), unmodified: reads and writes MP4/MOV through WebCodecs. Versioned file name, so the service worker never serves a stale copy; to update it, add the new file, change `MEDIABUNNY` in `grade-video.js` and `SHELL_ASSETS` in `sw.js`, and bump `CACHE_VERSION`. |
 | `powerpass.html` | PowerPass: sign-in check, master password, the logins. Home button top-left. Does **not** load `cloud.js`: see *PowerPass* below. |
 | `powerpass.js`, `powerpass.css` | PowerPass's code and styles. Shared byte-identical with the standalone PowerPass repo: change them here (where the tests are), then copy them over. |
 | `vendor/supabase.js` | Supabase JS, the same pinned version as `cloud.js` loads, served from this site for PowerPass (shared with the standalone repo too). |
@@ -228,6 +265,8 @@ Expenses: `expenses.items.v1` (amounts in centavos), `expenses.categories.v1`,
 `expenses.tab.v1`, `expenses.month.v1`, `expenses.group.v1`, `expenses.byType.v1` (Pots' By type folded, per device).
 Color Grading: `grade.prefs.v1` (one record per personalised preset: `{ id: preset id, name?, fav?, notes? }`;
 a record left empty is removed), `grade.theme.v1`, `grade.last.v1` (last preset opened, per device).
+Video exports aren't in localStorage: the file in progress or finished is `grade-export.mp4` in the
+site's on-device storage (OPFS), never synced.
 PowerPass: `powerpass.cache.v1.<account id>` (this device's encrypted copy, ciphertext only),
 `powerpass.cache.v1.user` (the last account, for opening offline); deleted on this page when signed out.
 Home screen: `house.installHintDismissed.v1`. Cloud: `house.cloud.v1` (who is

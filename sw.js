@@ -1,7 +1,7 @@
 /* Service worker for House App (home screen + every tool page).
  *
  * Strategy:
- *   HTML / navigation, cloud.js, powerpass.js/.css -> network-first, cache fallback. Online you get the newest
+ *   HTML / navigation, cloud.js, powerpass.js/.css, grade-video.js, grade-writer.js -> network-first, cache fallback. Online you get the newest
  *                        version you deployed; offline you get the last good one.
  *   Icons + manifest  -> cache-first, refreshed in the background.
  *
@@ -14,7 +14,7 @@
  * them up.
  */
 
-var CACHE_VERSION = "v10";
+var CACHE_VERSION = "v11";
 // Other apps can live on the same site (github.io serves every repo from one
 // origin), so only this app's own caches are ever cleared.
 var CACHE_PREFIX = "house-app-shell-";
@@ -36,6 +36,9 @@ var SHELL_ASSETS = [
   "./account.html",
   "./powerpass.html",
   "./grade.html",
+  "./grade-video.js",
+  "./grade-writer.js",
+  "./vendor/mediabunny-1.61.6.min.js",
   "./grade-refs/cozy-apartment.jpg",
   "./grade-refs/overcast-rooftop.jpg",
   "./grade-refs/sunny-park.jpg",
@@ -116,7 +119,8 @@ self.addEventListener("fetch", function (event) {
   if (url.origin !== self.location.origin) return;
 
   if (req.mode === "navigate" || url.pathname.endsWith(".html") || url.pathname.endsWith("/") || url.pathname.endsWith("/cloud.js") ||
-      url.pathname.endsWith("/powerpass.js") || url.pathname.endsWith("/powerpass.css")) {
+      url.pathname.endsWith("/powerpass.js") || url.pathname.endsWith("/powerpass.css") ||
+      url.pathname.endsWith("/grade-video.js") || url.pathname.endsWith("/grade-writer.js")) {
     event.respondWith(networkFirst(req));
     return;
   }

@@ -114,7 +114,7 @@
   .icon-btn:disabled { opacity: .35; cursor: default; background: var(--surface); }
   .title { flex: 1; min-width: 0; }
   h1 { font-size: 21px; margin: 0; letter-spacing: -.02em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sub { color: var(--ink-3); font-size: 12.5px; margin-top: 1px; }
+  .sub { color: var(--ink-3); font-size: 12.5px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
@@ -314,6 +314,82 @@
   .foot { color: var(--ink-3); font-size: 12px; line-height: 1.5; margin: 18px 2px 0; }
   .linkish { font-size: 13px; color: var(--accent-text); background: none; border: 0; padding: 0; cursor: pointer; font-weight: 600; }
 
+  /* ---------- video: grade and export a clip ---------- */
+  .wrap:not([data-view="video"]) .vview { display: none; }
+  .wrap[data-view="video"] .layout { display: none; }
+  .vview .dbar .back { display: inline-flex; }
+  .vgrid { display: grid; gap: 14px; }
+  .pick { text-align: center; padding: 34px 22px 30px; }
+  .pick .glyph {
+    width: 58px; height: 58px; border-radius: 18px; margin: 0 auto 14px;
+    background: var(--accent-soft); color: var(--accent-text); display: flex; align-items: center; justify-content: center;
+  }
+  .pick h2 { font-size: 19px; margin: 0 0 6px; letter-spacing: -.01em; }
+  .pick p { margin: 0 auto 18px; color: var(--ink-3); font-size: 14px; max-width: 42ch; }
+  .filebtn { position: relative; overflow: hidden; }
+  .filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
+  .vstatus { display: flex; align-items: center; gap: 10px; padding: 16px; color: var(--ink-2); font-size: 14px; }
+  .spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--border-strong); border-top-color: var(--accent); animation: spin .8s linear infinite; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .verr { background: var(--surface); border: 1px solid var(--danger); color: var(--danger); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
+  .stage { position: relative; border-radius: 16px; overflow: hidden; background: #000; box-shadow: var(--shadow); }
+  .stage canvas { display: block; width: 100%; height: auto; }
+  .stage .tag {
+    position: absolute; left: 10px; top: 10px; font-size: 11.5px; font-weight: 600; color: #fff;
+    background: rgba(8,12,14,.6); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 4px 10px;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  .seg { display: flex; background: var(--surface-2); border-radius: 12px; padding: 3px; gap: 2px; }
+  .seg button {
+    flex: 1; font-size: 13.5px; font-weight: 600; color: var(--ink-2); border: 0; background: transparent;
+    border-radius: 9px; padding: 7px 6px; cursor: pointer; white-space: nowrap;
+  }
+  .seg button.on { background: var(--seg-on); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .vmeta { color: var(--ink-3); font-size: 13px; margin: 10px 2px 0; display: flex; gap: 6px 10px; align-items: baseline; flex-wrap: wrap; }
+  .vmeta b { color: var(--ink-2); font-weight: 600; overflow-wrap: anywhere; }
+  .vhead { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .vhead h3 { flex: 1; min-width: 0; margin: 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
+  .vhead .cur { color: var(--ink); font-weight: 600; text-transform: none; letter-spacing: 0; }
+  .switch { position: relative; display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 600; color: var(--ink-2); cursor: pointer; flex: none; }
+  .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .switch .knob { position: relative; width: 40px; height: 24px; border-radius: 999px; background: var(--border-strong); transition: background .15s; flex: none; }
+  .switch .knob::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s;
+  }
+  .switch input:checked + .knob { background: var(--accent); }
+  .switch input:checked + .knob::after { transform: translateX(16px); }
+  .switch input:focus-visible + .knob { box-shadow: 0 0 0 3px var(--accent-soft); }
+  .switch input:disabled + .knob { opacity: .5; }
+  .tiles { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 6px; scrollbar-width: thin; }
+  .tile { flex: none; width: 84px; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; color: var(--ink-2); }
+  .tile:disabled { cursor: default; opacity: .6; }
+  .tile canvas { display: block; width: 84px; height: auto; border-radius: 10px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border); }
+  .tile span {
+    font-size: 11.5px; line-height: 1.25; margin-top: 5px; font-weight: 500;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .tile.on canvas { box-shadow: 0 0 0 2.5px var(--accent); }
+  .tile.on span { color: var(--ink); font-weight: 700; }
+  .spec { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 14px; }
+  .spec dt { color: var(--ink-3); }
+  .spec dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .spec dd small { display: block; font-weight: 500; color: var(--ink-3); font-size: 12.5px; }
+  .note { font-size: 13px; color: var(--ink-2); background: var(--accent-soft); border-radius: 12px; padding: 10px 12px; margin-top: 12px; }
+  .vbtns { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .vbtns .btn { flex: 1; }
+  .bar { height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; margin: 14px 0 8px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .2s; }
+  .prog { font-size: 13.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .usevideo { width: 100%; margin: -4px 0 14px; }
+  @media (min-width: 900px) {
+    .vgrid.loaded { grid-template-columns: minmax(0, 1fr) 400px; align-items: start; }
+    .vgrid.loaded .stagecol { position: sticky; top: 16px; }
+    .stage { display: flex; justify-content: center; }
+    .stage canvas { max-height: calc(100vh - 170px); width: auto; max-width: 100%; }
+    .tiles { margin: 0; padding: 2px 0 8px; }
+  }
+
   /* ---------- sheet (bottom sheet on phones, centred dialog on wide screens) ---------- */
   .scrim {
     position: fixed; inset: 0; z-index: 30; background: var(--scrim);
@@ -415,6 +491,9 @@
       <h1>Color Grading</h1>
       <div class="sub" id="sub">Adobe Premiere Mobile · Adjust presets</div>
     </div>
+    <button type="button" id="videoBtn" class="icon-btn" title="Grade a video" aria-label="Grade a video">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="11" height="10" rx="2"/><path d="M13.5 9l4-2.5v7l-4-2.5z"/></svg>
+    </button>
     <button type="button" id="themeBtn" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">
       <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7.5"/><path d="M10 2.5v15a7.5 7.5 0 0 0 0-15z" fill="currentColor" stroke="none"/></svg>
     </button>
@@ -478,6 +557,11 @@
         </button>
       </div>
 
+      <button type="button" class="btn usevideo" id="useVideo">
+        <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="11" height="10" rx="2"/><path d="M13.5 9l4-2.5v7l-4-2.5z"/></svg>
+        Grade a video with this preset
+      </button>
+
       <div class="tip" id="tip">
         <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M10 9v5M10 6.2v.1"/></svg>
         <span id="tipText"></span>
@@ -511,6 +595,71 @@
         <button type="button" class="linkish" id="printBtn">Print or save as PDF</button></p>
     </main>
   </div>
+
+  <!-- ============ Video ============ -->
+  <section class="vview" id="vview" aria-label="Grade a video">
+    <div class="dbar">
+      <button type="button" class="back" id="vBack">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4L6.5 10l6 6"/></svg>
+        Presets
+      </button>
+    </div>
+
+    <div class="vgrid" id="vgrid">
+      <div class="card pick" id="vPick">
+        <div class="glyph"><svg width="28" height="28" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="11" height="10" rx="2"/><path d="M13.5 9l4-2.5v7l-4-2.5z"/></svg></div>
+        <h2>Grade a video</h2>
+        <p>Pick a clip, choose a filter on a still from the middle, then export it at 1080p, 30 fps. Everything happens on this device; nothing is uploaded.</p>
+        <label class="btn primary filebtn">Choose video<input type="file" id="vFile" accept="video/*,.mov,.mp4,.m4v,.webm,.mkv"></label>
+      </div>
+      <div class="card vstatus" id="vLoading" hidden><span class="spin"></span><span id="vLoadingText">Reading the video…</span></div>
+      <div class="verr" id="vError" role="alert" hidden></div>
+
+      <div class="stagecol" id="vStageCol" hidden>
+        <div class="stage">
+          <canvas id="vCanvas" width="1080" height="1920" aria-label="Still from the middle of the video"></canvas>
+          <span class="tag" id="vTag"></span>
+        </div>
+        <div class="seg" id="vSeg" role="tablist" aria-label="Preview" style="margin-top:10px">
+          <button type="button" class="on" data-v="graded" aria-pressed="true">Graded</button>
+          <button type="button" data-v="original" aria-pressed="false">Original</button>
+        </div>
+        <div class="vmeta"><b id="vName"></b><span id="vDetails"></span>
+          <label class="linkish filebtn" id="vChange">Change video<input type="file" id="vFile2" accept="video/*,.mov,.mp4,.m4v,.webm,.mkv"></label></div>
+      </div>
+
+      <div class="vgrid" id="vSide" hidden>
+        <section class="card block">
+          <div class="vhead"><h3>Filter · <span class="cur" id="vCur"></span></h3>
+            <label class="switch"><input type="checkbox" id="vVig" checked><span class="knob"></span>Vignette</label></div>
+          <div class="tiles" id="vTiles"></div>
+        </section>
+
+        <section class="card block" id="vExportCard">
+          <div class="vhead"><h3>Export</h3></div>
+          <dl class="spec" id="vSpec"></dl>
+          <div class="note" id="vNote" hidden></div>
+          <div id="vReady">
+            <div class="vbtns"><button type="button" class="btn primary" id="vExport">Export video</button></div>
+            <div class="vbtns" id="vAvcChoice" hidden><button type="button" class="btn" id="vExportAvc">Export as H.264 (~24 Mbps) instead</button></div>
+          </div>
+          <div id="vRunning" hidden>
+            <div class="bar"><i id="vBar"></i></div>
+            <div class="prog" id="vProg">Starting…</div>
+            <div class="note">Keep this screen open until it finishes. Switching apps can pause or stop the export.</div>
+            <div class="vbtns"><button type="button" class="btn danger" id="vCancel">Cancel export</button></div>
+          </div>
+          <div id="vDone" hidden>
+            <div class="note" id="vDoneText"></div>
+            <div class="vbtns">
+              <button type="button" class="btn primary" id="vSave">Save video</button>
+              <button type="button" class="btn" id="vDownload">Download</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
 </div>
 
 <!-- ============ Rename sheet ============ -->
@@ -1108,7 +1257,8 @@
   }
   function routeFromHash() {
     var id = location.hash.slice(1);
-    if (byId(id)) show(id, { replace: true });
+    if (id === "video") showVideo({ replace: true });
+    else if (byId(id)) show(id, { replace: true });
     else if (wide.matches) show(selected || safeRead(STORE_LAST) || PRESETS[0].id, { replace: true });
     else showList();
   }
@@ -1143,7 +1293,7 @@
   // Arrow keys step through presets on a keyboard (not while typing).
   document.addEventListener("keydown", function (e) {
     if (e.target.closest && e.target.closest("input, textarea, select") || $("scrim").classList.contains("on")) return;
-    if (e.metaKey || e.ctrlKey || e.altKey || !selected) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || !selected || $("wrap").getAttribute("data-view") === "video") return;
     if (e.key === "ArrowDown" || e.key === "j") { step(1); e.preventDefault(); }
     if (e.key === "ArrowUp" || e.key === "k") { step(-1); e.preventDefault(); }
   });
@@ -1237,6 +1387,254 @@
   $("renameReset").addEventListener("click", function () { rename(""); toast("Original name restored"); });
   $("scrim").addEventListener("click", function (e) { if (e.target === $("scrim")) closeRename(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && $("scrim").classList.contains("on")) closeRename(); });
+
+  // =====================================================================
+  // Video: pick a clip, choose a filter on a still from the middle, export.
+  // The work happens in grade-video.js, loaded only when this screen opens.
+  // Nothing leaves the device; the export is written to on-device storage.
+  // =====================================================================
+  var V = { engine: null, session: null, preset: null, view: "graded", vignette: true, job: null, result: null, wake: null, pushed: false };
+
+  function engine() {
+    if (!V.engine) V.engine = import("./grade-video.js").catch(function (e) { V.engine = null; throw e; });
+    return V.engine;
+  }
+  function showVideo(opts) {
+    opts = opts || {};
+    if (!V.preset) V.preset = selected || PRESETS[0].id;
+    $("wrap").setAttribute("data-view", "video");
+    $("wrap").setAttribute("data-shown", "video");
+    if (location.hash !== "#video") {
+      if (opts.replace) history.replaceState(null, "", "#video");
+      else { history.pushState(null, "", "#video"); V.pushed = true; }
+    }
+    document.title = "Grade a video · Color Grading";
+    window.scrollTo(0, 0);
+    // A leftover export from an earlier visit is removed from device storage.
+    if (!V.session && !V.job) engine().then(function (m) { m.clearExport(); }, function () {});
+    if (V.session) renderVideo();
+  }
+  function leaveVideo() {
+    if (V.job && !window.confirm("Stop the export in progress?")) return;
+    if (V.job) V.job.abort();
+    if (V.pushed) { V.pushed = false; history.back(); return; }
+    if (selected && byId(selected)) { history.replaceState(null, "", "#" + selected); show(selected, { replace: true }); }
+    else { history.replaceState(null, "", location.pathname + location.search); routeFromHash(); }
+  }
+  $("videoBtn").addEventListener("click", function () { if ($("wrap").getAttribute("data-view") !== "video") showVideo(); });
+  $("useVideo").addEventListener("click", function () { V.preset = selected; showVideo(); });
+  $("vBack").addEventListener("click", leaveVideo);
+  window.addEventListener("popstate", function () { V.pushed = false; });
+
+  function clockText(s) {
+    s = Math.max(0, Math.round(s));
+    var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
+    return (h ? h + ":" + (m < 10 ? "0" : "") : "") + m + ":" + (ss < 10 ? "0" : "") + ss;
+  }
+  function fpsText(f) { return f ? (Math.round(f * 100) / 100).toString() : "?"; }
+  function mbText(b) { return b >= 1e9 ? (b / 1e9).toFixed(2) + " GB" : Math.max(0.1, b / 1e6).toFixed(b >= 1e8 ? 0 : 1) + " MB"; }
+  function vError(msg) { $("vError").textContent = msg; $("vError").hidden = !msg; }
+
+  function pickFile(input) {
+    var file = input.files && input.files[0];
+    input.value = "";
+    if (!file || V.job) return;
+    loadVideo(file);
+  }
+  $("vFile").addEventListener("change", function () { pickFile(this); });
+  $("vFile2").addEventListener("change", function () { pickFile(this); });
+
+  function loadVideo(file) {
+    vError("");
+    if (V.session) { V.session.dispose(); V.session = null; }
+    V.result = null;
+    $("vPick").hidden = true; $("vStageCol").hidden = true; $("vSide").hidden = true;
+    $("vgrid").classList.remove("loaded");
+    $("vLoading").hidden = false;
+    $("vLoadingText").textContent = "Reading " + file.name + "…";
+    engine().then(function (m) {
+      return m.clearExport().then(function () { return m.openVideo(file); });
+    }).then(function (session) {
+      V.session = session;
+      $("vLoading").hidden = true;
+      $("vgrid").classList.add("loaded");
+      $("vStageCol").hidden = false; $("vSide").hidden = false;
+      var c = $("vCanvas"), o = session.info.out;
+      c.width = o.w; c.height = o.h;
+      buildTiles();
+      renderVideo();
+    }).catch(function (e) {
+      $("vLoading").hidden = true;
+      $("vPick").hidden = false;
+      vError("Couldn't open that video: " + (e && e.message || e));
+    });
+  }
+
+  function videoParamsOpts() { return { vignette: V.vignette }; }
+
+  function buildTiles() {
+    var box = $("vTiles"); clear(box);
+    var o = V.session.info.out;
+    PRESETS.forEach(function (p) {
+      var b = el("button", "tile");
+      b.type = "button";
+      b.setAttribute("data-id", p.id);
+      var c = el("canvas"); c.width = 168; c.height = Math.round(168 * o.h / o.w);
+      b.appendChild(c);
+      b.appendChild(el("span", null, nameOf(p)));
+      box.appendChild(b);
+    });
+    paintTiles();
+  }
+  // Each tile is the still with that preset, rendered exactly as the export would.
+  function paintTiles() {
+    if (!V.session) return;
+    Array.prototype.forEach.call($("vTiles").querySelectorAll(".tile"), function (b) {
+      var p = byId(b.getAttribute("data-id"));
+      V.session.preview(b.querySelector("canvas"), p, videoParamsOpts());
+      b.querySelector("span").textContent = nameOf(p);
+    });
+  }
+  $("vTiles").addEventListener("click", function (e) {
+    var b = e.target.closest(".tile");
+    if (!b || V.job) return;
+    V.preset = b.getAttribute("data-id");
+    V.view = "graded";
+    resetResult();
+    renderVideo();
+  });
+  $("vVig").addEventListener("change", function () {
+    V.vignette = this.checked;
+    resetResult();
+    paintTiles(); renderVideo();
+  });
+  $("vSeg").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-v]");
+    if (!b) return;
+    V.view = b.getAttribute("data-v");
+    renderVideo();
+  });
+
+  function renderVideo() {
+    var s = V.session;
+    if (!s) return;
+    var info = s.info, p = byId(V.preset) || PRESETS[0];
+    s.preview($("vCanvas"), V.view === "original" ? null : p, videoParamsOpts());
+    Array.prototype.forEach.call($("vSeg").querySelectorAll("[data-v]"), function (b) {
+      var on = b.getAttribute("data-v") === V.view;
+      b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    $("vTag").textContent = (V.view === "original" ? "Original" : nameOf(p)) + " · still at " + clockText(Math.floor(info.stillTime)) +
+      (info.hdrOut ? " · shown in SDR" : "");
+    $("vCur").textContent = nameOf(p);
+    Array.prototype.forEach.call($("vTiles").querySelectorAll(".tile"), function (b) {
+      var on = b.getAttribute("data-id") === p.id;
+      b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.disabled = !!V.job;
+    });
+    $("vVig").disabled = !!V.job;
+    $("vChange").hidden = !!V.job;
+    $("vName").textContent = info.name;
+    $("vDetails").textContent = info.width + "×" + info.height + " · " + fpsText(info.fps) + " fps · " + clockText(info.duration) +
+      " · " + (info.codec || "?").toUpperCase() + (info.hdrIn ? " · HDR (" + (info.colour.transfer === "pq" ? "PQ" : "HLG") + ")" : " · SDR");
+    renderSpec();
+  }
+
+  function renderSpec(codec) {
+    var info = V.session.info, o = info.out;
+    var avc = codec === "avc" || (!info.hevcOk && V.useAvc);
+    var dl = $("vSpec"); clear(dl);
+    function row(k, v, sub) {
+      dl.appendChild(el("dt", null, k));
+      var dd = el("dd", null, v);
+      if (sub) dd.appendChild(el("small", null, sub));
+      dl.appendChild(dd);
+    }
+    row("Resolution", o.w + " × " + o.h, "1080p" + (Math.abs(o.w / o.h - info.width / info.height) > 0.002 ? " · edges cropped a few pixels to keep the shape" : ""));
+    var f = info.fps;
+    row("Frame rate", "30 fps", f && Math.abs(f - 30) > 0.05 ? "from " + fpsText(f) + " fps by frame sampling" : null);
+    row("Video", avc ? "H.264 · ~24 Mbps" : "HEVC · ~20 Mbps", "High quality");
+    var hdr = info.hdrOut && !avc;
+    row("Dynamic range", hdr ? "HDR · HLG" : "SDR", hdr ? "10-bit · BT.2020" : "8-bit · BT.709");
+    var a = info.audio;
+    row("Audio", a.mode === "none" ? "None" : a.mode === "copy" ? "Original kept" : "AAC · 320 kbps",
+        a.mode === "copy" ? (a.codec || "").toUpperCase() + ", copied untouched" : a.mode === "aac" ? "re-encoded from " + (a.from || "").toUpperCase() + " (it doesn't play in MP4 on Apple devices)" : null);
+    row("Size", "about " + mbText(info.duration * ((avc ? 24e6 : 20e6) + 0.33e6) / 8), "MP4");
+
+    var notes = [];
+    if (info.hdrIn && !hdr) notes.push("Your video is HDR, but " + (avc ? "H.264 can't carry HDR" : info.sdrReason) + ", so it will be exported in SDR. Its highlights are rolled off smoothly rather than clipped.");
+    if (hdr) notes.push("The preview is shown in SDR; the export keeps the full HDR range.");
+    if (!info.hevcOk) notes.push("This browser can't encode HEVC video. You can export with H.264 at ~24 Mbps instead (larger files, SDR only).");
+    $("vNote").hidden = !notes.length;
+    $("vNote").textContent = notes.join(" ");
+    $("vExport").hidden = !info.hevcOk;
+    $("vAvcChoice").hidden = info.hevcOk;
+    showExportState();
+  }
+
+  function showExportState() {
+    $("vReady").hidden = !!(V.job || V.result);
+    $("vRunning").hidden = !V.job;
+    $("vDone").hidden = !V.result || !!V.job;
+  }
+  function resetResult() {
+    if (!V.result) return;
+    V.result = null;
+    engine().then(function (m) { m.clearExport(); });
+    showExportState();
+  }
+
+  function startExport(codec) {
+    var s = V.session;
+    if (!s || V.job) return;
+    var p = byId(V.preset) || PRESETS[0];
+    V.result = null;
+    V.job = new AbortController();
+    $("vBar").style.width = "0%";
+    $("vProg").textContent = "Starting…";
+    renderVideo();
+    renderSpec(codec);
+    if (navigator.wakeLock && navigator.wakeLock.request) navigator.wakeLock.request("screen").then(function (w) { V.wake = w; }, function () {});
+    s.export(p, {
+      vignette: V.vignette, codec: codec || "hevc", signal: V.job.signal,
+      onProgress: function (done, total, eta) {
+        $("vBar").style.width = (done / total * 100).toFixed(1) + "%";
+        $("vProg").textContent = "Frame " + done.toLocaleString() + " of " + total.toLocaleString() + " · " + Math.floor(done / total * 100) + "%" +
+          (eta != null ? " · about " + (eta < 60 ? Math.max(1, Math.round(eta)) + " s" : Math.round(eta / 60) + " min") + " left" : "");
+      }
+    }).then(function (res) {
+      V.result = res;
+      $("vDoneText").textContent = "Ready: " + res.file.name + " · " + mbText(res.file.size) + " · " + (res.hdr ? "HDR (HLG)" : "SDR") +
+        ". It stays in this app's storage on this device until you export again or pick another video." +
+        (res.inMemory ? " (This browser has no on-device storage for it, so it was kept in memory.)" : "");
+    }, function (e) {
+      if (!(e && e.name === "AbortError")) vError("The export stopped: " + (e && e.message || e));
+    }).then(function () {
+      V.job = null;
+      if (V.wake) { V.wake.release().catch(function () {}); V.wake = null; }
+      renderVideo();
+      if (codec) renderSpec(codec);
+    });
+  }
+  $("vExport").addEventListener("click", function () { vError(""); startExport("hevc"); });
+  $("vExportAvc").addEventListener("click", function () { vError(""); V.useAvc = true; startExport("avc"); });
+  $("vCancel").addEventListener("click", function () { if (V.job) V.job.abort(); });
+
+  function downloadResult() {
+    var f = V.result.file, url = URL.createObjectURL(f), a = document.createElement("a");
+    a.href = url; a.download = f.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+  }
+  // iPhone: the Share sheet has "Save Video", which puts it in Photos.
+  $("vSave").addEventListener("click", function () {
+    if (!V.result) return;
+    var f = V.result.file;
+    if (navigator.canShare && navigator.canShare({ files: [f] })) {
+      navigator.share({ files: [f], title: f.name }).catch(function (e) { if (!(e && e.name === "AbortError")) downloadResult(); });
+    } else downloadResult();
+  });
+  $("vDownload").addEventListener("click", function () { if (V.result) downloadResult(); });
 
   // ---------- toast ----------
   var toastTimer = null;

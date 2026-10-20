@@ -637,6 +637,38 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   check("...the same file sw.js caches for offline", read("sw.js").includes(libs[0]));
   check("no secret key in the app", !/sb_secret_|service_role/.test(CLOUD_SRC));
 
+  console.log("\nColor Grading: video");
+  // grade-video.js is an ES module next to classic-script pages; Node notes that once. Not a problem here.
+  const warn = process.emitWarning;
+  process.emitWarning = (w, ...rest) => (/Module type of/.test(String(w)) ? undefined : warn.call(process, w, ...rest));
+  const GV = await import(require("url").pathToFileURL(path.join(__dirname, "grade-video.js")).href);
+  process.emitWarning = warn;
+  const sizes = [[3840, 2160], [1080, 1920], [1920, 1080], [1000, 1000], [2160, 3840], [1920, 816], [720, 1280]].map(([w, h]) => GV.outputSize(w, h));
+  check("export is 1080p: short side 1080 for any shape", sizes.every(s => Math.min(s.w, s.h) === 1080), JSON.stringify(sizes));
+  check("...long side a multiple of 8 (4:2:0 + packing), within 4 px of the true shape", sizes.every(s => s.w % 8 === 0 && s.h % 8 === 0) &&
+    Math.abs(GV.outputSize(1920, 816).w - 1080 * 1920 / 816) <= 4, JSON.stringify(sizes));
+  const ts = (fps, n, jitter) => Array.from({ length: n }, (_, i) => i / fps + (jitter ? (i % 3 - 1) * 0.002 : 0));
+  check("60 → 30 fps keeps every other frame", GV.assignFrames(ts(60, 12), 0, 6, 30).join() === "0,2,4,6,8,10");
+  check("24 → 30 fps repeats one frame in four, in order", GV.assignFrames(ts(24, 8), 0, 10, 30).join() === "0,1,2,2,3,4,5,6,6,7");
+  check("30 → 30 fps uses every frame once", GV.assignFrames(ts(30, 9), 0, 9, 30).join() === "0,1,2,3,4,5,6,7,8");
+  const vfr = GV.assignFrames(ts(30, 30, true), 0, 30, 30);
+  check("variable timing (±2 ms jitter) still maps one-to-one", vfr.every((s, k) => s === k), vfr.join());
+  check("29.97 → 30 fps never goes backwards", GV.assignFrames(ts(30000 / 1001, 300), 0, 300, 30).every((s, k, a) => !k || s >= a[k - 1]));
+  check("HDR exports ask for HEVC Main 10; SDR for Main", GV.hevcCodecString(1080, 1920, true) === "hvc1.2.4.L123.B0" && GV.hevcCodecString(1080, 1920, false) === "hvc1.1.6.L123.B0");
+  check("audio: AAC is copied untouched; Opus/PCM become AAC 320", GV.audioPlan("aac").mode === "copy" && GV.audioPlan("opus").mode === "aac" && GV.audioPlan("pcm-s16").mode === "aac" && GV.audioPlan(null).mode === "none");
+  const m = GV.primariesTo709("bt2020"), pub = [[1.6605, -0.5876, -0.0728], [-0.1246, 1.1329, -0.0083], [-0.0182, -0.1006, 1.1187]];
+  check("BT.2020 → BT.709 matrix matches ITU-R BT.2087", m.every((r, i) => r.every((v, j) => Math.abs(v - pub[i][j]) < 5e-4)), JSON.stringify(m));
+  const sunny = { vignette: { Vignette: -8, Midpoint: 50, Roundness: 0, Feather: 80, Highlights: 20 }, grain: { Grain: 6 } };
+  const on = GV.gradeParams(sunny), off = GV.gradeParams(sunny, { vignette: false });
+  check("the Vignette toggle removes the vignette and nothing else", on.vignette[0] === -0.08 && off.vignette[0] === 0 && off.vigHighlights === 0 && off.grain[0] === on.grain[0]);
+  check("unset sliders are neutral", Object.values(GV.NEUTRAL).every(v => Array.isArray(v) || v === 0) && GV.NEUTRAL.mix.every(v => v === 0));
+  const gsrc = read("grade-video.js"), sw = read("sw.js");
+  check("video export works offline: engine, writer and library are cached",
+    ["./grade-video.js", "./grade-writer.js", "./vendor/mediabunny-1.61.6.min.js"].every(f => sw.includes('"' + f + '"')) && gsrc.includes('"./vendor/mediabunny-1.61.6.min.js"'));
+  check("the bundled library ships with its licence (MPL-2.0)", fs.existsSync(path.join(__dirname, "vendor", "mediabunny-LICENSE.txt")) && /Mozilla Public License Version 2\.0/.test(read("vendor/mediabunny-LICENSE.txt")));
+  check("nothing in the video code talks to the network", !/(^|[^A-Za-z])fetch\(|XMLHttpRequest|WebSocket|sendBeacon|supabase|HouseCloud/i.test(gsrc + read("grade-writer.js")));
+  check("grade.html stores nothing new about videos (no synced or local keys)", !/"grade\.(video|export)[A-Za-z.]*"/.test(read("grade.html")));
+
   console.log(`\n${checks} checks · ${failures === 0 ? "ALL PASSED" : failures + " FAILED"}\n`);
   process.exit(failures === 0 ? 0 : 1);
 })().catch(e => { console.error(e); process.exit(1); });
