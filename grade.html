@@ -192,7 +192,7 @@
     background: rgba(8,12,14,.55); border: 1px solid rgba(255,255,255,.2); border-radius: 999px; padding: 4px 10px;
     -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
   }
-  .hero .txt { padding: 18px 18px 16px; }
+  .hero .txt { padding: 46px 18px 16px; }   /* top room so long text never runs under the badge */
   .overline { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #f3cf92; }
   .hero h2 { font-size: 24px; line-height: 1.2; margin: 4px 0 6px; letter-spacing: -.02em; overflow-wrap: anywhere; }
   .hero p { margin: 0; font-size: 14px; color: rgba(255,255,255,.86); max-width: 62ch; }
@@ -454,7 +454,7 @@
     .back, .item .chev { display: none; }
     .hero { min-height: 300px; }
     .hero h2 { font-size: 30px; }
-    .hero .txt { padding: 24px 24px 20px; }
+    .hero .txt { padding: 52px 24px 20px; }
     .sections {
       grid-template-columns: 1fr 1fr;
       grid-template-areas: "light color" "grade grade" "mix vig" "mix grain" "notes notes" "cmp cmp";
@@ -699,7 +699,7 @@
   var CHANNEL_DOTS = ["#bb5652", "#de8752", "#d6ba4f", "#638c60", "#53aeb4", "#557dbf", "#8865b7", "#bd6c97"];
   var LIGHT_KEYS = ["Exposure", "Contrast", "Highlights", "Shadows", "Whites", "Blacks"];
   var COLOR_KEYS = ["Temperature", "Tint", "Vibrance", "Saturation"];
-  var CATEGORIES = ["Gym", "Boat", "Movie", "iPhone", "Afternoon"];
+  var CATEGORIES = ["Gym", "Boat", "Movie", "iPhone", "Afternoon", "Urban"];
 
   function fields(keys, vals) {
     var o = {};
@@ -736,6 +736,8 @@
   var gymGrade = grading([190,8,null],[35,10,null],[45,18,null]);
   var coldGrade = grading([205,18,-10],[190,10,-3],[165,8,4],[200,3,0]);
   var sunnyParkMix = mix([[0,5,0],[-4,6,8],[-10,18,5],[-15,25,-5],[10,15,-5],[-8,30,-12],[0,-20,0],[0,-20,0]]);
+  var urbanMix = mix([[5,-20,-5],[-5,5,10],[-20,-35,-10],[30,-40,-15],[-15,-15,-5],[-12,-30,-12],[0,-50,0],[0,-50,0]]);
+  var urbanGrade = grading([195,12,-8],[25,7,3],[175,5,2],[195,2,0]);
   var sunnyIndoorMix = mix([[0,8,0],[-3,4,6],[5,35,-5],[-10,45,-10],[10,10,0],[-8,15,-5],[0,-20,0],[0,-20,0]]);
   var COZY = "grade-refs/cozy-apartment.jpg", ROOFTOP = "grade-refs/overcast-rooftop.jpg", SUNNY = "grade-refs/sunny-park.jpg";
 
@@ -801,7 +803,13 @@
       "Made for bright, hard sun with a clear sky. If skin turns orange, set Orange Saturation to 0 or Temperature to +4. If the sky goes too cyan, set Blue Hue to 0. Under hazy or overcast skies, lower Vibrance to +15.", SUNNY),
     P("afternoon-sunny-park-indoor", "Afternoon · Sunny park look / Indoor", "Afternoon", "An indoor adaptation of reference 3, built on an unedited iPhone shot under warm string lights: clean white walls, lush green leaves, warm skin and crisp contrast.",
       [.15,22,-40,15,8,-20], [-20,0,25,5], sunnyIndoorMix, grading([200,8,-3],[40,5,1],[50,8,3],[40,2,0]), vignette(-8,50,0,80,20), grain(6,20,30),
-      "Warm bulbs make raw indoor shots yellow, so Temperature goes cool (−20) before the warm Grading adds sunlight back. Set Temperature by eye until white walls look white (usually −15 to −25). If wood or beige seats turn too orange, lower Orange Saturation to 0.", SUNNY)
+      "Warm bulbs make raw indoor shots yellow, so Temperature goes cool (−20) before the warm Grading adds sunlight back. Set Temperature by eye until white walls look white (usually −15 to −25). If wood or beige seats turn too orange, lower Orange Saturation to 0.", SUNNY),
+    P("urban-romance-outdoor", "Urban Romance · Soft teal film / Outdoor street", "Urban", "Soft, moody early-2000s film look: cool teal-green backgrounds, cyan-tinted shadows, natural slightly warm skin, deep blacks on dark clothing, restrained saturation and soft highlights.",
+      [-.15,15,-35,-12,-15,-32], [-6,-5,-18,-12], urbanMix, urbanGrade, vignette(-12,45,0,80,20), grain(14,20,35),
+      "Best for overcast daytime streets, shade, cool green foliage and muted brick. Adjust Exposure and Shadows first to keep skin and dark-clothing detail. Keep Orange natural so faces stand out from the cool background. On HDR / Dolby Vision footage these SDR starting values can behave differently."),
+    P("urban-romance-subway", "Urban Romance · Soft teal film / Indoor subway", "Urban", "The same soft teal film look for subways, stations and cool LED or fluorescent light: metallic grey surroundings, slightly cyan highlights, dark clothing and warm-neutral skin.",
+      [.05,18,-45,8,-22,-35], [-10,2,-15,-12], urbanMix, urbanGrade, vignette(-15,45,0,80,20), grain(10,18,30),
+      "If the subject is too dark, raise the Shadows grading Luminance from −8 to −3, and adjust Shadows before lifting Blacks. Less grain than the outdoor version because indoor phone footage is already noisier.")
   ];
   var DEFAULT_TIP = "Start here, then fine-tune Exposure, Temperature and Shadows to match your shot. These numbers are a creative approximation.";
 
@@ -812,7 +820,8 @@
   var TRACK_STYLE = { Temperature: "temp", Tint: "tint", Saturation: "sat" };
   // Palette previews for presets without a reference photo, by category.
   var CAT_GRADIENT = { Boat: "#174f59,#285d5a,#b78b58,#f8cf8f", Movie: "#263f43,#506660,#a4774c,#d5ae74",
-    Gym: "#172d34,#3e4541,#a67848,#dcb477", iPhone: "#26454c,#516663,#b08756,#e5bc73", Afternoon: "#192c31,#526d69,#a7784d,#e8bb77" };
+    Gym: "#172d34,#3e4541,#a67848,#dcb477", iPhone: "#26454c,#516663,#b08756,#e5bc73", Afternoon: "#192c31,#526d69,#a7784d,#e8bb77",
+    Urban: "#141e22,#2c4a4c,#6f7d78,#c9b9a3" };
 
   // =====================================================================
   // helpers
