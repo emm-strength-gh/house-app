@@ -255,7 +255,8 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
     /1 absent/.test(ed.getElementById("netLine").textContent) && !/2 absent/.test(ed.getElementById("netLine").textContent));
   ed.getElementById("back").click();
   ed.getElementById("addEmp").click();
-  ed.getElementById("eName").value = "Added Here"; ed.getElementById("eMonthly").value = "30000";
+  ed.getElementById("eName").value = "Added Here";
+  ed.querySelector("#salList .sal-amt").value = "30000";   // the one salary row
   ed.getElementById("eDpw").value = "5"; ed.getElementById("eAuto").checked = true;
   n = page.api.state.upserts;
   ed.getElementById("empForm").dispatchEvent(new page.w.Event("submit", { cancelable: true, bubbles: true }));
@@ -272,21 +273,61 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
     && /from/.test(ed.getElementById("payStrip").textContent) && /25,000/.test(ed.getElementById("netLine").textContent));
   ed.getElementById("prev").click();                          // previous month, before the start
   check("months before the start date are not employed (no pay)", /[Nn]ot employed/.test(ed.getElementById("netLine").textContent));
+  const curYm = today().slice(0, 7);
+  const emSubmit = id => ed.getElementById(id).dispatchEvent(new page.w.Event("submit", { cancelable: true, bubbles: true }));
+
+  // bonus: a one-off amount added on top of the month's net (not part of salary)
+  ed.getElementById("today").click();                         // this month, Ana open
+  ed.getElementById("bcEdit").click();
+  ed.getElementById("bonusAmt").value = "1500";
+  emSubmit("bonusForm");
+  await page.sync();
+  check("a bonus is saved for the month and lifts the net (25,000 + 1,500 = 26,500)",
+    (((page.get("employer.employees.v1").find(e => e.id === "e1") || {}).bonuses || {})[curYm]) === 1500
+    && /1,500 bonus/.test(ed.getElementById("netLine").textContent) && /26,500/.test(ed.getElementById("netLine").textContent));
+
+  // salary timeline: a raise effective next month; each month uses the rate in force
+  const nd = new Date(); nd.setMonth(nd.getMonth() + 1);
+  const nextYm = nd.getFullYear() + "-" + String(nd.getMonth() + 1).padStart(2, "0");
+  ed.getElementById("editPay").click();
+  ed.getElementById("salAdd").click();
+  const amts = ed.querySelectorAll("#salList .sal-amt"), froms = ed.querySelectorAll("#salList .sal-from");
+  amts[amts.length - 1].value = "30000"; froms[froms.length - 1].value = nextYm;
+  emSubmit("empForm");
+  await page.sync();
+  check("a salary change is stored as a second timeline entry",
+    ((page.get("employer.employees.v1").find(e => e.id === "e1") || {}).salaries || []).length === 2);
+  ed.getElementById("next").click();
+  check("the next month uses the new ₱30,000 salary", /30,000/.test(ed.getElementById("payStrip").textContent));
+  ed.getElementById("prev").click();
+  check("this month keeps the old ₱26,000 salary", /26,000/.test(ed.getElementById("payStrip").textContent));
+
   // monthly notes: add from the calendar page, keyed by YYYY-MM, shown there and in the payroll viewer
-  ed.getElementById("today").click();                         // back to this month (still on Ana)
-  const noteKey = today().slice(0, 7);
   ed.getElementById("ncEdit").click();
   ed.getElementById("noteText").value = "Advance of 2,000 given";
-  ed.getElementById("noteForm").dispatchEvent(new page.w.Event("submit", { cancelable: true, bubbles: true }));
+  emSubmit("noteForm");
   await page.sync();
   check("a monthly note is saved under its YYYY-MM key and uploaded",
-    (((page.get("employer.employees.v1").find(e => e.id === "e1") || {}).notes || {})[noteKey]) === "Advance of 2,000 given");
+    (((page.get("employer.employees.v1").find(e => e.id === "e1") || {}).notes || {})[curYm]) === "Advance of 2,000 given");
   check("the note shows on the employee's calendar page, and the button becomes Edit",
     /Advance of 2,000 given/.test(ed.getElementById("ncBody").textContent) && /Edit note/.test(ed.getElementById("ncEdit").textContent));
   ed.getElementById("back").click();
   ed.getElementById("summaryBtn").click();
   ed.getElementById("notesBtn").click();
   check("the payroll summary's Monthly notes viewer lists the note", /Advance of 2,000 given/.test(ed.getElementById("notesViewBody").textContent));
+  ed.getElementById("notesViewDlg").close();
+
+  // 13th month pay card + payment history (filter to Ana for a deterministic read)
+  ed.getElementById("empFilter").value = "e1";
+  ed.getElementById("empFilter").dispatchEvent(new page.w.Event("change", { bubbles: true }));
+  check("the summary has a 13th month pay card averaging the salary (₱26,000)",
+    /13th month pay/.test(ed.getElementById("sum13").textContent) && /₱26,000/.test(ed.getElementById("sum13").textContent));
+  ed.querySelector("#sum13 .m13-emp .btn").click();           // Record payment → dialog prefilled
+  emSubmit("m13Form");
+  await page.sync();
+  check("a 13th-month payment is saved to the employee's history",
+    ((page.get("employer.employees.v1").find(e => e.id === "e1") || {}).m13 || []).length === 1
+    && /paid/.test(ed.getElementById("sum13").textContent));
 
   console.log("\nGrocery");
   srv = server();

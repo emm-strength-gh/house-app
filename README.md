@@ -130,8 +130,12 @@ growing set of household tools:
     from device storage when you export again, pick another video, or reopen the
     screen later.
 - **Employer Calendar** (`employer-calendar.html`) — staff attendance, pay and a
-  monthly payroll summary. Add each employee with their **monthly pay**, how many
-  **days a week** they work, a **daily rate** (worked out automatically as
+  monthly payroll summary. Each employee has a **salary history**: a list of
+  monthly salaries and the month each one took effect (e.g. ₱7,500 from Jul 2026,
+  ₱8,000 from Nov 2026, ₱8,500 from Feb 2027). Every month uses the rate in force
+  for it, so the calendar and the summary follow a raise automatically; leave the
+  first row's month blank to apply it from the start. Also set how many **days a
+  week** they work, a **daily rate** (worked out automatically as the current
   monthly ÷ working days — 6×/week gives monthly ÷ 26 — or typed in by hand),
   and an optional **start date** — pay counts only from then, the first month
   is pro-rated by the days worked (starting on the 15th of a 30-day month pays
@@ -140,14 +144,18 @@ growing set of household tools:
   A month calendar marks each day **Worked**, **Absent**, **Paid leave**,
   **Bank holiday** or **Day off**; tapping a date changes it. Each employee's
   page shows that month's counts and the **net pay** — only Absent days are
-  deducted (net = monthly − absent × daily); paid leave and bank holidays are
-  paid. Each month also takes a free-text **note** (advances, lateness, bonuses
-  — anything worth remembering), added from the employee's calendar page.
-  **Payroll summary** totals a filterable range of months (quick buttons
-  for the last 12 months or this year): per-employee totals with absences and
-  paid leave, a grand total, and a card per month; a **📝 Monthly notes** button
-  opens a read-only list of every note in the range (narrowed by the employee
-  filter). Everything syncs across the household and rides in **Export /
+  deducted (net = that month's salary − absent × daily, + any bonus); paid leave
+  and bank holidays are paid. Each month also takes a one-off **bonus** (added on
+  top of the net, and not counted as salary) and a free-text **note** (advances,
+  lateness — anything worth remembering), both added from the employee's page.
+  **Payroll summary** totals a filterable range of months (quick buttons for the
+  last 12 months or this year): per-employee totals with absences and paid leave,
+  a grand total, a card per month (marking salary changes and bonuses), a
+  **📝 Monthly notes** button opening a read-only list of every note in the
+  range, and a **13th month pay** card — pick a period start and it sums the
+  salary over up to 12 months from there and divides by the months counted
+  (6 months in → ÷ 6; bonuses excluded), with a recorded payment history per
+  employee. Everything syncs across the household and rides in **Export /
   Restore backup**.
 
 No build step and no server of our own. Data lives in `localStorage` on the
@@ -288,10 +296,12 @@ Color Grading: `grade.prefs.v1` (one record per personalised preset: `{ id: pres
 a record left empty is removed), `grade.theme.v1`, `grade.last.v1` (last preset opened, per device).
 Video exports aren't in localStorage: the file in progress or finished is `grade-export.mp4` in the
 site's on-device storage (OPFS), never synced.
-Employer Calendar: `employer.employees.v1` (one record per employee: `{ id, name, monthly, dpw, daily, auto, start, days, notes }`,
+Employer Calendar: `employer.employees.v1` (one record per employee: `{ id, name, monthly, dpw, daily, auto, start, salaries, days, notes, bonuses, m13 }`,
+`salaries` is the salary timeline `[{ from:'YYYY-MM', monthly }]` sorted ascending (`from:''` = from the start; the per-month salary is read from this, `monthly` just mirrors the rate in effect now);
 `start` is an optional `YYYY-MM-DD` the pay begins on (the start month is pro-rated);
 `days` maps `YYYY-MM-DD` to `worked`/`absent`/`leave`/`holiday`/`off` (only `absent` deducts pay);
-`notes` maps `YYYY-MM` to a free-text note for that month),
+`notes` maps `YYYY-MM` to a free-text note; `bonuses` maps `YYYY-MM` to a one-off amount added to that month (not salary);
+`m13` is the 13th-month payment history `[{ on:'YYYY-MM-DD', amount, from, to, months }]`),
 `employer.theme.v1` (per device).
 PowerPass: `powerpass.cache.v1.<account id>` (this device's encrypted copy, ciphertext only),
 `powerpass.cache.v1.user` (the last account, for opening offline); deleted on this page when signed out.

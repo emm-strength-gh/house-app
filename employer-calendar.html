@@ -192,6 +192,47 @@
   .nv-who { font-weight: 650; font-size: 13.5px; margin-bottom: 2px; }
   .nv-note { font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
 
+  /* salary history on the employee page */
+  .salstrip { color: var(--ink-2); font-size: 12.5px; margin-top: 5px; display: flex; flex-wrap: wrap; gap: 6px 10px; }
+  .salstrip .sc { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+  .salstrip .sc b { color: var(--ink); }
+  .salstrip .sc.now { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+  .salstrip .sc.now b { color: var(--accent); }
+
+  /* salary editor rows (employee dialog) */
+  .fl-hint { font-weight: 400; color: var(--ink-3); }
+  .sal-list { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+  .sal-row { display: flex; gap: 8px; align-items: center; }
+  .sal-row .sal-from { flex: 1 1 52%; min-width: 0; }
+  .sal-row .sal-amt { flex: 1 1 36%; min-width: 0; }
+  .sal-row .sal-del { flex: none; width: 36px; height: 40px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink-2); font-size: 20px; line-height: 1; display: grid; place-items: center; }
+  .sal-row .sal-del:hover { background: var(--surface-2); color: var(--bad); }
+  #salAdd { margin-top: 10px; }
+
+  /* bonus card (employee page) + 13th-month card (summary) */
+  .bonuscard { padding: 14px 18px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .bonuscard .bc-l { font-size: 14px; }
+  .bonuscard .bc-l b { font-size: 16px; }
+  .bonuscard .bc-l.has { color: var(--worked); }
+  .stat .n.bonus { color: var(--holiday); }
+  .m13card { padding: 18px; margin-top: 16px; }
+  .m13card h3 { margin: 0 0 4px; font-size: 16px; }
+  .m13card .m13-sub { color: var(--ink-3); font-size: 12.5px; margin-bottom: 12px; }
+  .m13-start { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; max-width: 220px; }
+  .m13-start label { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .4px; }
+  .m13-emp { border-top: 1px solid var(--border); padding: 13px 0; }
+  .m13-emp:first-of-type { border-top: 0; }
+  .m13-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .m13-top .who { font-weight: 650; }
+  .m13-top .pay { font-weight: 750; font-size: 18px; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .m13-detail { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+  .m13-act { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .m13-hist { list-style: none; margin: 9px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .m13-hist li { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 7px 11px; }
+  .m13-hist .hx { border: 0; background: transparent; color: var(--ink-3); font-size: 17px; line-height: 1; padding: 0 2px; }
+  .m13-hist .hx:hover { color: var(--bad); }
+  .m13-hist .hamt { font-weight: 700; font-variant-numeric: tabular-nums; }
+
   .tools { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 30px; }
   footer { margin-top: 26px; border-top: 1px solid var(--border); padding-top: 16px; font-size: 11.5px; color: var(--ink-3); line-height: 1.7; }
 
@@ -265,6 +306,7 @@
     </div>
     <h1 class="person-name" id="personName"></h1>
     <div class="paystrip" id="payStrip"></div>
+    <div class="salstrip" id="salStrip" hidden></div>
 
     <div class="summary" id="personSummary"></div>
     <div class="net-line" id="netLine"></div>
@@ -288,6 +330,14 @@
       </div>
       <div class="week" aria-hidden="true"><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div></div>
       <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="card bonuscard" id="monthBonus">
+      <div class="bc-l" id="bcValue"></div>
+      <div class="row">
+        <div class="nc-head" style="color:var(--ink-3);font-weight:600">💵 Bonus · <span id="bcMonth"></span></div>
+        <button type="button" class="btn sm" id="bcEdit">Add bonus</button>
+      </div>
     </div>
 
     <div class="card notecard" id="monthNote">
@@ -333,6 +383,7 @@
         <button type="button" class="btn sm" id="notesBtn">📝 Monthly notes</button>
       </div>
     </div>
+    <div id="sum13"></div>
     <div id="sumTotals"></div>
     <div id="sumMonths"></div>
   </section>
@@ -354,8 +405,10 @@
     <h2 id="empDlgTitle">Employee</h2>
     <label class="fl" for="eName">Name</label>
     <input type="text" id="eName" maxlength="60" required autocomplete="off">
-    <label class="fl" for="eMonthly">Monthly pay (₱)</label>
-    <input type="number" id="eMonthly" min="0" step="0.01" inputmode="decimal">
+    <label class="fl">Monthly salary <span class="fl-hint">— and the month each rate was approved</span></label>
+    <div class="sal-list" id="salList"></div>
+    <button type="button" class="btn sm" id="salAdd">+ Add a salary change</button>
+    <div class="note">Leave the first month blank to apply it from the start. Add a row each time the salary changes — the calendar and summary use the rate in effect for each month.</div>
     <label class="fl" for="eDpw">Days worked per week</label>
     <input type="number" id="eDpw" min="1" max="7" step="1" inputmode="numeric">
     <label class="fl" for="eDaily">Daily rate (₱)</label>
@@ -381,6 +434,37 @@
       <button type="button" class="btn danger ghost" id="noteDelete">Delete</button>
       <button type="button" class="btn ghost" onclick="this.closest('dialog').close()">Cancel</button>
       <button type="submit" class="btn primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- bonus for a month -->
+<dialog id="bonusDlg">
+  <form id="bonusForm">
+    <h2 id="bonusDlgTitle">Bonus</h2>
+    <label class="fl" for="bonusAmt">Bonus for this month (₱)</label>
+    <input type="number" id="bonusAmt" min="0" step="0.01" inputmode="decimal">
+    <div class="note">A one-off amount added on top of the month's pay. Bonuses are not part of the salary and are left out of the 13th-month calculation.</div>
+    <div class="dialog-actions">
+      <button type="button" class="btn danger ghost" id="bonusDelete">Remove</button>
+      <button type="button" class="btn ghost" onclick="this.closest('dialog').close()">Cancel</button>
+      <button type="submit" class="btn primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- record a 13th-month payment -->
+<dialog id="m13Dlg">
+  <form id="m13Form">
+    <h2 id="m13DlgTitle">Record 13th month pay</h2>
+    <div class="note" id="m13DlgSub" style="margin:0 0 6px"></div>
+    <label class="fl" for="m13Date">Date paid</label>
+    <input type="date" id="m13Date">
+    <label class="fl" for="m13Amt">Amount paid (₱)</label>
+    <input type="number" id="m13Amt" min="0" step="0.01" inputmode="decimal">
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" onclick="this.closest('dialog').close()">Cancel</button>
+      <button type="submit" class="btn primary">Save to history</button>
     </div>
   </form>
 </dialog>
@@ -419,7 +503,13 @@
 
   // ---------- model ----------
   // employee: { id, name, monthly, dpw, daily, auto, start,
-  //             days:{ 'YYYY-MM-DD': status }, notes:{ 'YYYY-MM': 'text' } }
+  //   salaries:[{ from:'YYYY-MM', monthly }]  (sorted; from '' = from the start),
+  //   days:{ 'YYYY-MM-DD': status }, notes:{ 'YYYY-MM': 'text' },
+  //   bonuses:{ 'YYYY-MM': amount }  (manual, not part of the salary / 13th month),
+  //   m13:[{ on:'YYYY-MM-DD', amount, from:'YYYY-MM', to:'YYYY-MM', months }]  (13th-month payments made)
+  // }
+  // `monthly` is a mirror of the salary in effect now (display + older backups);
+  // the per-month salary is always read through monthlyFor()/salaries.
   var STATUS = {
     worked:  { label: 'Worked',       sym: '✓' },
     absent:  { label: 'Absent',       sym: '✕' },
@@ -449,14 +539,52 @@
         if (t) notes[k] = t;
       });
     }
+    var bonuses = {};
+    if (e.bonuses && typeof e.bonuses === 'object') {
+      Object.keys(e.bonuses).forEach(function (k) { if (/^\d{4}-\d{2}$/.test(k)) { var v = num(e.bonuses[k]); if (v) bonuses[k] = v; } });
+    }
+    var m13 = [];
+    if (Array.isArray(e.m13)) {
+      e.m13.forEach(function (r) {
+        if (!r || typeof r !== 'object') return;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(r.on)) return;
+        var amt = num(r.amount); if (!amt) return;
+        m13.push({
+          on: r.on, amount: amt,
+          from: /^\d{4}-\d{2}$/.test(r.from) ? r.from : '',
+          to: /^\d{4}-\d{2}$/.test(r.to) ? r.to : '',
+          months: (Math.round(Number(r.months)) >= 1 && Math.round(Number(r.months)) <= 12) ? Math.round(Number(r.months)) : 12
+        });
+      });
+      m13.sort(function (a, b) { return a.on < b.on ? 1 : a.on > b.on ? -1 : 0; });   // newest first
+    }
+    var salaries = cleanSalaries(e);
     return {
       id: e.id || uid(),
       name: (typeof e.name === 'string' && e.name.trim()) ? e.name.trim().slice(0, 60) : 'Employee',
-      monthly: num(e.monthly), dpw: clampDpw(e.dpw), daily: num(e.daily),
+      monthly: salaries[salaries.length - 1].monthly, dpw: clampDpw(e.dpw), daily: num(e.daily),
       auto: e.auto !== false,
       start: (typeof e.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.start)) ? e.start : '',
-      days: days, notes: notes
+      salaries: salaries, days: days, notes: notes, bonuses: bonuses, m13: m13
     };
+  }
+  // Salary timeline: sorted ascending by effective month ('' sorts first = "from
+  // the start"); duplicate months collapse (last wins). Old records with only a
+  // flat `monthly` migrate to one "from the beginning" entry, so nothing changes.
+  function cleanSalaries(e) {
+    var out = [];
+    if (Array.isArray(e.salaries)) {
+      e.salaries.forEach(function (s) {
+        if (!s || typeof s !== 'object') return;
+        out.push({ from: /^\d{4}-\d{2}$/.test(s.from) ? s.from : '', monthly: num(s.monthly) });
+      });
+    }
+    var map = {};
+    out.forEach(function (s) { map[s.from] = s.monthly; });   // DOM/array order, last wins
+    var froms = Object.keys(map).sort();
+    var res = froms.map(function (f) { return { from: f, monthly: map[f] }; });
+    if (!res.length) res = [{ from: '', monthly: num(e.monthly) }];
+    return res;
   }
   function num(v) { v = Number(v); return isFinite(v) && v > 0 ? v : 0; }
   function clampDpw(v) { v = Math.round(Number(v)); return v >= 1 && v <= 7 ? v : 5; }
@@ -468,12 +596,28 @@
     saved(ok); if (ok) $('notice').hidden = true;
   }
 
-  // daily rate actually used for deductions (rounded to a whole peso so what you
-  // see is what gets subtracted).
-  function dailyOf(e) {
-    if (e.auto) { if (!e.dpw) return 0; return Math.round(e.monthly / (e.dpw * 52 / 12)); }
+  // The monthly salary in effect for a given month 'YYYY-MM' (the latest salary
+  // record whose effective month is on or before it; 0 before the first record).
+  function monthlyFor(e, ym) {
+    var sals = e.salaries;
+    if (!sals || !sals.length) return num(e.monthly);
+    var best = null;
+    for (var i = 0; i < sals.length; i++) { if (sals[i].from <= ym) best = sals[i].monthly; }
+    return best == null ? 0 : best;
+  }
+  function effectiveMonthly(e) { return monthlyFor(e, prefixOf(new Date())); }
+  // daily rate used for absence deductions, for the salary in that month (auto =
+  // monthly ÷ working days; rounded to a whole peso so it matches what's shown).
+  function dailyFor(e, ym) {
+    if (e.auto) { if (!e.dpw) return 0; return Math.round(monthlyFor(e, ym) / (e.dpw * 52 / 12)); }
     return Math.round(e.daily);
   }
+  // current daily rate (for the list / header), from the salary in effect now.
+  function dailyOf(e) {
+    if (e.auto) { if (!e.dpw) return 0; return Math.round(effectiveMonthly(e) / (e.dpw * 52 / 12)); }
+    return Math.round(e.daily);
+  }
+  function bonusOf(e, ym) { return (e.bonuses && e.bonuses[ym]) || 0; }
   function peso(n) { return '₱' + Math.round(n).toLocaleString('en-US'); }
 
   // ---------- month helpers ----------
@@ -487,7 +631,8 @@
   function monthNet(e, prefix) {
     var start = startOf(e), startYm = start ? start.slice(0, 7) : '';
     var c = { worked: 0, absent: 0, leave: 0, holiday: 0, off: 0 };
-    if (start && prefix < startYm) return { c: c, ded: 0, gross: 0, net: 0, pre: true, partial: false };
+    var monthly = monthlyFor(e, prefix), daily = dailyFor(e, prefix), bonus = bonusOf(e, prefix);
+    if (start && prefix < startYm) return { c: c, ded: 0, gross: 0, bonus: 0, net: 0, monthly: monthly, daily: daily, pre: true, partial: false };
     var p = prefix + '-';
     for (var k in e.days) {
       if (!e.days.hasOwnProperty(k) || k.indexOf(p) !== 0) continue;
@@ -496,15 +641,28 @@
     }
     var parts = prefix.split('-').map(Number);
     var daysInMonth = new Date(parts[0], parts[1], 0).getDate();
-    var gross = e.monthly, partial = false;
+    var gross = monthly, partial = false;
     if (start && prefix === startYm) {
       var sd = Number(start.slice(8, 10));
-      if (sd > 1) { gross = Math.round(e.monthly * (daysInMonth - sd + 1) / daysInMonth); partial = true; }
+      if (sd > 1) { gross = Math.round(monthly * (daysInMonth - sd + 1) / daysInMonth); partial = true; }
     }
-    var ded = c.absent * dailyOf(e);
-    return { c: c, ded: ded, gross: gross, net: gross - ded, pre: false, partial: partial };
+    var ded = c.absent * daily;
+    return { c: c, ded: ded, gross: gross, bonus: bonus, net: gross - ded + bonus, monthly: monthly, daily: daily, pre: false, partial: partial };
   }
   function fmtDay(iso) { var p = iso.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+
+  // 13th month pay: the basic salary over the window that starts at `startYm`
+  // (up to 12 months, but no further than the current month), divided by the
+  // number of months counted — so 6 months in, it's the 6-month total ÷ 6.
+  // Bonuses are deliberately left out (they are not part of the salary).
+  function thirteenth(e, startYm) {
+    var a = idxOf(startYm), bNow = idxOf(prefixOf(new Date()));
+    var n = bNow - a + 1;
+    if (n < 1) n = 1; if (n > 12) n = 12;
+    var total = 0;
+    for (var i = 0; i < n; i++) total += monthlyFor(e, ymOf(a + i));
+    return { months: n, total: total, pay: total / n, from: startYm, to: ymOf(a + n - 1) };
+  }
 
   // ---------- monthly notes ----------
   function noteOf(e, ym) { return (e && e.notes && e.notes[ym]) || ''; }
@@ -534,7 +692,7 @@
       top.appendChild(el('div', 'avatar', initials));
       var who = el('div');
       who.appendChild(el('div', 'name', e.name));
-      who.appendChild(el('div', 'pay', peso(e.monthly) + '/mo · ' + peso(dailyOf(e)) + '/day · ' + e.dpw + '×/wk'));
+      who.appendChild(el('div', 'pay', peso(effectiveMonthly(e)) + '/mo · ' + peso(dailyOf(e)) + '/day · ' + e.dpw + '×/wk'));
       top.appendChild(who);
       card.appendChild(top);
       var m = monthNet(e, now);
@@ -555,38 +713,65 @@
 
   function render() {
     var e = employees[selected]; if (!e) { home(); return; }
+    var prefix = prefixOf(view), m = monthNet(e, prefix);
+    var monthName = view.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
     $('personName').textContent = e.name;
     $('payStrip').innerHTML = '';
-    $('payStrip').appendChild(txt('Monthly ')); $('payStrip').appendChild(strong(peso(e.monthly)));
-    $('payStrip').appendChild(txt('  ·  Daily ')); $('payStrip').appendChild(strong(peso(dailyOf(e))));
+    $('payStrip').appendChild(txt('Monthly ')); $('payStrip').appendChild(strong(peso(m.monthly)));
+    $('payStrip').appendChild(txt('  ·  Daily ')); $('payStrip').appendChild(strong(peso(m.daily)));
     $('payStrip').appendChild(txt('  ·  ' + e.dpw + ' day' + (e.dpw === 1 ? '' : 's') + '/week'));
     if (startOf(e)) { $('payStrip').appendChild(txt('  ·  from ')); $('payStrip').appendChild(strong(fmtDay(e.start))); }
 
-    var prefix = prefixOf(view), m = monthNet(e, prefix);
+    // salary history (only when it's worth showing: a change, or a dated start)
+    var salStrip = $('salStrip'); clear(salStrip);
+    var showSal = e.salaries.length > 1 || (e.salaries.length === 1 && e.salaries[0].from);
+    salStrip.hidden = !showSal;
+    if (showSal) {
+      e.salaries.forEach(function (s) {
+        var active = s.from === effFrom(e, prefix);
+        var chip = el('span', 'sc' + (active ? ' now' : ''));
+        chip.appendChild(el('b', null, peso(s.monthly)));
+        chip.appendChild(document.createTextNode(' ' + (s.from ? 'from ' + monthLabel(s.from) : 'to start')));
+        salStrip.appendChild(chip);
+      });
+    }
+
     var sum = $('personSummary'); clear(sum);
     sum.appendChild(stat(m.c.worked, 'Worked', 'worked'));
     sum.appendChild(stat(m.c.absent, 'Absent', 'absent'));
     sum.appendChild(stat(m.c.leave, 'Paid leave', 'leave'));
     sum.appendChild(stat(m.c.holiday, 'Holiday', ''));
+    if (m.bonus) sum.appendChild(stat(peso(m.bonus), 'Bonus', 'bonus'));
     var net = el('div', 'stat net'); net.appendChild(el('div', 'n', peso(m.net))); net.appendChild(el('div', 'l', 'Net this month')); sum.appendChild(net);
-    if (m.pre) {
-      $('netLine').textContent = 'Not employed this month — starts ' + fmtDay(e.start) + '.';
-    } else if (m.partial && m.c.absent) {
-      $('netLine').textContent = 'Started ' + fmtDay(e.start) + ' · part month ' + peso(m.gross) + ' − ' + m.c.absent + ' absent × ' + peso(dailyOf(e)) + ' = ' + peso(m.net);
-    } else if (m.partial) {
-      $('netLine').textContent = 'Started ' + fmtDay(e.start) + ' · part month = ' + peso(m.gross) + ' (from ' + peso(e.monthly) + ').';
-    } else if (m.c.absent) {
-      $('netLine').textContent = peso(e.monthly) + ' − ' + m.c.absent + ' absent × ' + peso(dailyOf(e)) + ' = ' + peso(m.net);
-    } else {
-      $('netLine').textContent = 'No absences this month — full ' + peso(e.monthly) + '.';
-    }
 
-    $('monthTitle').textContent = view.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    var line;
+    if (m.pre) {
+      line = 'Not employed this month — starts ' + fmtDay(e.start) + '.';
+    } else if (m.partial && m.c.absent) {
+      line = 'Started ' + fmtDay(e.start) + ' · part month ' + peso(m.gross) + ' − ' + m.c.absent + ' absent × ' + peso(m.daily) + ' = ' + peso(m.gross - m.ded);
+    } else if (m.partial) {
+      line = 'Started ' + fmtDay(e.start) + ' · part month = ' + peso(m.gross) + ' (from ' + peso(m.monthly) + ').';
+    } else if (m.c.absent) {
+      line = peso(m.monthly) + ' − ' + m.c.absent + ' absent × ' + peso(m.daily) + ' = ' + peso(m.gross - m.ded);
+    } else {
+      line = 'No absences this month — full ' + peso(m.monthly) + '.';
+    }
+    if (m.bonus) line += '  +  ' + peso(m.bonus) + ' bonus  =  ' + peso(m.net);
+    $('netLine').textContent = line;
+
+    $('monthTitle').textContent = monthName;
     $('jump').value = prefix;
     buildGrid(e);
 
+    // bonus for the viewed month
+    $('bcMonth').textContent = monthName;
+    var bl = $('bcValue'); clear(bl);
+    if (m.bonus) { bl.className = 'bc-l has'; bl.appendChild(document.createTextNode('Bonus: ')); bl.appendChild(el('b', null, peso(m.bonus))); }
+    else { bl.className = 'bc-l'; bl.textContent = 'No bonus for this month.'; }
+    $('bcEdit').textContent = m.bonus ? 'Edit bonus' : 'Add bonus';
+
     var note = noteOf(e, prefix);
-    $('ncMonth').textContent = view.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    $('ncMonth').textContent = monthName;
     var ncBody = $('ncBody'); clear(ncBody);
     ncBody.textContent = note || 'No note for this month yet.';
     ncBody.classList.toggle('nc-empty', !note);
@@ -595,6 +780,12 @@
     function stat(n, label, cls) { var d = el('div', 'stat'); d.appendChild(el('div', 'n' + (cls ? ' ' + cls : ''), String(n))); d.appendChild(el('div', 'l', label)); return d; }
     function txt(t) { return document.createTextNode(t); }
     function strong(t) { return el('b', null, t); }
+  }
+  // which salary record (its `from`) is in effect for a given month
+  function effFrom(e, ym) {
+    var f = '';
+    e.salaries.forEach(function (s) { if (s.from <= ym) f = s.from; });
+    return f;
   }
 
   function buildGrid(e) {
@@ -705,40 +896,84 @@
     var e = id != null ? employees.find(function (x) { return x.id === id; }) : null;
     $('empDlgTitle').textContent = e ? 'Edit employee' : 'New employee';
     $('eName').value = e ? e.name : '';
-    $('eMonthly').value = e ? (e.monthly || '') : '';
+    renderSalList(e ? e.salaries : null);
     $('eDpw').value = e ? e.dpw : 5;
     $('eAuto').checked = e ? e.auto !== false : true;
     $('eStart').value = e ? (e.start || '') : '';
     syncDailyField(e);
     $('empDlg').showModal(); setTimeout(function () { $('eName').focus(); }, 30);
   }
+  // salary rows
+  function renderSalList(salaries) {
+    clear($('salList'));
+    var rows = (salaries && salaries.length) ? salaries : [{ from: '', monthly: 0 }];
+    rows.forEach(function (s) { addSalRow(s.from, s.monthly); });
+  }
+  function addSalRow(from, amt) {
+    var row = el('div', 'sal-row');
+    var f = el('input'); f.type = 'month'; f.className = 'sal-from'; f.setAttribute('aria-label', 'Month this salary took effect'); f.min = '1900-01'; f.max = '9999-12'; if (from) f.value = from;
+    var a = el('input'); a.type = 'number'; a.className = 'sal-amt'; a.min = '0'; a.step = '0.01'; a.inputMode = 'decimal'; a.placeholder = '₱ / month'; if (amt) a.value = amt;
+    var d = el('button', 'sal-del'); d.type = 'button'; d.setAttribute('aria-label', 'Remove this salary'); d.textContent = '×';
+    d.onclick = function () { row.remove(); if (!$('salList').children.length) addSalRow('', 0); if ($('eAuto').checked) syncDailyField(null); };
+    a.oninput = function () { a.setCustomValidity(''); if ($('eAuto').checked) syncDailyField(null); };
+    f.onchange = function () { if ($('eAuto').checked) syncDailyField(null); };
+    row.appendChild(f); row.appendChild(a); row.appendChild(d);
+    $('salList').appendChild(row);
+  }
+  $('salAdd').onclick = function () { addSalRow(suggestNextMonth(), ''); };
+  function suggestNextMonth() {
+    var max = '';
+    Array.prototype.forEach.call($('salList').querySelectorAll('.sal-from'), function (i) { if (i.value && i.value > max) max = i.value; });
+    if (!max) { var n = new Date(); return n.getFullYear() + '-' + pad(n.getMonth() + 1); }
+    var p = max.split('-').map(Number), d = new Date(p[0], p[1], 1);   // month after `max`
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1);
+  }
+  // read + normalise the salary rows: {list: sorted[{from,monthly}], bad: input|null}
+  function salData() {
+    var out = [], bad = null;
+    Array.prototype.forEach.call($('salList').querySelectorAll('.sal-row'), function (row) {
+      var f = row.querySelector('.sal-from').value, aEl = row.querySelector('.sal-amt'), aRaw = aEl.value;
+      if (!aRaw && !f) return;                         // blank row — ignore
+      var amt = num(aRaw);
+      if (amt <= 0) { if (!bad) bad = aEl; return; }    // a month but no amount
+      out.push({ from: /^\d{4}-\d{2}$/.test(f) ? f : '', monthly: amt });
+    });
+    var map = {}; out.forEach(function (s) { map[s.from] = s.monthly; });
+    var froms = Object.keys(map).sort();
+    return { list: froms.map(function (f) { return { from: f, monthly: map[f] }; }), bad: bad };
+  }
+  function salLatest() { var d = salData().list; return d.length ? d[d.length - 1].monthly : 0; }
   function syncDailyField(e) {
     var auto = $('eAuto').checked;
     $('eDaily').disabled = auto;
     if (auto) {
-      var monthly = Number($('eMonthly').value) || 0, dpw = clampDpw($('eDpw').value);
+      var monthly = salLatest(), dpw = clampDpw($('eDpw').value);
       $('eDaily').value = dpw ? Math.round(monthly / (dpw * 52 / 12)) : 0;
     } else if (e && !e.auto) {
       $('eDaily').value = e.daily || '';
     }
   }
   $('eAuto').onchange = function () { syncDailyField(null); };
-  $('eMonthly').oninput = function () { if ($('eAuto').checked) syncDailyField(null); };
   $('eDpw').oninput = function () { if ($('eAuto').checked) syncDailyField(null); };
 
   $('empForm').onsubmit = function (ev) {
     ev.preventDefault();
     var name = $('eName').value.trim();
     if (!name) { $('eName').setCustomValidity('Please enter a name.'); $('eName').reportValidity(); return; }
+    var sd = salData();
+    if (sd.bad) { sd.bad.setCustomValidity('Enter a salary amount greater than zero, or clear the month.'); sd.bad.reportValidity(); return; }
+    if (!sd.list.length) { var first = $('salList').querySelector('.sal-amt'); if (first) { first.setCustomValidity('Enter at least one monthly salary.'); first.reportValidity(); } return; }
     var auto = $('eAuto').checked;
-    var monthly = num($('eMonthly').value), dpw = clampDpw($('eDpw').value);
+    var dpw = clampDpw($('eDpw').value);
     var daily = auto ? 0 : num($('eDaily').value);
     var start = /^\d{4}-\d{2}-\d{2}$/.test($('eStart').value) ? $('eStart').value : '';
     if (editingId != null) {
       var e = employees.find(function (x) { return x.id === editingId; });
-      if (e) { e.name = name.slice(0, 60); e.monthly = monthly; e.dpw = dpw; e.daily = daily; e.auto = auto; e.start = start; }
+      if (e) { e.name = name.slice(0, 60); e.salaries = sd.list; e.monthly = effectiveMonthly(e); e.dpw = dpw; e.daily = daily; e.auto = auto; e.start = start; }
     } else {
-      employees.push({ id: uid(), name: name.slice(0, 60), monthly: monthly, dpw: dpw, daily: daily, auto: auto, start: start, days: {}, notes: {} });
+      var ne = { id: uid(), name: name.slice(0, 60), salaries: sd.list, dpw: dpw, daily: daily, auto: auto, start: start, days: {}, notes: {}, bonuses: {}, m13: [] };
+      ne.monthly = effectiveMonthly(ne);
+      employees.push(ne);
       selected = employees.length - 1;
     }
     save(); $('empDlg').close();
@@ -747,6 +982,29 @@
     else home();
   };
   $('eName').oninput = function () { $('eName').setCustomValidity(''); };
+
+  // ---------- bonus editor (per month) ----------
+  var bonusYm = '';
+  function openBonus() {
+    var e = employees[selected]; if (!e) return;
+    bonusYm = prefixOf(view);
+    var existing = bonusOf(e, bonusYm);
+    $('bonusDlgTitle').textContent = 'Bonus · ' + monthLabel(bonusYm);
+    $('bonusAmt').value = existing || '';
+    $('bonusDelete').hidden = !existing;
+    $('bonusDlg').showModal(); setTimeout(function () { $('bonusAmt').focus(); }, 30);
+  }
+  function setBonus(e, ym, amt) { if (!e.bonuses) e.bonuses = {}; if (amt > 0) e.bonuses[ym] = amt; else delete e.bonuses[ym]; }
+  $('bcEdit').onclick = openBonus;
+  $('bonusForm').onsubmit = function (ev) {
+    ev.preventDefault();
+    var e = employees[selected]; if (e) { setBonus(e, bonusYm, num($('bonusAmt').value)); save(); }
+    $('bonusDlg').close(); render();
+  };
+  $('bonusDelete').onclick = function () {
+    var e = employees[selected]; if (e) { setBonus(e, bonusYm, 0); save(); }
+    $('bonusDlg').close(); render();
+  };
 
   $('addEmp').onclick = function () { openEmpDlg(null); };
   $('editPay').onclick = function () { if (employees[selected]) openEmpDlg(employees[selected].id); };
@@ -799,6 +1057,7 @@
     var months = []; for (var i = a; i <= b && months.length < 240; i++) months.push(ymOf(i));
 
     var list = summaryList();
+    renderThirteenth(list);
     // per-employee totals across the range
     var totals = $('sumTotals'); clear(totals);
     if (!list.length) { totals.appendChild(el('div', 'empty', 'No employees yet.')); clear($('sumMonths')); return; }
@@ -839,11 +1098,13 @@
         var r = el('div', 'mrow');
         var left = el('div', 'ml'); left.appendChild(document.createTextNode(e.name + ' '));
         var bits = [];
+        if (!m.pre && m.monthly !== monthlyFor(e, ymOf(idxOf(ym) - 1))) bits.push('now ' + peso(m.monthly) + '/mo');
         if (m.pre) bits.push('not started');
         else if (m.partial) bits.push('part month');
         if (m.c.absent) bits.push(m.c.absent + ' absent');
         if (m.c.leave) bits.push(m.c.leave + ' leave');
         if (!m.pre && m.c.worked) bits.push(m.c.worked + ' worked');
+        if (m.bonus) bits.push('+' + peso(m.bonus) + ' bonus');
         if (bits.length) left.appendChild(el('small', null, '· ' + bits.join(' · ')));
         r.appendChild(left);
         var v = el('div', 'mv', m.pre ? '—' : peso(m.net));
@@ -864,6 +1125,85 @@
   $('toM').onchange = function () { if ($('toM').value) { range.to = $('toM').value; renderSummary(); } };
   $('q12').onclick = function () { range = defaultRange(); openSummary(); };
   $('qYear').onclick = function () { var y = new Date().getFullYear(); range = { from: y + '-01', to: y + '-12' }; openSummary(); };
+
+  // ---------- 13th month pay ----------
+  var m13Start = '';   // the selected period start (YYYY-MM)
+  function m13Default() { return new Date().getFullYear() + '-01'; }   // Jan of this year
+  function renderThirteenth(list) {
+    if (!m13Start) m13Start = m13Default();
+    var host = $('sum13'); clear(host);
+    if (!list.length) return;
+    var card = el('div', 'card m13card');
+    card.appendChild(el('h3', null, '13th month pay'));
+    card.appendChild(el('div', 'm13-sub', 'The salary earned over 12 months from the start you pick, divided by the months counted (fewer if the period is still short). Bonuses are not included.'));
+    var sd = el('div', 'm13-start');
+    sd.appendChild(el('label', null, 'Period start'));
+    var inp = el('input'); inp.type = 'month'; inp.id = 'm13StartInp'; inp.min = '1900-01'; inp.max = '9999-12'; inp.value = m13Start;
+    inp.onchange = function () { if (/^\d{4}-\d{2}$/.test(inp.value)) { m13Start = inp.value; renderThirteenth(summaryList()); } };
+    sd.appendChild(inp);
+    card.appendChild(sd);
+
+    list.forEach(function (e) {
+      var t = thirteenth(e, m13Start);
+      var block = el('div', 'm13-emp');
+      var top = el('div', 'm13-top');
+      top.appendChild(el('div', 'who', e.name));
+      top.appendChild(el('div', 'pay', peso(t.pay)));
+      block.appendChild(top);
+      block.appendChild(el('div', 'm13-detail', monthLabel(t.from) + ' → ' + monthLabel(t.to) + ' · ' + t.months + ' month' + (t.months === 1 ? '' : 's') + ' · total salary ' + peso(t.total) + ' ÷ ' + t.months));
+      var act = el('div', 'm13-act');
+      var rec = el('button', 'btn sm primary', 'Record payment');
+      rec.onclick = function () { openM13(e.id, t); };
+      act.appendChild(rec);
+      block.appendChild(act);
+      if (e.m13 && e.m13.length) {
+        var ul = el('ul', 'm13-hist');
+        e.m13.forEach(function (r, ri) {
+          var li = el('li');
+          var span = el('span');
+          span.appendChild(el('b', 'hamt', peso(r.amount)));
+          span.appendChild(document.createTextNode(' · paid ' + fmtDay(r.on) + (r.from ? ' · ' + monthLabel(r.from) + '→' + monthLabel(r.to) : '')));
+          li.appendChild(span);
+          var x = el('button', 'hx', '×'); x.type = 'button'; x.setAttribute('aria-label', 'Remove this record');
+          x.onclick = (function (empId, idx) { return function () { removeM13(empId, idx); }; })(e.id, ri);
+          li.appendChild(x);
+          ul.appendChild(li);
+        });
+        block.appendChild(ul);
+      }
+      card.appendChild(block);
+    });
+    host.appendChild(card);
+  }
+  var m13Emp = null, m13Calc = null;
+  function openM13(id, t) {
+    m13Emp = id; m13Calc = t;
+    var e = employees.find(function (x) { return x.id === id; });
+    $('m13DlgTitle').textContent = '13th month · ' + (e ? e.name : '');
+    $('m13DlgSub').textContent = monthLabel(t.from) + ' → ' + monthLabel(t.to) + ' · ' + t.months + ' month' + (t.months === 1 ? '' : 's') + ' · computed ' + peso(t.pay);
+    $('m13Date').value = new Date().toISOString().slice(0, 10);
+    $('m13Amt').value = Math.round(t.pay);
+    $('m13Dlg').showModal(); setTimeout(function () { $('m13Amt').focus(); }, 30);
+  }
+  $('m13Form').onsubmit = function (ev) {
+    ev.preventDefault();
+    var e = employees.find(function (x) { return x.id === m13Emp; });
+    var amt = num($('m13Amt').value);
+    var on = /^\d{4}-\d{2}-\d{2}$/.test($('m13Date').value) ? $('m13Date').value : new Date().toISOString().slice(0, 10);
+    if (e && amt > 0) {
+      if (!Array.isArray(e.m13)) e.m13 = [];
+      e.m13.push({ on: on, amount: amt, from: m13Calc.from, to: m13Calc.to, months: m13Calc.months });
+      e.m13.sort(function (a, b) { return a.on < b.on ? 1 : a.on > b.on ? -1 : 0; });
+      save();
+    }
+    $('m13Dlg').close(); renderThirteenth(summaryList());
+  };
+  function removeM13(id, idx) {
+    var e = employees.find(function (x) { return x.id === id; });
+    if (!e || !Array.isArray(e.m13) || !e.m13[idx]) return;
+    if (!confirm('Remove this 13th-month payment record?')) return;
+    e.m13.splice(idx, 1); save(); renderThirteenth(summaryList());
+  }
 
   // ---------- monthly notes viewer (read-only) ----------
   function openNotesView() {
