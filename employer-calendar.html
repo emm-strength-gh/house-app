@@ -132,6 +132,7 @@
   .day:hover { background: var(--surface-2); }
   .day.weekend .num { color: var(--off); }
   .day.today .num { box-shadow: 0 0 0 2px var(--accent); }
+  .day.pre { opacity: .4; }
   .day.sel { background: var(--accent-soft); }
   .day.sel .num { box-shadow: 0 0 0 2px var(--accent); color: var(--accent); font-weight: 700; }
   .num { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; font-variant-numeric: tabular-nums; }
@@ -182,7 +183,8 @@
   dialog::backdrop { background: rgba(10,20,14,.4); backdrop-filter: blur(3px); }
   dialog h2 { margin: 4px 0 16px; font-size: 20px; }
   dialog label.fl { display: block; font-size: 12.5px; color: var(--ink-2); margin: 12px 0 5px; font-weight: 600; }
-  dialog input[type=text], dialog input[type=number], dialog input[type=month] { width: 100%; padding: 12px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--surface); }
+  dialog input[type=text], dialog input[type=number], dialog input[type=month], dialog input[type=date] { width: 100%; padding: 12px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); }
+  dialog .note { margin: 6px 0 0; }
   .inline { display: flex; align-items: center; gap: 9px; margin: 12px 0 0; font-size: 13.5px; color: var(--ink-2); }
   .inline input { width: 18px; height: 18px; }
   .dialog-actions { display: flex; gap: 10px; margin-top: 20px; }
@@ -333,6 +335,9 @@
     <label class="fl" for="eDaily">Daily rate (₱)</label>
     <input type="number" id="eDaily" min="0" step="0.01" inputmode="decimal">
     <label class="inline"><input type="checkbox" id="eAuto"> Work it out automatically (monthly ÷ working days)</label>
+    <label class="fl" for="eStart">Start date (optional)</label>
+    <input type="date" id="eStart">
+    <div class="note" id="eStartNote">Pay counts from this date. The first month is pro-rated by the days worked; leave it blank for an open-ended, full-month employee.</div>
     <div class="dialog-actions">
       <button type="button" class="btn ghost" onclick="this.closest('dialog').close()">Cancel</button>
       <button type="submit" class="btn primary">Save</button>
@@ -391,6 +396,7 @@
       name: (typeof e.name === 'string' && e.name.trim()) ? e.name.trim().slice(0, 60) : 'Employee',
       monthly: num(e.monthly), dpw: clampDpw(e.dpw), daily: num(e.daily),
       auto: e.auto !== false,
+      start: (typeof e.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.start)) ? e.start : '',
       days: days
     };
   }
@@ -416,13 +422,31 @@
   var pad = function (n) { return String(n).padStart(2, '0'); };
   var view = (function () { var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })();
   function prefixOf(date) { return date.getFullYear() + '-' + pad(date.getMonth() + 1); }
-  function counts(e, prefix) {
+  function startOf(e) { return e.start && /^\d{4}-\d{2}-\d{2}$/.test(e.start) ? e.start : ''; }
+  // What an employee earns in one month (prefix 'YYYY-MM'), honouring the start
+  // date: nothing before the start month; the start month pro-rated by the
+  // calendar days worked from the start day; marks before the start don't count.
+  function monthNet(e, prefix) {
+    var start = startOf(e), startYm = start ? start.slice(0, 7) : '';
     var c = { worked: 0, absent: 0, leave: 0, holiday: 0, off: 0 };
+    if (start && prefix < startYm) return { c: c, ded: 0, gross: 0, net: 0, pre: true, partial: false };
     var p = prefix + '-';
-    for (var k in e.days) if (e.days.hasOwnProperty(k) && k.indexOf(p) === 0) c[e.days[k]]++;
-    return c;
+    for (var k in e.days) {
+      if (!e.days.hasOwnProperty(k) || k.indexOf(p) !== 0) continue;
+      if (start && k < start) continue;   // marked before they started — ignore
+      c[e.days[k]]++;
+    }
+    var parts = prefix.split('-').map(Number);
+    var daysInMonth = new Date(parts[0], parts[1], 0).getDate();
+    var gross = e.monthly, partial = false;
+    if (start && prefix === startYm) {
+      var sd = Number(start.slice(8, 10));
+      if (sd > 1) { gross = Math.round(e.monthly * (daysInMonth - sd + 1) / daysInMonth); partial = true; }
+    }
+    var ded = c.absent * dailyOf(e);
+    return { c: c, ded: ded, gross: gross, net: gross - ded, pre: false, partial: partial };
   }
-  function monthNet(e, prefix) { var c = counts(e, prefix); return { c: c, ded: c.absent * dailyOf(e), net: e.monthly - c.absent * dailyOf(e) }; }
+  function fmtDay(iso) { var p = iso.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
 
   // ---------- views ----------
   var selected = null;
@@ -470,6 +494,7 @@
     $('payStrip').appendChild(txt('Monthly ')); $('payStrip').appendChild(strong(peso(e.monthly)));
     $('payStrip').appendChild(txt('  ·  Daily ')); $('payStrip').appendChild(strong(peso(dailyOf(e))));
     $('payStrip').appendChild(txt('  ·  ' + e.dpw + ' day' + (e.dpw === 1 ? '' : 's') + '/week'));
+    if (startOf(e)) { $('payStrip').appendChild(txt('  ·  from ')); $('payStrip').appendChild(strong(fmtDay(e.start))); }
 
     var prefix = prefixOf(view), m = monthNet(e, prefix);
     var sum = $('personSummary'); clear(sum);
@@ -478,9 +503,17 @@
     sum.appendChild(stat(m.c.leave, 'Paid leave', 'leave'));
     sum.appendChild(stat(m.c.holiday, 'Holiday', ''));
     var net = el('div', 'stat net'); net.appendChild(el('div', 'n', peso(m.net))); net.appendChild(el('div', 'l', 'Net this month')); sum.appendChild(net);
-    $('netLine').textContent = m.c.absent
-      ? (peso(e.monthly) + ' − ' + m.c.absent + ' absent × ' + peso(dailyOf(e)) + ' = ' + peso(m.net))
-      : ('No absences this month — full ' + peso(e.monthly) + '.');
+    if (m.pre) {
+      $('netLine').textContent = 'Not employed this month — starts ' + fmtDay(e.start) + '.';
+    } else if (m.partial && m.c.absent) {
+      $('netLine').textContent = 'Started ' + fmtDay(e.start) + ' · part month ' + peso(m.gross) + ' − ' + m.c.absent + ' absent × ' + peso(dailyOf(e)) + ' = ' + peso(m.net);
+    } else if (m.partial) {
+      $('netLine').textContent = 'Started ' + fmtDay(e.start) + ' · part month = ' + peso(m.gross) + ' (from ' + peso(e.monthly) + ').';
+    } else if (m.c.absent) {
+      $('netLine').textContent = peso(e.monthly) + ' − ' + m.c.absent + ' absent × ' + peso(dailyOf(e)) + ' = ' + peso(m.net);
+    } else {
+      $('netLine').textContent = 'No absences this month — full ' + peso(e.monthly) + '.';
+    }
 
     $('monthTitle').textContent = view.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
     $('jump').value = prefix;
@@ -495,13 +528,15 @@
     var offset = (view.getDay() + 6) % 7; // Monday-first; view is the 1st
     var total = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
     var now = new Date();
+    var start = startOf(e);
     for (var i = 0; i < offset; i++) grid.appendChild(el('div', 'blank'));
     for (var d = 1; d <= total; d++) {
       var k = prefixOf(view) + '-' + pad(d);
       var s = e.days[k];
       var isWeekend = ((offset + d - 1) % 7) >= 5;
       var isToday = now.getFullYear() === view.getFullYear() && now.getMonth() === view.getMonth() && now.getDate() === d;
-      var b = el('button', 'day' + (isWeekend ? ' weekend' : '') + (isToday ? ' today' : '') + (multi && sel[k] ? ' sel' : ''));
+      var isPre = start && k < start;
+      var b = el('button', 'day' + (isWeekend ? ' weekend' : '') + (isToday ? ' today' : '') + (isPre ? ' pre' : '') + (multi && sel[k] ? ' sel' : ''));
       b.appendChild(el('span', 'num', String(d)));
       if (s) b.appendChild(el('span', 'mark ' + s, STATUS[s].sym));
       b.setAttribute('aria-label', new Date(view.getFullYear(), view.getMonth(), d).toLocaleDateString('en-GB', { dateStyle: 'full' }) + ', ' + (s ? STATUS[s].label : 'Unmarked') + (multi ? (sel[k] ? ', selected' : ', not selected') : ''));
@@ -576,6 +611,7 @@
     $('eMonthly').value = e ? (e.monthly || '') : '';
     $('eDpw').value = e ? e.dpw : 5;
     $('eAuto').checked = e ? e.auto !== false : true;
+    $('eStart').value = e ? (e.start || '') : '';
     syncDailyField(e);
     $('empDlg').showModal(); setTimeout(function () { $('eName').focus(); }, 30);
   }
@@ -600,11 +636,12 @@
     var auto = $('eAuto').checked;
     var monthly = num($('eMonthly').value), dpw = clampDpw($('eDpw').value);
     var daily = auto ? 0 : num($('eDaily').value);
+    var start = /^\d{4}-\d{2}-\d{2}$/.test($('eStart').value) ? $('eStart').value : '';
     if (editingId != null) {
       var e = employees.find(function (x) { return x.id === editingId; });
-      if (e) { e.name = name.slice(0, 60); e.monthly = monthly; e.dpw = dpw; e.daily = daily; e.auto = auto; }
+      if (e) { e.name = name.slice(0, 60); e.monthly = monthly; e.dpw = dpw; e.daily = daily; e.auto = auto; e.start = start; }
     } else {
-      employees.push({ id: uid(), name: name.slice(0, 60), monthly: monthly, dpw: dpw, daily: daily, auto: auto, days: {} });
+      employees.push({ id: uid(), name: name.slice(0, 60), monthly: monthly, dpw: dpw, daily: daily, auto: auto, start: start, days: {} });
       selected = employees.length - 1;
     }
     save(); $('empDlg').close();
@@ -672,12 +709,14 @@
     card.appendChild(el('h3', null, 'Totals · ' + monthLabel(range.from) + ' → ' + monthLabel(range.to)));
     var grand = 0;
     list.forEach(function (e) {
-      var net = 0, absent = 0, leave = 0;
-      months.forEach(function (ym) { var m = monthNet(e, ym); net += m.net; absent += m.c.absent; leave += m.c.leave; });
+      var net = 0, absent = 0, leave = 0, paidMonths = 0;
+      months.forEach(function (ym) { var m = monthNet(e, ym); net += m.net; absent += m.c.absent; leave += m.c.leave; if (!m.pre) paidMonths++; });
       grand += net;
       var line = el('div', 'totline');
       var who = el('div', 'who'); who.appendChild(document.createTextNode(e.name));
-      who.appendChild(el('small', null, absent + ' absent · ' + leave + ' paid leave · ' + months.length + ' month' + (months.length === 1 ? '' : 's')));
+      var note = absent + ' absent · ' + leave + ' paid leave · ' + paidMonths + ' month' + (paidMonths === 1 ? '' : 's');
+      if (startOf(e)) note += ' · from ' + fmtDay(e.start);
+      who.appendChild(el('small', null, note));
       line.appendChild(who);
       line.appendChild(el('div', 'amt', peso(net)));
       card.appendChild(line);
@@ -703,12 +742,14 @@
         var r = el('div', 'mrow');
         var left = el('div', 'ml'); left.appendChild(document.createTextNode(e.name + ' '));
         var bits = [];
+        if (m.pre) bits.push('not started');
+        else if (m.partial) bits.push('part month');
         if (m.c.absent) bits.push(m.c.absent + ' absent');
         if (m.c.leave) bits.push(m.c.leave + ' leave');
-        if (m.c.worked) bits.push(m.c.worked + ' worked');
+        if (!m.pre && m.c.worked) bits.push(m.c.worked + ' worked');
         if (bits.length) left.appendChild(el('small', null, '· ' + bits.join(' · ')));
         r.appendChild(left);
-        var v = el('div', 'mv', peso(m.net));
+        var v = el('div', 'mv', m.pre ? '—' : peso(m.net));
         if (m.ded) { v.title = '− ' + peso(m.ded) + ' deducted'; }
         r.appendChild(v);
         rows.push(r);

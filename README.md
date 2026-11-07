@@ -131,8 +131,12 @@ growing set of household tools:
     screen later.
 - **Employer Calendar** (`employer-calendar.html`) — staff attendance, pay and a
   monthly payroll summary. Add each employee with their **monthly pay**, how many
-  **days a week** they work, and a **daily rate** (worked out automatically as
-  monthly ÷ working days — 6×/week gives monthly ÷ 26 — or typed in by hand).
+  **days a week** they work, a **daily rate** (worked out automatically as
+  monthly ÷ working days — 6×/week gives monthly ÷ 26 — or typed in by hand),
+  and an optional **start date** — pay counts only from then, the first month
+  is pro-rated by the days worked (starting on the 15th of a 30-day month pays
+  16/30 of the monthly), earlier months read "not started", and days before the
+  start are dimmed and don't count.
   A month calendar marks each day **Worked**, **Absent**, **Paid leave**,
   **Bank holiday** or **Day off**; tapping a date changes it. Each employee's
   page shows that month's counts and the **net pay** — only Absent days are
@@ -280,7 +284,8 @@ Color Grading: `grade.prefs.v1` (one record per personalised preset: `{ id: pres
 a record left empty is removed), `grade.theme.v1`, `grade.last.v1` (last preset opened, per device).
 Video exports aren't in localStorage: the file in progress or finished is `grade-export.mp4` in the
 site's on-device storage (OPFS), never synced.
-Employer Calendar: `employer.employees.v1` (one record per employee: `{ id, name, monthly, dpw, daily, auto, days }`,
+Employer Calendar: `employer.employees.v1` (one record per employee: `{ id, name, monthly, dpw, daily, auto, start, days }`,
+`start` is an optional `YYYY-MM-DD` the pay begins on (the start month is pro-rated);
 where `days` maps `YYYY-MM-DD` to `worked`/`absent`/`leave`/`holiday`/`off`; only `absent` deducts pay),
 `employer.theme.v1` (per device).
 PowerPass: `powerpass.cache.v1.<account id>` (this device's encrypted copy, ciphertext only),

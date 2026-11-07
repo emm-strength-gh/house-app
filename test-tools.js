@@ -262,6 +262,16 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   await page.sync();
   check("adding an employee here uploads it", page.api.state.upserts > n && (page.get("employer.employees.v1") || []).some(e => e.name === "Added Here"));
   check("...and the one from elsewhere is still there", page.get("employer.employees.v1").some(e => e.id === "e2") && !srv.rows.get("employer.employees.v1|e2").deleted);
+  // start date: full pay from the start month, nothing before it
+  ed.querySelector("#empList .emp").click();                 // open Ana
+  ed.getElementById("editPay").click();
+  ed.getElementById("eStart").value = today().slice(0, 8) + "01";   // 1st of this month → no proration
+  ed.getElementById("empForm").dispatchEvent(new page.w.Event("submit", { cancelable: true, bubbles: true }));
+  check("a start date is saved and shown, and the start month pays in full",
+    (page.get("employer.employees.v1").find(e => e.id === "e1") || {}).start === today().slice(0, 8) + "01"
+    && /from/.test(ed.getElementById("payStrip").textContent) && /25,000/.test(ed.getElementById("netLine").textContent));
+  ed.getElementById("prev").click();                          // previous month, before the start
+  check("months before the start date are not employed (no pay)", /[Nn]ot employed/.test(ed.getElementById("netLine").textContent));
 
   console.log("\nGrocery");
   srv = server();
