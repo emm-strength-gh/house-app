@@ -176,6 +176,22 @@
   .mrow .mv { font-variant-numeric: tabular-nums; white-space: nowrap; }
   .mrow .mv.ded { color: var(--absent); }
 
+  /* monthly note (employee calendar page) */
+  .notecard { padding: 16px 18px; margin-top: 12px; }
+  .notecard .nc-head { font-weight: 700; font-size: 14px; }
+  .notecard .nc-body { margin-top: 10px; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+  .notecard .nc-body.nc-empty { color: var(--ink-3); font-style: italic; }
+
+  /* monthly notes viewer (payroll summary) */
+  #notesViewBody { max-height: 62vh; overflow-y: auto; margin: 4px 0 2px; }
+  .nv-month { margin-top: 16px; }
+  .nv-month:first-child { margin-top: 0; }
+  .nv-mo { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: .3px; color: var(--ink-3); margin-bottom: 7px; }
+  .nv-row { border-top: 1px dashed var(--border); padding: 9px 0; }
+  .nv-row:first-of-type { border-top: 0; }
+  .nv-who { font-weight: 650; font-size: 13.5px; margin-bottom: 2px; }
+  .nv-note { font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
   .tools { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 30px; }
   footer { margin-top: 26px; border-top: 1px solid var(--border); padding-top: 16px; font-size: 11.5px; color: var(--ink-3); line-height: 1.7; }
 
@@ -183,7 +199,8 @@
   dialog::backdrop { background: rgba(10,20,14,.4); backdrop-filter: blur(3px); }
   dialog h2 { margin: 4px 0 16px; font-size: 20px; }
   dialog label.fl { display: block; font-size: 12.5px; color: var(--ink-2); margin: 12px 0 5px; font-weight: 600; }
-  dialog input[type=text], dialog input[type=number], dialog input[type=month], dialog input[type=date] { width: 100%; padding: 12px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); }
+  dialog input[type=text], dialog input[type=number], dialog input[type=month], dialog input[type=date], dialog textarea { width: 100%; padding: 12px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); }
+  dialog textarea { min-height: 120px; resize: vertical; line-height: 1.5; }
   dialog .note { margin: 6px 0 0; }
   .inline { display: flex; align-items: center; gap: 9px; margin: 12px 0 0; font-size: 13.5px; color: var(--ink-2); }
   .inline input { width: 18px; height: 18px; }
@@ -273,6 +290,14 @@
       <div class="grid" id="grid"></div>
     </div>
 
+    <div class="card notecard" id="monthNote">
+      <div class="row between">
+        <div class="nc-head">📝 Note for <span id="ncMonth"></span></div>
+        <button type="button" class="btn sm" id="ncEdit">Add note</button>
+      </div>
+      <div class="nc-body" id="ncBody"></div>
+    </div>
+
     <div class="legend">
       <span><i class="mark worked">✓</i> Worked</span>
       <span><i class="mark absent">✕</i> Absent</span>
@@ -305,6 +330,7 @@
       <div class="quick">
         <button type="button" class="btn sm" id="q12">Last 12 months</button>
         <button type="button" class="btn sm" id="qYear">This year</button>
+        <button type="button" class="btn sm" id="notesBtn">📝 Monthly notes</button>
       </div>
     </div>
     <div id="sumTotals"></div>
@@ -345,6 +371,29 @@
   </form>
 </dialog>
 
+<!-- monthly note editor -->
+<dialog id="noteDlg">
+  <form id="noteForm">
+    <h2 id="noteDlgTitle">Note</h2>
+    <label class="fl" for="noteText">What happened this month?</label>
+    <textarea id="noteText" maxlength="2000" placeholder="e.g. advance of ₱2,000 given, late twice, bonus for covering a shift…"></textarea>
+    <div class="dialog-actions">
+      <button type="button" class="btn danger ghost" id="noteDelete">Delete</button>
+      <button type="button" class="btn ghost" onclick="this.closest('dialog').close()">Cancel</button>
+      <button type="submit" class="btn primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- monthly notes viewer (read-only, from the payroll summary) -->
+<dialog id="notesViewDlg">
+  <h2 id="notesViewTitle">Monthly notes</h2>
+  <div id="notesViewBody"></div>
+  <div class="dialog-actions">
+    <button type="button" class="btn primary" onclick="this.closest('dialog').close()">Close</button>
+  </div>
+</dialog>
+
 <script>
 'use strict';
 (function () {
@@ -369,7 +418,8 @@
   function saved(ok) { $('saveState').textContent = ok ? 'Saved on this device' : 'Not saved · export a backup'; }
 
   // ---------- model ----------
-  // employee: { id, name, monthly, dpw, daily, auto, days:{ 'YYYY-MM-DD': status } }
+  // employee: { id, name, monthly, dpw, daily, auto, start,
+  //             days:{ 'YYYY-MM-DD': status }, notes:{ 'YYYY-MM': 'text' } }
   var STATUS = {
     worked:  { label: 'Worked',       sym: '✓' },
     absent:  { label: 'Absent',       sym: '✕' },
@@ -391,13 +441,21 @@
     if (e.days && typeof e.days === 'object') {
       Object.keys(e.days).forEach(function (k) { if (/^\d{4}-\d{2}-\d{2}$/.test(k) && STATUS[e.days[k]]) days[k] = e.days[k]; });
     }
+    var notes = {};
+    if (e.notes && typeof e.notes === 'object') {
+      Object.keys(e.notes).forEach(function (k) {
+        if (!/^\d{4}-\d{2}$/.test(k)) return;
+        var t = (typeof e.notes[k] === 'string') ? e.notes[k].trim().slice(0, 2000) : '';
+        if (t) notes[k] = t;
+      });
+    }
     return {
       id: e.id || uid(),
       name: (typeof e.name === 'string' && e.name.trim()) ? e.name.trim().slice(0, 60) : 'Employee',
       monthly: num(e.monthly), dpw: clampDpw(e.dpw), daily: num(e.daily),
       auto: e.auto !== false,
       start: (typeof e.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.start)) ? e.start : '',
-      days: days
+      days: days, notes: notes
     };
   }
   function num(v) { v = Number(v); return isFinite(v) && v > 0 ? v : 0; }
@@ -447,6 +505,14 @@
     return { c: c, ded: ded, gross: gross, net: gross - ded, pre: false, partial: partial };
   }
   function fmtDay(iso) { var p = iso.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+
+  // ---------- monthly notes ----------
+  function noteOf(e, ym) { return (e && e.notes && e.notes[ym]) || ''; }
+  function setNote(e, ym, text) {
+    text = String(text == null ? '' : text).trim().slice(0, 2000);
+    if (!e.notes) e.notes = {};
+    if (text) e.notes[ym] = text; else delete e.notes[ym];
+  }
 
   // ---------- views ----------
   var selected = null;
@@ -518,6 +584,14 @@
     $('monthTitle').textContent = view.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
     $('jump').value = prefix;
     buildGrid(e);
+
+    var note = noteOf(e, prefix);
+    $('ncMonth').textContent = view.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    var ncBody = $('ncBody'); clear(ncBody);
+    ncBody.textContent = note || 'No note for this month yet.';
+    ncBody.classList.toggle('nc-empty', !note);
+    $('ncEdit').textContent = note ? 'Edit note' : 'Add note';
+
     function stat(n, label, cls) { var d = el('div', 'stat'); d.appendChild(el('div', 'n' + (cls ? ' ' + cls : ''), String(n))); d.appendChild(el('div', 'l', label)); return d; }
     function txt(t) { return document.createTextNode(t); }
     function strong(t) { return el('b', null, t); }
@@ -568,6 +642,29 @@
     save(); $('picker').close(); render();
   }
   $('clearDay').onclick = function () { mark(null); };
+
+  // ---------- monthly note editor ----------
+  var noteYm = '';
+  function openNote() {
+    var e = employees[selected]; if (!e) return;
+    noteYm = prefixOf(view);
+    var existing = noteOf(e, noteYm);
+    $('noteDlgTitle').textContent = 'Note · ' + monthLabel(noteYm);
+    $('noteText').value = existing;
+    $('noteDelete').hidden = !existing;
+    $('noteDlg').showModal();
+    setTimeout(function () { $('noteText').focus(); }, 30);
+  }
+  $('ncEdit').onclick = openNote;
+  $('noteForm').onsubmit = function (ev) {
+    ev.preventDefault();
+    var e = employees[selected]; if (e) { setNote(e, noteYm, $('noteText').value); save(); }
+    $('noteDlg').close(); render();
+  };
+  $('noteDelete').onclick = function () {
+    var e = employees[selected]; if (e) { setNote(e, noteYm, ''); save(); }
+    $('noteDlg').close(); render();
+  };
 
   // ---------- batch marking (select several days, one status for all) ----------
   function selCount() { var n = 0; for (var k in sel) if (sel[k]) n++; return n; }
@@ -641,7 +738,7 @@
       var e = employees.find(function (x) { return x.id === editingId; });
       if (e) { e.name = name.slice(0, 60); e.monthly = monthly; e.dpw = dpw; e.daily = daily; e.auto = auto; e.start = start; }
     } else {
-      employees.push({ id: uid(), name: name.slice(0, 60), monthly: monthly, dpw: dpw, daily: daily, auto: auto, start: start, days: {} });
+      employees.push({ id: uid(), name: name.slice(0, 60), monthly: monthly, dpw: dpw, daily: daily, auto: auto, start: start, days: {}, notes: {} });
       selected = employees.length - 1;
     }
     save(); $('empDlg').close();
@@ -767,6 +864,36 @@
   $('toM').onchange = function () { if ($('toM').value) { range.to = $('toM').value; renderSummary(); } };
   $('q12').onclick = function () { range = defaultRange(); openSummary(); };
   $('qYear').onclick = function () { var y = new Date().getFullYear(); range = { from: y + '-01', to: y + '-12' }; openSummary(); };
+
+  // ---------- monthly notes viewer (read-only) ----------
+  function openNotesView() {
+    if (!range.from || !range.to) range = defaultRange();
+    var a = idxOf(range.from), b = idxOf(range.to);
+    if (b < a) { var t = a; a = b; b = t; }
+    var list = summaryList();
+    var box = $('notesViewBody'); clear(box);
+    var selEmp = sumEmp !== 'all' && employees.find(function (x) { return x.id === sumEmp; });
+    $('notesViewTitle').textContent = 'Monthly notes' + (selEmp ? ' · ' + selEmp.name : '');
+    var any = false;
+    for (var i = b; i >= a && (b - i) < 240; i--) {           // newest month first
+      var ym = ymOf(i), entries = [];
+      list.forEach(function (e) { var n = noteOf(e, ym); if (n) entries.push({ name: e.name, note: n }); });
+      if (!entries.length) continue;
+      any = true;
+      var sec = el('div', 'nv-month');
+      sec.appendChild(el('div', 'nv-mo', monthLabel(ym)));
+      entries.forEach(function (en) {
+        var row = el('div', 'nv-row');
+        if (list.length > 1) row.appendChild(el('div', 'nv-who', en.name));
+        row.appendChild(el('div', 'nv-note', en.note));
+        sec.appendChild(row);
+      });
+      box.appendChild(sec);
+    }
+    if (!any) box.appendChild(el('div', 'empty', 'No notes in this range yet. Open an employee’s calendar to add one for a month.'));
+    $('notesViewDlg').showModal();
+  }
+  $('notesBtn').onclick = openNotesView;
 
   // ---------- backup ----------
   $('exportBtn').onclick = function () {

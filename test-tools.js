@@ -272,6 +272,21 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
     && /from/.test(ed.getElementById("payStrip").textContent) && /25,000/.test(ed.getElementById("netLine").textContent));
   ed.getElementById("prev").click();                          // previous month, before the start
   check("months before the start date are not employed (no pay)", /[Nn]ot employed/.test(ed.getElementById("netLine").textContent));
+  // monthly notes: add from the calendar page, keyed by YYYY-MM, shown there and in the payroll viewer
+  ed.getElementById("today").click();                         // back to this month (still on Ana)
+  const noteKey = today().slice(0, 7);
+  ed.getElementById("ncEdit").click();
+  ed.getElementById("noteText").value = "Advance of 2,000 given";
+  ed.getElementById("noteForm").dispatchEvent(new page.w.Event("submit", { cancelable: true, bubbles: true }));
+  await page.sync();
+  check("a monthly note is saved under its YYYY-MM key and uploaded",
+    (((page.get("employer.employees.v1").find(e => e.id === "e1") || {}).notes || {})[noteKey]) === "Advance of 2,000 given");
+  check("the note shows on the employee's calendar page, and the button becomes Edit",
+    /Advance of 2,000 given/.test(ed.getElementById("ncBody").textContent) && /Edit note/.test(ed.getElementById("ncEdit").textContent));
+  ed.getElementById("back").click();
+  ed.getElementById("summaryBtn").click();
+  ed.getElementById("notesBtn").click();
+  check("the payroll summary's Monthly notes viewer lists the note", /Advance of 2,000 given/.test(ed.getElementById("notesViewBody").textContent));
 
   console.log("\nGrocery");
   srv = server();

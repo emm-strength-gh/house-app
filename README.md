@@ -141,10 +141,14 @@ growing set of household tools:
   **Bank holiday** or **Day off**; tapping a date changes it. Each employee's
   page shows that month's counts and the **net pay** — only Absent days are
   deducted (net = monthly − absent × daily); paid leave and bank holidays are
-  paid. **Payroll summary** totals a filterable range of months (quick buttons
+  paid. Each month also takes a free-text **note** (advances, lateness, bonuses
+  — anything worth remembering), added from the employee's calendar page.
+  **Payroll summary** totals a filterable range of months (quick buttons
   for the last 12 months or this year): per-employee totals with absences and
-  paid leave, a grand total, and a card per month. Everything syncs across the
-  household and rides in **Export / Restore backup**.
+  paid leave, a grand total, and a card per month; a **📝 Monthly notes** button
+  opens a read-only list of every note in the range (narrowed by the employee
+  filter). Everything syncs across the household and rides in **Export /
+  Restore backup**.
 
 No build step and no server of our own. Data lives in `localStorage` on the
 device; signed in, it also syncs through Supabase (see *Accounts + sync*).
@@ -284,9 +288,10 @@ Color Grading: `grade.prefs.v1` (one record per personalised preset: `{ id: pres
 a record left empty is removed), `grade.theme.v1`, `grade.last.v1` (last preset opened, per device).
 Video exports aren't in localStorage: the file in progress or finished is `grade-export.mp4` in the
 site's on-device storage (OPFS), never synced.
-Employer Calendar: `employer.employees.v1` (one record per employee: `{ id, name, monthly, dpw, daily, auto, start, days }`,
+Employer Calendar: `employer.employees.v1` (one record per employee: `{ id, name, monthly, dpw, daily, auto, start, days, notes }`,
 `start` is an optional `YYYY-MM-DD` the pay begins on (the start month is pro-rated);
-where `days` maps `YYYY-MM-DD` to `worked`/`absent`/`leave`/`holiday`/`off`; only `absent` deducts pay),
+`days` maps `YYYY-MM-DD` to `worked`/`absent`/`leave`/`holiday`/`off` (only `absent` deducts pay);
+`notes` maps `YYYY-MM` to a free-text note for that month),
 `employer.theme.v1` (per device).
 PowerPass: `powerpass.cache.v1.<account id>` (this device's encrypted copy, ciphertext only),
 `powerpass.cache.v1.user` (the last account, for opening offline); deleted on this page when signed out.
