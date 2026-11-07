@@ -289,6 +289,10 @@
     <h1 class="person-name">Payroll summary</h1>
     <div class="card filters">
       <div class="field">
+        <label for="empFilter">Employee</label>
+        <select class="month-input" id="empFilter" aria-label="Employee"></select>
+      </div>
+      <div class="field">
         <label for="fromM">From</label>
         <input class="month-input" type="month" id="fromM" aria-label="From month">
       </div>
@@ -638,9 +642,20 @@
   function ymOf(i) { return Math.floor(i / 12) + '-' + pad((i % 12) + 1); }
   function monthLabel(ym) { var p = ym.split('-').map(Number); return new Date(p[0], p[1] - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); }
 
+  var sumEmp = 'all';   // 'all' or an employee id
+  function fillEmpFilter() {
+    if (!employees.some(function (e) { return e.id === sumEmp; })) sumEmp = 'all';
+    var sel = $('empFilter'); clear(sel);
+    var all = el('option', null, 'All employees'); all.value = 'all'; sel.appendChild(all);
+    employees.forEach(function (e) { var o = el('option', null, e.name); o.value = e.id; sel.appendChild(o); });
+    sel.value = sumEmp;
+  }
+  function summaryList() { return sumEmp === 'all' ? employees : employees.filter(function (e) { return e.id === sumEmp; }); }
+
   function openSummary() {
     if (!range.from || !range.to) range = defaultRange();
     show('summaryPage');
+    fillEmpFilter();
     $('fromM').value = range.from; $('toM').value = range.to;
     renderSummary();
   }
@@ -649,13 +664,14 @@
     if (b < a) { var t = a; a = b; b = t; }
     var months = []; for (var i = a; i <= b && months.length < 240; i++) months.push(ymOf(i));
 
+    var list = summaryList();
     // per-employee totals across the range
     var totals = $('sumTotals'); clear(totals);
-    if (!employees.length) { totals.appendChild(el('div', 'empty', 'No employees yet.')); clear($('sumMonths')); return; }
+    if (!list.length) { totals.appendChild(el('div', 'empty', 'No employees yet.')); clear($('sumMonths')); return; }
     var card = el('div', 'card totals');
     card.appendChild(el('h3', null, 'Totals · ' + monthLabel(range.from) + ' → ' + monthLabel(range.to)));
     var grand = 0;
-    employees.forEach(function (e) {
+    list.forEach(function (e) {
       var net = 0, absent = 0, leave = 0;
       months.forEach(function (ym) { var m = monthNet(e, ym); net += m.net; absent += m.c.absent; leave += m.c.leave; });
       grand += net;
@@ -666,10 +682,12 @@
       line.appendChild(el('div', 'amt', peso(net)));
       card.appendChild(line);
     });
-    var g = el('div', 'totline grand');
-    g.appendChild(el('div', 'who', 'Grand total'));
-    g.appendChild(el('div', 'amt', peso(grand)));
-    card.appendChild(g);
+    if (list.length > 1) {
+      var g = el('div', 'totline grand');
+      g.appendChild(el('div', 'who', 'Grand total'));
+      g.appendChild(el('div', 'amt', peso(grand)));
+      card.appendChild(g);
+    }
     totals.appendChild(card);
 
     // month-by-month
@@ -680,7 +698,7 @@
       head.appendChild(el('div', 'mo', monthLabel(ym)));
       var mt = 0;
       var rows = [];
-      employees.forEach(function (e) {
+      list.forEach(function (e) {
         var m = monthNet(e, ym); mt += m.net;
         var r = el('div', 'mrow');
         var left = el('div', 'ml'); left.appendChild(document.createTextNode(e.name + ' '));
@@ -703,6 +721,7 @@
   }
   $('summaryBtn').onclick = openSummary;
   $('sumBack').onclick = home;
+  $('empFilter').onchange = function () { sumEmp = $('empFilter').value || 'all'; renderSummary(); };
   $('fromM').onchange = function () { if ($('fromM').value) { range.from = $('fromM').value; renderSummary(); } };
   $('toM').onchange = function () { if ($('toM').value) { range.to = $('toM').value; renderSummary(); } };
   $('q12').onclick = function () { range = defaultRange(); openSummary(); };
