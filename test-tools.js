@@ -182,9 +182,9 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
 
 (async () => {
   console.log("\nEvery page is wired in");
-  const PAGES = ["index.html", "account.html", "energy-tracker.html", "oni-orders.html", "grocery.html", "todo.html", "expenses.html", "grade.html"];
+  const PAGES = ["index.html", "account.html", "energy-tracker.html", "oni-orders.html", "grocery.html", "todo.html", "expenses.html", "grade.html", "employer-calendar.html"];
   PAGES.forEach(f => check(f + " loads cloud.js", /<script defer src="cloud\.js"><\/script>/.test(read(f))));
-  ["energy-tracker.html", "oni-orders.html", "grocery.html", "todo.html", "expenses.html", "grade.html"].forEach(f => {
+  ["energy-tracker.html", "oni-orders.html", "grocery.html", "todo.html", "expenses.html", "grade.html", "employer-calendar.html"].forEach(f => {
     const src = read(f), m = /function safeWrite\([^)]*\)\s*\{[\s\S]*?\n  \}/.exec(src);
     check(f + ": every save is reported to cloud.js", !!m && /HouseCloud\.dirty\(key\)/.test(m[0]));
     check(f + ": no save bypasses safeWrite", (src.match(/localStorage\.setItem\(/g) || []).length <= 2, String((src.match(/localStorage\.setItem\(/g) || []).length));
@@ -195,7 +195,7 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   check("every synced store is one a page really uses", stores.every(k => used.has(k)), stores.filter(k => !used.has(k)).join());
   const LOCAL = ["energy.theme.v1", "energy.savedAt.v1", "energy.groups.v1", "energy.summary.v1", "grocery.theme.v1", "grocery.tab.v1",
                  "todo.theme.v1", "todo.tab.v1", "expenses.tab.v1", "expenses.month.v1", "expenses.group.v1", "expenses.byType.v1", "house.installHintDismissed.v1",
-                 "grade.theme.v1", "grade.last.v1"];
+                 "grade.theme.v1", "grade.last.v1", "employer.theme.v1"];
   const unknown = [...used].filter(k => !stores.includes(k) && !LOCAL.includes(k));
   check("every other store is knowingly per-device", unknown.length === 0, "decide: synced or local? " + unknown.join());
 
@@ -235,6 +235,33 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   notes.value = "Temp +8 for the garage clips"; notes.dispatchEvent(new page.w.Event("blur"));
   await page.sync();
   check("my notes for a preset sync", srv.rows.get("grade.prefs.v1|iphone-led").data.notes === "Temp +8 for the garage clips" && !srv.rows.get("grade.prefs.v1|iphone-led").deleted);
+
+  console.log("\nEmployer Calendar");
+  srv = server();
+  const m15 = today().slice(0, 8) + "15", m16 = today().slice(0, 8) + "16";
+  page = await open("employer-calendar.html", srv, {
+    "employer.employees.v1": [{ id: "e1", name: "Ana", monthly: 26000, dpw: 6, daily: 0, auto: true, days: { [m15]: "absent", [m16]: "leave" } }]
+  });
+  check("the page boots signed in, without errors", page.errors.length === 0, page.errors.join("\n"));
+  check("its data is uploaded", srv.rows.has("employer.employees.v1|e1"));
+  srv.put("employer.employees.v1", "e2", { id: "e2", name: "Remote Ben", monthly: 20000, dpw: 5, daily: 0, auto: true, days: {} });
+  await page.sync();
+  const ed = page.w.document;
+  check("an employee added elsewhere appears", /Remote Ben/.test(ed.getElementById("empList").textContent));
+  ed.querySelector("#empList .emp").click();  // open Ana (first)
+  check("net = monthly minus the daily rate per absent (6×/wk → ₱26,000 ÷ 26 = ₱1,000/day)",
+    /25,000/.test(ed.getElementById("netLine").textContent), ed.getElementById("netLine").textContent);
+  check("paid leave does not reduce pay (one absent, one leave → one day deducted)",
+    /1 absent/.test(ed.getElementById("netLine").textContent) && !/2 absent/.test(ed.getElementById("netLine").textContent));
+  ed.getElementById("back").click();
+  ed.getElementById("addEmp").click();
+  ed.getElementById("eName").value = "Added Here"; ed.getElementById("eMonthly").value = "30000";
+  ed.getElementById("eDpw").value = "5"; ed.getElementById("eAuto").checked = true;
+  n = page.api.state.upserts;
+  ed.getElementById("empForm").dispatchEvent(new page.w.Event("submit", { cancelable: true, bubbles: true }));
+  await page.sync();
+  check("adding an employee here uploads it", page.api.state.upserts > n && (page.get("employer.employees.v1") || []).some(e => e.name === "Added Here"));
+  check("...and the one from elsewhere is still there", page.get("employer.employees.v1").some(e => e.id === "e2") && !srv.rows.get("employer.employees.v1|e2").deleted);
 
   console.log("\nGrocery");
   srv = server();

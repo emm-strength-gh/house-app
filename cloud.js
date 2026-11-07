@@ -63,7 +63,8 @@
     "expenses.pots.v1":       { kind: "list", ordered: true, natural: lowerName },
     "expenses.withdrawals.v1": { kind: "list", refs: { pot: "expenses.pots.v1" } },
     "expenses.settings.v1":   { kind: "doc", local: ["lastCat"] },
-    "grade.prefs.v1":         { kind: "list" }
+    "grade.prefs.v1":         { kind: "list" },
+    "employer.employees.v1":  { kind: "list", ordered: true, natural: lowerName }
   };
   var STORE_KEYS = Object.keys(STORES);
 

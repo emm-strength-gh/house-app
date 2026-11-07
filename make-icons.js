@@ -115,6 +115,24 @@ var ICONS = {
     ],
     scaleAny: 0.92, scaleMask: 0.74
   },
+  employer: {
+    // A desk calendar: white card with a green header band, two binder pegs on
+    // top and a grid of day cells (one highlighted), on a green gradient.
+    bg: ["#34b873", "#12894e"],
+    shapes: [
+      { rect: [0.345, 0.15, 0.05, 0.13, 0.025], color: "#ffffff" },
+      { rect: [0.605, 0.15, 0.05, 0.13, 0.025], color: "#ffffff" },
+      { rect: [0.17, 0.22, 0.66, 0.62, 0.08], color: "#ffffff" },
+      { rect: [0.17, 0.22, 0.66, 0.15, 0.08], color: "#127a46" },
+      { rect: [0.255, 0.47, 0.12, 0.12, 0.03], color: "#15854d" },
+      { rect: [0.44, 0.47, 0.12, 0.12, 0.03], color: "#cdebda" },
+      { rect: [0.625, 0.47, 0.12, 0.12, 0.03], color: "#cdebda" },
+      { rect: [0.255, 0.64, 0.12, 0.12, 0.03], color: "#cdebda" },
+      { rect: [0.44, 0.64, 0.12, 0.12, 0.03], color: "#cdebda" },
+      { rect: [0.625, 0.64, 0.12, 0.12, 0.03], color: "#15854d" }
+    ],
+    scaleAny: 0.96, scaleMask: 0.78
+  },
   cloud: {
     // Account & sync: a cloud built from three circles on a flat base.
     bg: ["#5ab0ff", "#2f6fe0"],

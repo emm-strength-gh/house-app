@@ -14,7 +14,7 @@
  * them up.
  */
 
-var CACHE_VERSION = "v11";
+var CACHE_VERSION = "v12";
 // Other apps can live on the same site (github.io serves every repo from one
 // origin), so only this app's own caches are ever cleared.
 var CACHE_PREFIX = "house-app-shell-";
@@ -33,6 +33,7 @@ var SHELL_ASSETS = [
   "./grocery.html",
   "./todo.html",
   "./expenses.html",
+  "./employer-calendar.html",
   "./account.html",
   "./powerpass.html",
   "./grade.html",
@@ -86,6 +87,10 @@ var SHELL_ASSETS = [
   "./icons/grade-32.png",
   "./icons/grade-180.png",
   "./icons/grade-192.png",
+  "./icons/employer.svg",
+  "./icons/employer-32.png",
+  "./icons/employer-180.png",
+  "./icons/employer-192.png",
   SUPABASE_LIB
 ];
 

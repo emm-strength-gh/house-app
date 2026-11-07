@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f5f2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Employer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/employer.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/employer-32.png">
+<link rel="apple-touch-icon" href="icons/employer-180.png">
+<title>Employer Calendar</title>
+<style>
+  /* No double-tap-to-zoom on phones. Pinch-zoom still works. Zero specificity,
+     so anything that sets its own touch-action still wins. */
+  * { touch-action: manipulation; }
+  :root {
+    color-scheme: light;
+    --bg: #f6f5f2; --surface: #ffffff; --surface-2: #f0efeb;
+    --border: #e4e2dc; --border-strong: #cfccc4;
+    --ink: #11130f; --ink-2: #52544e; --ink-3: #7c7e74;
+    --accent: #208653; --accent-soft: #e6f2ea; --accent-ink: #ffffff;
+    --worked: #208653; --absent: #dc4747; --leave: #2f78d6; --holiday: #e58a16; --off: #9aa090;
+    --good: #1d7a3a; --bad: #b3261e;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 10px rgba(0,0,0,.05);
+    --r: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #101211; --surface: #191b19; --surface-2: #22241f;
+      --border: #2b2e29; --border-strong: #3c3f38;
+      --ink: #eef0ea; --ink-2: #b4b8ad; --ink-3: #868a7e;
+      --accent: #3bb779; --accent-soft: #15241c; --accent-ink: #06130c;
+      --worked: #35b06f; --absent: #f0686a; --leave: #5a9bf0; --holiday: #eaa247; --off: #6f7568;
+      --good: #4cc47d; --bad: #f0686a;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 2px 12px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #101211; --surface: #191b19; --surface-2: #22241f;
+    --border: #2b2e29; --border-strong: #3c3f38;
+    --ink: #eef0ea; --ink-2: #b4b8ad; --ink-3: #868a7e;
+    --accent: #3bb779; --accent-soft: #15241c; --accent-ink: #06130c;
+    --worked: #35b06f; --absent: #f0686a; --leave: #5a9bf0; --holiday: #eaa247; --off: #6f7568;
+    --good: #4cc47d; --bad: #f0686a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 2px 12px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--leave); outline-offset: 2px; }
+  .wrap { max-width: 1040px; margin: auto; padding: 22px 18px 60px; }
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .title-row { display: flex; align-items: center; gap: 12px; }
+  .home-btn {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 38px; height: 38px; border-radius: 10px;
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); text-decoration: none;
+  }
+  .home-btn:hover { background: var(--surface-2); }
+  h1 { font-size: 23px; letter-spacing: -.5px; margin: 0; }
+  .sub { color: var(--ink-3); font-size: 12.5px; margin-top: 2px; }
+  .btn {
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink);
+    border-radius: 12px; padding: 10px 15px; font-weight: 600; font-size: 14px;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.sm { padding: 7px 11px; font-size: 13px; border-radius: 10px; }
+  .btn.ghost { background: transparent; }
+  .btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, var(--border-strong)); }
+  .btn.block { width: 100%; }
+  .icon-btn { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--surface); display: inline-grid; place-items: center; font-size: 16px; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .between { justify-content: space-between; }
+  .section-head { margin: 26px 0 12px; }
+  .section-head h2 { font-size: 15px; letter-spacing: .3px; text-transform: uppercase; color: var(--ink-3); margin: 0; }
+  #notice { background: #fff1d7; color: #754b00; padding: 12px 14px; border-radius: 12px; margin-top: 16px; font-size: 13px; }
+  :root[data-theme="dark"] #notice { background: #3a2f10; color: #f3d79a; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #notice { background: #3a2f10; color: #f3d79a; } }
+  [hidden] { display: none !important; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); box-shadow: var(--shadow); }
+  .emp-list { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 680px) { .emp-list { grid-template-columns: 1fr; } }
+  .emp { padding: 18px; text-align: left; display: flex; flex-direction: column; gap: 4px; }
+  .emp .top { display: flex; align-items: center; gap: 12px; }
+  .avatar { flex: none; width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-weight: 700; font-size: 18px; background: var(--accent-soft); color: var(--accent); }
+  .emp .name { font-size: 18px; font-weight: 700; letter-spacing: -.3px; overflow-wrap: anywhere; }
+  .emp .pay { color: var(--ink-2); font-size: 13px; }
+  .emp .mini { display: flex; gap: 14px; margin-top: 10px; font-size: 12.5px; color: var(--ink-3); }
+  .emp .mini b { color: var(--ink); font-size: 15px; margin-right: 3px; }
+  .emp .open { margin-top: 14px; }
+  .empty { padding: 34px 20px; text-align: center; color: var(--ink-3); }
+
+  .person-head { margin-top: 18px; }
+  .person-name { font-size: 30px; letter-spacing: -1px; margin: 16px 0 2px; overflow-wrap: anywhere; }
+  .paystrip { color: var(--ink-2); font-size: 14px; }
+  .paystrip b { color: var(--ink); }
+
+  .summary { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 8px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 13px; padding: 10px 14px; min-width: 92px; }
+  .stat .n { font-size: 21px; font-weight: 750; letter-spacing: -.5px; }
+  .stat .l { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .4px; }
+  .stat.net { background: var(--accent-soft); border-color: transparent; }
+  .stat.net .n { color: var(--accent); }
+  .stat .n.worked{color:var(--worked)} .stat .n.absent{color:var(--absent)} .stat .n.leave{color:var(--leave)}
+  .net-line { font-size: 13px; color: var(--ink-2); margin: 2px 0 4px; }
+
+  .calendar { padding: 20px; margin-top: 16px; }
+  .monthbar { margin-bottom: 14px; }
+  .month { font-size: 26px; letter-spacing: -1px; margin: 0; }
+  .arrows { display: flex; gap: 8px; }
+  .month-input { width: 160px; border: 1px solid var(--border-strong); background: var(--surface); border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+  .week, .grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); }
+  .week div { text-align: center; font-size: 12px; font-weight: 650; color: var(--ink-3); padding: 6px 0; }
+  .week div:nth-child(n+6) { color: var(--off); }
+  .day, .blank { border: 0; border-top: 1px solid var(--border); background: transparent; min-height: 78px; padding: 8px 2px; display: flex; flex-direction: column; align-items: center; gap: 7px; color: var(--ink); }
+  .day { font-size: 16px; border-radius: 0; }
+  .day:hover { background: var(--surface-2); }
+  .day.weekend .num { color: var(--off); }
+  .day.today .num { box-shadow: 0 0 0 2px var(--accent); }
+  .num { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; font-variant-numeric: tabular-nums; }
+  .mark { width: 24px; height: 24px; display: inline-grid; place-items: center; border-radius: 50%; font-size: 13px; font-weight: 750; line-height: 1; color: #fff; }
+  .mark.worked { background: var(--worked); }
+  .mark.absent { background: var(--absent); }
+  .mark.leave { background: var(--leave); }
+  .mark.holiday { background: var(--holiday); }
+  .mark.off { background: var(--off); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 16px; font-size: 12.5px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend .mark { width: 18px; height: 18px; font-size: 11px; }
+  .hint { color: var(--ink-3); font-size: 12.5px; margin: 12px 0 0; }
+
+  /* Summary (payroll) page */
+  .filters { padding: 16px 18px; margin-top: 16px; display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .4px; }
+  .quick { display: flex; gap: 8px; flex-wrap: wrap; }
+  .totals { padding: 18px; margin-top: 16px; }
+  .totals h3 { margin: 0 0 4px; font-size: 15px; }
+  .totline { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid var(--border); }
+  .totline:first-of-type { border-top: 0; }
+  .totline .who { font-weight: 650; }
+  .totline .who small { display: block; font-weight: 400; color: var(--ink-3); font-size: 12px; }
+  .totline .amt { font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .grand { margin-top: 6px; border-top: 2px solid var(--border-strong); padding-top: 12px; font-size: 17px; }
+  .mcard { padding: 16px 18px; margin-top: 12px; }
+  .mcard .mhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .mcard .mhead .mo { font-weight: 700; font-size: 16px; }
+  .mcard .mhead .mt { font-weight: 750; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .mrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px dashed var(--border); font-size: 14px; }
+  .mrow:first-of-type { border-top: 0; }
+  .mrow .ml small { color: var(--ink-3); }
+  .mrow .mv { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mrow .mv.ded { color: var(--absent); }
+
+  .tools { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 30px; }
+  footer { margin-top: 26px; border-top: 1px solid var(--border); padding-top: 16px; font-size: 11.5px; color: var(--ink-3); line-height: 1.7; }
+
+  dialog { border: 1px solid var(--border); border-radius: 20px; padding: 22px; max-width: 420px; width: calc(100% - 28px); background: var(--surface); color: var(--ink); box-shadow: 0 24px 90px rgba(0,0,0,.35); }
+  dialog::backdrop { background: rgba(10,20,14,.4); backdrop-filter: blur(3px); }
+  dialog h2 { margin: 4px 0 16px; font-size: 20px; }
+  dialog label.fl { display: block; font-size: 12.5px; color: var(--ink-2); margin: 12px 0 5px; font-weight: 600; }
+  dialog input[type=text], dialog input[type=number], dialog input[type=month] { width: 100%; padding: 12px; border-radius: 11px; border: 1px solid var(--border-strong); background: var(--surface); }
+  .inline { display: flex; align-items: center; gap: 9px; margin: 12px 0 0; font-size: 13.5px; color: var(--ink-2); }
+  .inline input { width: 18px; height: 18px; }
+  .dialog-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .dialog-actions .btn { flex: 1; }
+  .choice { display: flex; width: 100%; gap: 12px; align-items: center; text-align: left; margin: 8px 0; }
+  .choice.active-status { border-color: var(--accent); background: var(--accent-soft); }
+  .save-state { font-size: 12px; color: var(--accent); }
+</style>
+</head>
+<body>
+<script defer src="cloud.js"></script>
+<div class="wrap">
+  <header>
+    <div class="title-row">
+      <a href="index.html" class="home-btn" aria-label="Back to House App" title="Back to House App">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L10 3l7 6.5V17a1 1 0 0 1-1 1h-3.5v-5h-5v5H4a1 1 0 0 1-1-1z"/></svg>
+      </a>
+      <div>
+        <h1>🗓️ Employer Calendar</h1>
+        <div class="sub">Staff attendance &amp; pay · saved on this device</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="save-state" id="saveState" role="status">Saved on this device</div>
+      <button type="button" class="icon-btn" id="themeBtn" aria-label="Toggle light / dark">◐</button>
+    </div>
+  </header>
+
+  <div id="notice" role="alert" hidden></div>
+
+  <!-- ===================== HOME ===================== -->
+  <section id="home">
+    <div class="row between section-head">
+      <h2>Employees</h2>
+      <div class="row">
+        <button type="button" class="btn sm" id="summaryBtn">📊 Payroll summary</button>
+        <button type="button" class="btn sm primary" id="addEmp">+ Add employee</button>
+      </div>
+    </div>
+    <div id="empList" class="emp-list"></div>
+    <div class="tools">
+      <button type="button" class="btn sm" id="exportBtn">↓ Export backup</button>
+      <button type="button" class="btn sm" id="importBtn">↑ Restore backup</button>
+      <input type="file" id="file" accept="application/json,.json" hidden>
+    </div>
+    <footer>
+      Saved in this browser and, when you are signed in on the Account page, synced across your household's devices.
+      Private browsing, clearing site data, or opening a different copy of the file can lose unsynced records — export a backup now and then.
+      Monthly pay, the daily rate and bank holidays are all set by hand.
+    </footer>
+  </section>
+
+  <!-- ===================== EMPLOYEE ===================== -->
+  <section id="person" hidden>
+    <div class="row between person-head">
+      <button type="button" class="btn sm" id="back">‹ All employees</button>
+      <div class="row">
+        <button type="button" class="btn sm" id="editPay">Edit pay</button>
+        <button type="button" class="btn sm danger ghost" id="delEmp">Delete</button>
+      </div>
+    </div>
+    <h1 class="person-name" id="personName"></h1>
+    <div class="paystrip" id="payStrip"></div>
+
+    <div class="summary" id="personSummary"></div>
+    <div class="net-line" id="netLine"></div>
+
+    <div class="card calendar">
+      <div class="row between monthbar">
+        <h2 class="month" id="monthTitle"></h2>
+        <div class="arrows">
+          <button type="button" class="icon-btn" id="prev" aria-label="Previous month">‹</button>
+          <button type="button" class="btn sm" id="today">Today</button>
+          <button type="button" class="icon-btn" id="next" aria-label="Next month">›</button>
+        </div>
+      </div>
+      <input class="month-input" id="jump" type="month" min="1900-01" max="9999-12" aria-label="Jump to month">
+      <div class="week" aria-hidden="true"><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div></div>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="legend">
+      <span><i class="mark worked">✓</i> Worked</span>
+      <span><i class="mark absent">✕</i> Absent</span>
+      <span><i class="mark leave">L</i> Paid leave</span>
+      <span><i class="mark holiday">★</i> Bank holiday</span>
+      <span><i class="mark off">–</i> Day off</span>
+    </div>
+    <p class="hint">Tap a date to mark it. Only <b>Absent</b> days reduce the monthly pay; paid leave and bank holidays don't.</p>
+  </section>
+
+  <!-- ===================== PAYROLL SUMMARY ===================== -->
+  <section id="summaryPage" hidden>
+    <div class="row between person-head">
+      <button type="button" class="btn sm" id="sumBack">‹ All employees</button>
+    </div>
+    <h1 class="person-name">Payroll summary</h1>
+    <div class="card filters">
+      <div class="field">
+        <label for="fromM">From</label>
+        <input class="month-input" type="month" id="fromM" aria-label="From month">
+      </div>
+      <div class="field">
+        <label for="toM">To</label>
+        <input class="month-input" type="month" id="toM" aria-label="To month">
+      </div>
+      <div class="quick">
+        <button type="button" class="btn sm" id="q12">Last 12 months</button>
+        <button type="button" class="btn sm" id="qYear">This year</button>
+      </div>
+    </div>
+    <div id="sumTotals"></div>
+    <div id="sumMonths"></div>
+  </section>
+</div>
+
+<!-- day picker -->
+<dialog id="picker">
+  <h2 id="dateTitle"></h2>
+  <div id="choices"></div>
+  <div class="dialog-actions">
+    <button type="button" class="btn" id="clearDay">Clear</button>
+    <button type="button" class="btn ghost" onclick="this.closest('dialog').close()">Close</button>
+  </div>
+</dialog>
+
+<!-- employee details -->
+<dialog id="empDlg">
+  <form id="empForm">
+    <h2 id="empDlgTitle">Employee</h2>
+    <label class="fl" for="eName">Name</label>
+    <input type="text" id="eName" maxlength="60" required autocomplete="off">
+    <label class="fl" for="eMonthly">Monthly pay (₱)</label>
+    <input type="number" id="eMonthly" min="0" step="0.01" inputmode="decimal">
+    <label class="fl" for="eDpw">Days worked per week</label>
+    <input type="number" id="eDpw" min="1" max="7" step="1" inputmode="numeric">
+    <label class="fl" for="eDaily">Daily rate (₱)</label>
+    <input type="number" id="eDaily" min="0" step="0.01" inputmode="decimal">
+    <label class="inline"><input type="checkbox" id="eAuto"> Work it out automatically (monthly ÷ working days)</label>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" onclick="this.closest('dialog').close()">Cancel</button>
+      <button type="submit" class="btn primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+'use strict';
+(function () {
+  var STORE_EMP = "employer.employees.v1";   // synced list: one record per employee
+  var STORE_THEME = "employer.theme.v1";      // per-device, not synced
+
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, cls, txt) { var n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+
+  // ---------- storage ----------
+  var storageOk = true, loadFailed = false;
+  function safeRead(key) { try { return localStorage.getItem(key); } catch (e) { storageOk = false; return null; } }
+  function safeWrite(key, val) {
+    try { localStorage.setItem(key, val); } catch (e) { storageOk = false; return false; }
+    if (window.HouseCloud) window.HouseCloud.dirty(key);   // signed in: upload the change (cloud.js)
+    return true;
+  }
+  function readJson(key, fallback) { var raw = safeRead(key); if (raw == null) return fallback; try { return JSON.parse(raw); } catch (e) { return fallback; } }
+
+  function warn(s) { $('notice').textContent = s; $('notice').hidden = false; }
+  function saved(ok) { $('saveState').textContent = ok ? 'Saved on this device' : 'Not saved · export a backup'; }
+
+  // ---------- model ----------
+  // employee: { id, name, monthly, dpw, daily, auto, days:{ 'YYYY-MM-DD': status } }
+  var STATUS = {
+    worked:  { label: 'Worked',       sym: '✓' },
+    absent:  { label: 'Absent',       sym: '✕' },
+    leave:   { label: 'Paid leave',   sym: 'L' },
+    holiday: { label: 'Bank holiday', sym: '★' },
+    off:     { label: 'Day off',      sym: '–' }
+  };
+  var ORDER = ['worked', 'absent', 'leave', 'holiday', 'off'];
+
+  var employees = loadEmployees();
+  function loadEmployees() {
+    var raw = readJson(STORE_EMP, []);
+    if (!Array.isArray(raw)) return [];
+    return raw.map(cleanEmp).filter(Boolean);
+  }
+  function cleanEmp(e) {
+    if (!e || typeof e !== 'object') return null;
+    var days = {};
+    if (e.days && typeof e.days === 'object') {
+      Object.keys(e.days).forEach(function (k) { if (/^\d{4}-\d{2}-\d{2}$/.test(k) && STATUS[e.days[k]]) days[k] = e.days[k]; });
+    }
+    return {
+      id: e.id || uid(),
+      name: (typeof e.name === 'string' && e.name.trim()) ? e.name.trim().slice(0, 60) : 'Employee',
+      monthly: num(e.monthly), dpw: clampDpw(e.dpw), daily: num(e.daily),
+      auto: e.auto !== false,
+      days: days
+    };
+  }
+  function num(v) { v = Number(v); return isFinite(v) && v > 0 ? v : 0; }
+  function clampDpw(v) { v = Math.round(Number(v)); return v >= 1 && v <= 7 ? v : 5; }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  function save() {
+    if (loadFailed) return;
+    var ok = safeWrite(STORE_EMP, JSON.stringify(employees));
+    saved(ok); if (ok) $('notice').hidden = true;
+  }
+
+  // daily rate actually used for deductions (rounded to a whole peso so what you
+  // see is what gets subtracted).
+  function dailyOf(e) {
+    if (e.auto) { if (!e.dpw) return 0; return Math.round(e.monthly / (e.dpw * 52 / 12)); }
+    return Math.round(e.daily);
+  }
+  function peso(n) { return '₱' + Math.round(n).toLocaleString('en-US'); }
+
+  // ---------- month helpers ----------
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var view = (function () { var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); })();
+  function prefixOf(date) { return date.getFullYear() + '-' + pad(date.getMonth() + 1); }
+  function counts(e, prefix) {
+    var c = { worked: 0, absent: 0, leave: 0, holiday: 0, off: 0 };
+    var p = prefix + '-';
+    for (var k in e.days) if (e.days.hasOwnProperty(k) && k.indexOf(p) === 0) c[e.days[k]]++;
+    return c;
+  }
+  function monthNet(e, prefix) { var c = counts(e, prefix); return { c: c, ded: c.absent * dailyOf(e), net: e.monthly - c.absent * dailyOf(e) }; }
+
+  // ---------- views ----------
+  var selected = null;
+  function show(which) { ['home', 'person', 'summaryPage'].forEach(function (v) { $(v).hidden = v !== which; }); }
+
+  function home() {
+    selected = null; show('home');
+    var list = $('empList'); clear(list);
+    if (!employees.length) {
+      list.appendChild(el('div', 'empty', 'No employees yet. Tap “+ Add employee” to start.'));
+      return;
+    }
+    var now = prefixOf(new Date());
+    employees.forEach(function (e, i) {
+      var card = el('button', 'card emp');
+      var top = el('div', 'top');
+      var initials = e.name.trim().split(/\s+/).map(function (s) { return s[0]; }).slice(0, 2).join('').toUpperCase();
+      top.appendChild(el('div', 'avatar', initials));
+      var who = el('div');
+      who.appendChild(el('div', 'name', e.name));
+      who.appendChild(el('div', 'pay', peso(e.monthly) + '/mo · ' + peso(dailyOf(e)) + '/day · ' + e.dpw + '×/wk'));
+      top.appendChild(who);
+      card.appendChild(top);
+      var m = monthNet(e, now);
+      var mini = el('div', 'mini');
+      mini.appendChild(mk(m.c.absent, 'absent'));
+      mini.appendChild(mk(m.c.leave, 'paid leave'));
+      mini.appendChild(spanNet(peso(m.net), 'this month'));
+      card.appendChild(mini);
+      card.appendChild(el('div', 'btn sm block open', 'Open calendar →'));
+      card.onclick = function () { open(i); };
+      list.appendChild(card);
+    });
+    function mk(n, label) { var s = el('span'); s.appendChild(el('b', null, n)); s.appendChild(document.createTextNode(label)); return s; }
+    function spanNet(txt, label) { var s = el('span'); var b = el('b', null, txt); s.appendChild(b); s.appendChild(document.createTextNode(label)); return s; }
+  }
+
+  function open(i) { selected = i; show('person'); render(); }
+
+  function render() {
+    var e = employees[selected]; if (!e) { home(); return; }
+    $('personName').textContent = e.name;
+    $('payStrip').innerHTML = '';
+    $('payStrip').appendChild(txt('Monthly ')); $('payStrip').appendChild(strong(peso(e.monthly)));
+    $('payStrip').appendChild(txt('  ·  Daily ')); $('payStrip').appendChild(strong(peso(dailyOf(e))));
+    $('payStrip').appendChild(txt('  ·  ' + e.dpw + ' day' + (e.dpw === 1 ? '' : 's') + '/week'));
+
+    var prefix = prefixOf(view), m = monthNet(e, prefix);
+    var sum = $('personSummary'); clear(sum);
+    sum.appendChild(stat(m.c.worked, 'Worked', 'worked'));
+    sum.appendChild(stat(m.c.absent, 'Absent', 'absent'));
+    sum.appendChild(stat(m.c.leave, 'Paid leave', 'leave'));
+    sum.appendChild(stat(m.c.holiday, 'Holiday', ''));
+    var net = el('div', 'stat net'); net.appendChild(el('div', 'n', peso(m.net))); net.appendChild(el('div', 'l', 'Net this month')); sum.appendChild(net);
+    $('netLine').textContent = m.c.absent
+      ? (peso(e.monthly) + ' − ' + m.c.absent + ' absent × ' + peso(dailyOf(e)) + ' = ' + peso(m.net))
+      : ('No absences this month — full ' + peso(e.monthly) + '.');
+
+    $('monthTitle').textContent = view.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    $('jump').value = prefix;
+    buildGrid(e);
+    function stat(n, label, cls) { var d = el('div', 'stat'); d.appendChild(el('div', 'n' + (cls ? ' ' + cls : ''), String(n))); d.appendChild(el('div', 'l', label)); return d; }
+    function txt(t) { return document.createTextNode(t); }
+    function strong(t) { return el('b', null, t); }
+  }
+
+  function buildGrid(e) {
+    var grid = $('grid'); clear(grid);
+    var offset = (view.getDay() + 6) % 7; // Monday-first; view is the 1st
+    var total = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+    var now = new Date();
+    for (var i = 0; i < offset; i++) grid.appendChild(el('div', 'blank'));
+    for (var d = 1; d <= total; d++) {
+      var k = prefixOf(view) + '-' + pad(d);
+      var s = e.days[k];
+      var isWeekend = ((offset + d - 1) % 7) >= 5;
+      var isToday = now.getFullYear() === view.getFullYear() && now.getMonth() === view.getMonth() && now.getDate() === d;
+      var b = el('button', 'day' + (isWeekend ? ' weekend' : '') + (isToday ? ' today' : ''));
+      b.appendChild(el('span', 'num', String(d)));
+      if (s) b.appendChild(el('span', 'mark ' + s, STATUS[s].sym));
+      b.setAttribute('aria-label', new Date(view.getFullYear(), view.getMonth(), d).toLocaleDateString('en-GB', { dateStyle: 'full' }) + ', ' + (s ? STATUS[s].label : 'Unmarked'));
+      (function (key) { b.onclick = function () { pick(key); }; })(k);
+      grid.appendChild(b);
+    }
+  }
+
+  // ---------- day picker ----------
+  var chosen = '';
+  function pick(k) {
+    chosen = k;
+    var p = k.split('-').map(Number);
+    $('dateTitle').textContent = new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    var cur = employees[selected].days[k];
+    var box = $('choices'); clear(box);
+    ORDER.forEach(function (s) {
+      var b = el('button', 'btn choice' + (cur === s ? ' active-status' : ''));
+      b.appendChild(el('span', 'mark ' + s, STATUS[s].sym));
+      b.appendChild(document.createTextNode(STATUS[s].label));
+      b.onclick = function () { mark(s); };
+      box.appendChild(b);
+    });
+    $('picker').showModal();
+  }
+  function mark(s) {
+    var e = employees[selected];
+    if (s) e.days[chosen] = s; else delete e.days[chosen];
+    save(); $('picker').close(); render();
+  }
+  $('clearDay').onclick = function () { mark(null); };
+
+  // ---------- employee add / edit ----------
+  var editingId = null;
+  function openEmpDlg(id) {
+    editingId = id;
+    var e = id != null ? employees.find(function (x) { return x.id === id; }) : null;
+    $('empDlgTitle').textContent = e ? 'Edit employee' : 'New employee';
+    $('eName').value = e ? e.name : '';
+    $('eMonthly').value = e ? (e.monthly || '') : '';
+    $('eDpw').value = e ? e.dpw : 5;
+    $('eAuto').checked = e ? e.auto !== false : true;
+    syncDailyField(e);
+    $('empDlg').showModal(); setTimeout(function () { $('eName').focus(); }, 30);
+  }
+  function syncDailyField(e) {
+    var auto = $('eAuto').checked;
+    $('eDaily').disabled = auto;
+    if (auto) {
+      var monthly = Number($('eMonthly').value) || 0, dpw = clampDpw($('eDpw').value);
+      $('eDaily').value = dpw ? Math.round(monthly / (dpw * 52 / 12)) : 0;
+    } else if (e && !e.auto) {
+      $('eDaily').value = e.daily || '';
+    }
+  }
+  $('eAuto').onchange = function () { syncDailyField(null); };
+  $('eMonthly').oninput = function () { if ($('eAuto').checked) syncDailyField(null); };
+  $('eDpw').oninput = function () { if ($('eAuto').checked) syncDailyField(null); };
+
+  $('empForm').onsubmit = function (ev) {
+    ev.preventDefault();
+    var name = $('eName').value.trim();
+    if (!name) { $('eName').setCustomValidity('Please enter a name.'); $('eName').reportValidity(); return; }
+    var auto = $('eAuto').checked;
+    var monthly = num($('eMonthly').value), dpw = clampDpw($('eDpw').value);
+    var daily = auto ? 0 : num($('eDaily').value);
+    if (editingId != null) {
+      var e = employees.find(function (x) { return x.id === editingId; });
+      if (e) { e.name = name.slice(0, 60); e.monthly = monthly; e.dpw = dpw; e.daily = daily; e.auto = auto; }
+    } else {
+      employees.push({ id: uid(), name: name.slice(0, 60), monthly: monthly, dpw: dpw, daily: daily, auto: auto, days: {} });
+      selected = employees.length - 1;
+    }
+    save(); $('empDlg').close();
+    // Editing from the employee page stays there; adding returns to the list.
+    if (editingId != null && selected != null && !$('person').hidden) render();
+    else home();
+  };
+  $('eName').oninput = function () { $('eName').setCustomValidity(''); };
+
+  $('addEmp').onclick = function () { openEmpDlg(null); };
+  $('editPay').onclick = function () { if (employees[selected]) openEmpDlg(employees[selected].id); };
+  $('delEmp').onclick = function () {
+    var e = employees[selected]; if (!e) return;
+    if (!confirm('Delete ' + e.name + ' and all their attendance records? This cannot be undone.')) return;
+    employees.splice(selected, 1); save(); home();
+  };
+  $('back').onclick = home;
+
+  // ---------- month navigation ----------
+  $('prev').onclick = function () { view.setMonth(view.getMonth() - 1); render(); };
+  $('next').onclick = function () { view.setMonth(view.getMonth() + 1); render(); };
+  $('today').onclick = function () { var n = new Date(); view = new Date(n.getFullYear(), n.getMonth(), 1); render(); };
+  $('jump').onchange = function () { var v = $('jump').value.split('-').map(Number); if (v[0] >= 1900 && v[1] >= 1 && v[1] <= 12) { view = new Date(v[0], v[1] - 1, 1); render(); } };
+
+  // ---------- payroll summary ----------
+  var range = { from: '', to: '' };
+  function defaultRange() {
+    var n = new Date(), to = prefixOf(n);
+    var f = new Date(n.getFullYear(), n.getMonth() - 11, 1);
+    return { from: prefixOf(f), to: to };
+  }
+  function idxOf(ym) { var p = ym.split('-').map(Number); return p[0] * 12 + (p[1] - 1); }
+  function ymOf(i) { return Math.floor(i / 12) + '-' + pad((i % 12) + 1); }
+  function monthLabel(ym) { var p = ym.split('-').map(Number); return new Date(p[0], p[1] - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); }
+
+  function openSummary() {
+    if (!range.from || !range.to) range = defaultRange();
+    show('summaryPage');
+    $('fromM').value = range.from; $('toM').value = range.to;
+    renderSummary();
+  }
+  function renderSummary() {
+    var a = idxOf(range.from), b = idxOf(range.to);
+    if (b < a) { var t = a; a = b; b = t; }
+    var months = []; for (var i = a; i <= b && months.length < 240; i++) months.push(ymOf(i));
+
+    // per-employee totals across the range
+    var totals = $('sumTotals'); clear(totals);
+    if (!employees.length) { totals.appendChild(el('div', 'empty', 'No employees yet.')); clear($('sumMonths')); return; }
+    var card = el('div', 'card totals');
+    card.appendChild(el('h3', null, 'Totals · ' + monthLabel(range.from) + ' → ' + monthLabel(range.to)));
+    var grand = 0;
+    employees.forEach(function (e) {
+      var net = 0, absent = 0, leave = 0;
+      months.forEach(function (ym) { var m = monthNet(e, ym); net += m.net; absent += m.c.absent; leave += m.c.leave; });
+      grand += net;
+      var line = el('div', 'totline');
+      var who = el('div', 'who'); who.appendChild(document.createTextNode(e.name));
+      who.appendChild(el('small', null, absent + ' absent · ' + leave + ' paid leave · ' + months.length + ' month' + (months.length === 1 ? '' : 's')));
+      line.appendChild(who);
+      line.appendChild(el('div', 'amt', peso(net)));
+      card.appendChild(line);
+    });
+    var g = el('div', 'totline grand');
+    g.appendChild(el('div', 'who', 'Grand total'));
+    g.appendChild(el('div', 'amt', peso(grand)));
+    card.appendChild(g);
+    totals.appendChild(card);
+
+    // month-by-month
+    var wrap = $('sumMonths'); clear(wrap);
+    months.slice().reverse().forEach(function (ym) {
+      var mc = el('div', 'card mcard');
+      var head = el('div', 'mhead');
+      head.appendChild(el('div', 'mo', monthLabel(ym)));
+      var mt = 0;
+      var rows = [];
+      employees.forEach(function (e) {
+        var m = monthNet(e, ym); mt += m.net;
+        var r = el('div', 'mrow');
+        var left = el('div', 'ml'); left.appendChild(document.createTextNode(e.name + ' '));
+        var bits = [];
+        if (m.c.absent) bits.push(m.c.absent + ' absent');
+        if (m.c.leave) bits.push(m.c.leave + ' leave');
+        if (m.c.worked) bits.push(m.c.worked + ' worked');
+        if (bits.length) left.appendChild(el('small', null, '· ' + bits.join(' · ')));
+        r.appendChild(left);
+        var v = el('div', 'mv', peso(m.net));
+        if (m.ded) { v.title = '− ' + peso(m.ded) + ' deducted'; }
+        r.appendChild(v);
+        rows.push(r);
+      });
+      head.appendChild(el('div', 'mt', peso(mt)));
+      mc.appendChild(head);
+      rows.forEach(function (r) { mc.appendChild(r); });
+      wrap.appendChild(mc);
+    });
+  }
+  $('summaryBtn').onclick = openSummary;
+  $('sumBack').onclick = home;
+  $('fromM').onchange = function () { if ($('fromM').value) { range.from = $('fromM').value; renderSummary(); } };
+  $('toM').onchange = function () { if ($('toM').value) { range.to = $('toM').value; renderSummary(); } };
+  $('q12').onclick = function () { range = defaultRange(); openSummary(); };
+  $('qYear').onclick = function () { var y = new Date().getFullYear(); range = { from: y + '-01', to: y + '-12' }; openSummary(); };
+
+  // ---------- backup ----------
+  $('exportBtn').onclick = function () {
+    var blob = new Blob([JSON.stringify({ kind: 'employer-calendar', version: 1, employees: employees }, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob), a = el('a');
+    a.href = url; a.download = 'employer-calendar-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  };
+  $('importBtn').onclick = function () { $('file').click(); };
+  $('file').onchange = async function () {
+    var f = $('file').files[0]; if (!f) return;
+    try {
+      if (f.size > 8000000) throw Error();
+      var x = JSON.parse(await f.text());
+      var incoming = Array.isArray(x) ? x : (x && Array.isArray(x.employees) ? x.employees : null);
+      if (!incoming) throw Error();
+      if (!confirm('Replace all employees and their records with this backup? Export your current records first if you need them.')) return;
+      employees = incoming.map(cleanEmp).filter(Boolean);
+      loadFailed = false; save(); home();
+    } catch (e) { alert('That is not a valid Employer Calendar backup. Your current records have not been changed.'); }
+    finally { $('file').value = ''; }
+  };
+
+  // ---------- theme ----------
+  function applyTheme(t) {
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    else document.documentElement.removeAttribute('data-theme');
+    var dark = t === 'dark' || (!t && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', dark ? '#101211' : '#f6f5f2');
+  }
+  $('themeBtn').onclick = function () {
+    var cur = safeRead(STORE_THEME);
+    var dark = cur ? cur === 'dark' : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    var next = dark ? 'light' : 'dark';
+    safeWrite(STORE_THEME, next); applyTheme(next);
+  };
+  applyTheme(safeRead(STORE_THEME));
+
+  // ---------- another tab / another device (cloud.js) ----------
+  window.addEventListener('storage', function (e) {
+    if (e.key === STORE_EMP) {
+      employees = loadEmployees();
+      if (selected != null && !employees[selected]) selected = null;
+      if (!$('summaryPage').hidden) renderSummary();
+      else if (selected != null) render();
+      else home();
+    } else if (e.key === STORE_THEME) {
+      applyTheme(safeRead(STORE_THEME));
+    }
+  });
+
+  // ---------- init ----------
+  try {
+    if (safeRead(STORE_EMP) == null) safeWrite(STORE_EMP, JSON.stringify(employees));
+  } catch (e) {}
+  if (!storageOk) { loadFailed = true; saved(false); warn('Saved records could not be reached. Changes are temporary until you export a backup.'); }
+  home();
+
+  // service worker (House App shared worker); only over http(s).
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+})();
+</script>
+</body>
+</html>
