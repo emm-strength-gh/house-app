@@ -155,8 +155,11 @@ growing set of household tools:
   range, and a **13th month pay** card — pick a period start and it sums the
   salary over up to 12 months from there and divides by the months counted
   (6 months in → ÷ 6; bonuses excluded), with a recorded payment history per
-  employee. Everything syncs across the household and rides in **Export /
-  Restore backup**.
+  employee. A **🖨 Print / PDF** button prints a clean report (Save as PDF) for
+  the selected employee or all of them: salary history, a month-by-month table
+  (salary, worked/absent/leave, bonus, net), notes, the 13th-month figure and
+  payments, and a grand total. Everything syncs across the household and rides
+  in **Export / Restore backup**.
 
 No build step and no server of our own. Data lives in `localStorage` on the
 device; signed in, it also syncs through Supabase (see *Accounts + sync*).

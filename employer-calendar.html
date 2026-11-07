@@ -250,6 +250,32 @@
   .choice { display: flex; width: 100%; gap: 12px; align-items: center; text-align: left; margin: 8px 0; }
   .choice.active-status { border-color: var(--accent); background: var(--accent-soft); }
   .save-state { font-size: 12px; color: var(--accent); }
+
+  /* print / PDF report — hidden on screen, the only thing shown when printing */
+  #printReport { display: none; }
+  @media print {
+    .wrap, dialog { display: none !important; }
+    html, body { background: #fff; color: #000; padding: 0; margin: 0; }
+    #printReport { display: block; color: #000; font: 12px/1.45 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    #printReport .pr-title { font-size: 22px; margin: 0; letter-spacing: -.3px; }
+    #printReport .pr-sub { font-size: 13px; margin-top: 2px; }
+    #printReport .pr-gen { font-size: 10.5px; color: #555; margin-top: 2px; }
+    #printReport .pr-emp { page-break-inside: avoid; break-inside: avoid; margin-top: 16px; border-top: 2px solid #000; padding-top: 9px; }
+    #printReport .pr-name { font-size: 16px; margin: 0 0 2px; }
+    #printReport .pr-meta, #printReport .pr-sal { font-size: 10.5px; color: #333; margin-bottom: 2px; }
+    #printReport .pr-tot { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 8px 0 4px; }
+    #printReport .pr-sv { font-weight: 700; font-size: 14px; }
+    #printReport .pr-sl { font-size: 9.5px; color: #555; text-transform: uppercase; letter-spacing: .3px; }
+    #printReport table.pr-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11px; }
+    #printReport .pr-table th, #printReport .pr-table td { border: 1px solid #bbb; padding: 4px 6px; text-align: center; }
+    #printReport .pr-table th { background: #eee; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #printReport .pr-table td.l { text-align: left; } #printReport .pr-table td.r { text-align: right; font-weight: 600; }
+    #printReport .pr-table tr.pre td { color: #999; }
+    #printReport .pr-h3 { font-size: 12px; margin: 10px 0 3px; }
+    #printReport .pr-note { font-size: 11px; margin: 2px 0; }
+    #printReport .pr-grand { margin-top: 14px; font-size: 15px; font-weight: 700; border-top: 2px solid #000; padding-top: 8px; }
+    @page { margin: 14mm; }
+  }
 </style>
 </head>
 <body>
@@ -381,6 +407,7 @@
         <button type="button" class="btn sm" id="q12">Last 12 months</button>
         <button type="button" class="btn sm" id="qYear">This year</button>
         <button type="button" class="btn sm" id="notesBtn">📝 Monthly notes</button>
+        <button type="button" class="btn sm primary" id="printBtn">🖨 Print / PDF</button>
       </div>
     </div>
     <div id="sum13"></div>
@@ -388,6 +415,9 @@
     <div id="sumMonths"></div>
   </section>
 </div>
+
+<!-- print-only payroll report (built on demand, shown only when printing) -->
+<div id="printReport" aria-hidden="true"></div>
 
 <!-- day picker -->
 <dialog id="picker">
@@ -1234,6 +1264,85 @@
     $('notesViewDlg').showModal();
   }
   $('notesBtn').onclick = openNotesView;
+
+  // ---------- print / PDF report ----------
+  // Build a clean, self-contained report for the chosen employee(s) and range,
+  // then let the browser print it (Save as PDF). It carries the salary history,
+  // the month-by-month pay with bonuses, the notes, and the 13th-month figures.
+  function buildPrintReport() {
+    if (!range.from || !range.to) range = defaultRange();
+    var a = idxOf(range.from), b = idxOf(range.to);
+    if (b < a) { var t = a; a = b; b = t; }
+    var months = []; for (var i = a; i <= b && months.length < 240; i++) months.push(ymOf(i));
+    var list = summaryList();
+    var host = $('printReport'); clear(host);
+
+    var head = el('div', 'pr-head');
+    head.appendChild(el('h1', 'pr-title', 'Payroll report'));
+    var who = sumEmp === 'all' ? 'All employees' : ((employees.find(function (x) { return x.id === sumEmp; }) || {}).name || '');
+    head.appendChild(el('div', 'pr-sub', who + '  ·  ' + monthLabel(range.from) + ' → ' + monthLabel(range.to)));
+    head.appendChild(el('div', 'pr-gen', 'Generated ' + new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })));
+    host.appendChild(head);
+    if (!list.length) { host.appendChild(el('p', null, 'No employees.')); return; }
+
+    var m13s = m13Start || m13Default(), grand = 0;
+    list.forEach(function (e) {
+      var sec = el('section', 'pr-emp');
+      sec.appendChild(el('h2', 'pr-name', e.name));
+      var meta = ['Current salary ' + peso(effectiveMonthly(e)) + '/mo', 'Daily ' + peso(dailyOf(e)), e.dpw + ' day' + (e.dpw === 1 ? '' : 's') + '/week'];
+      if (startOf(e)) meta.push('Started ' + fmtDay(e.start));
+      sec.appendChild(el('div', 'pr-meta', meta.join('  ·  ')));
+      if (e.salaries.length > 1 || (e.salaries.length === 1 && e.salaries[0].from)) {
+        var sh = e.salaries.map(function (s) { return peso(s.monthly) + (s.from ? ' from ' + monthLabel(s.from) : ' from the start'); }).join('  ·  ');
+        sec.appendChild(el('div', 'pr-sal', 'Salary history: ' + sh));
+      }
+
+      var net = 0, absent = 0, leave = 0, bonus = 0, paidMonths = 0;
+      months.forEach(function (ym) { var m = monthNet(e, ym); net += m.net; absent += m.c.absent; leave += m.c.leave; bonus += m.bonus; if (!m.pre) paidMonths++; });
+      grand += net;
+      var tot = el('div', 'pr-tot');
+      tot.appendChild(prStat(peso(net), 'Net total'));
+      tot.appendChild(prStat(String(paidMonths), 'Months paid'));
+      tot.appendChild(prStat(String(absent), 'Absent'));
+      tot.appendChild(prStat(String(leave), 'Paid leave'));
+      if (bonus) tot.appendChild(prStat(peso(bonus), 'Bonuses'));
+      sec.appendChild(tot);
+
+      var tbl = el('table', 'pr-table'), thead = el('thead'), hr = el('tr');
+      ['Month', 'Salary', 'Worked', 'Absent', 'Leave', 'Bonus', 'Net'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+      thead.appendChild(hr); tbl.appendChild(thead);
+      var tb = el('tbody');
+      months.forEach(function (ym) {
+        var m = monthNet(e, ym), tr = el('tr', m.pre ? 'pre' : null);
+        tr.appendChild(el('td', 'l', monthLabel(ym)));
+        tr.appendChild(el('td', null, m.pre ? '—' : peso(m.monthly) + (m.partial ? ' (part)' : '')));
+        tr.appendChild(el('td', null, m.pre ? '—' : String(m.c.worked)));
+        tr.appendChild(el('td', null, m.pre ? '—' : String(m.c.absent)));
+        tr.appendChild(el('td', null, m.pre ? '—' : String(m.c.leave)));
+        tr.appendChild(el('td', null, m.bonus ? peso(m.bonus) : '—'));
+        tr.appendChild(el('td', 'r', m.pre ? '—' : peso(m.net)));
+        tb.appendChild(tr);
+      });
+      tbl.appendChild(tb); sec.appendChild(tbl);
+
+      var noteMonths = months.filter(function (ym) { return noteOf(e, ym); });
+      if (noteMonths.length) {
+        sec.appendChild(el('h3', 'pr-h3', 'Notes'));
+        noteMonths.forEach(function (ym) { var p = el('div', 'pr-note'); p.appendChild(el('b', null, monthLabel(ym) + ': ')); p.appendChild(document.createTextNode(noteOf(e, ym))); sec.appendChild(p); });
+      }
+
+      var t13 = thirteenth(e, m13s);
+      sec.appendChild(el('h3', 'pr-h3', '13th month pay'));
+      sec.appendChild(el('div', 'pr-note', monthLabel(t13.from) + ' → ' + monthLabel(t13.to) + '  ·  ' + t13.months + ' month' + (t13.months === 1 ? '' : 's') + '  ·  ' + peso(t13.total) + ' ÷ ' + t13.months + ' = ' + peso(t13.pay) + ' (estimate)'));
+      if (e.m13 && e.m13.length) {
+        e.m13.forEach(function (r) { sec.appendChild(el('div', 'pr-note', 'Paid ' + peso(r.amount) + ' on ' + fmtDay(r.on) + (r.from ? '  (' + monthLabel(r.from) + ' → ' + monthLabel(r.to) + ')' : ''))); });
+      }
+      host.appendChild(sec);
+    });
+    if (list.length > 1) host.appendChild(el('div', 'pr-grand', 'Grand total (net): ' + peso(grand)));
+    function prStat(v, l) { var d = el('div', 'pr-s'); d.appendChild(el('div', 'pr-sv', v)); d.appendChild(el('div', 'pr-sl', l)); return d; }
+  }
+  $('printBtn').onclick = function () { buildPrintReport(); window.print(); };
 
   // ---------- backup ----------
   $('exportBtn').onclick = function () {

@@ -328,6 +328,12 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   check("a 13th-month payment is saved to the employee's history",
     ((page.get("employer.employees.v1").find(e => e.id === "e1") || {}).m13 || []).length === 1
     && /paid/.test(ed.getElementById("sum13").textContent));
+  // print / PDF report: builds a clean report honouring the current filter + range
+  ed.getElementById("printBtn").click();
+  const pr = ed.getElementById("printReport").textContent;
+  check("Print / PDF builds a report for the filtered employee with a month table and the 13th-month figure",
+    /Payroll report/.test(pr) && /Ana/.test(pr) && !/Added Here/.test(pr)
+    && /Net total/.test(pr) && !!ed.querySelector("#printReport table.pr-table") && /13th month pay/.test(pr));
 
   console.log("\nGrocery");
   srv = server();
