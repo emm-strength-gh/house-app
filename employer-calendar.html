@@ -132,7 +132,15 @@
   .day:hover { background: var(--surface-2); }
   .day.weekend .num { color: var(--off); }
   .day.today .num { box-shadow: 0 0 0 2px var(--accent); }
+  .day.sel { background: var(--accent-soft); }
+  .day.sel .num { box-shadow: 0 0 0 2px var(--accent); color: var(--accent); font-weight: 700; }
   .num { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; font-variant-numeric: tabular-nums; }
+  .caltools { gap: 10px; }
+  .multibar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0 4px; padding: 11px 13px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 12px; }
+  .mb-count { font-weight: 700; font-size: 13px; color: var(--accent); white-space: nowrap; }
+  .mb-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+  .mb-actions .btn { padding: 7px 10px; font-size: 12.5px; border-radius: 9px; display: inline-flex; align-items: center; gap: 6px; }
+  .mb-actions .mark { width: 16px; height: 16px; font-size: 10px; }
   .mark { width: 24px; height: 24px; display: inline-grid; place-items: center; border-radius: 50%; font-size: 13px; font-weight: 750; line-height: 1; color: #fff; }
   .mark.worked { background: var(--worked); }
   .mark.absent { background: var(--absent); }
@@ -251,7 +259,14 @@
           <button type="button" class="icon-btn" id="next" aria-label="Next month">›</button>
         </div>
       </div>
-      <input class="month-input" id="jump" type="month" min="1900-01" max="9999-12" aria-label="Jump to month">
+      <div class="row between caltools">
+        <input class="month-input" id="jump" type="month" min="1900-01" max="9999-12" aria-label="Jump to month">
+        <button type="button" class="btn sm" id="multiBtn">Select days</button>
+      </div>
+      <div class="multibar" id="multiBar" hidden>
+        <div class="mb-count" id="multiCount">0 selected</div>
+        <div class="mb-actions" id="multiActions"></div>
+      </div>
       <div class="week" aria-hidden="true"><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div></div>
       <div class="grid" id="grid"></div>
     </div>
@@ -263,7 +278,7 @@
       <span><i class="mark holiday">★</i> Bank holiday</span>
       <span><i class="mark off">–</i> Day off</span>
     </div>
-    <p class="hint">Tap a date to mark it. Only <b>Absent</b> days reduce the monthly pay; paid leave and bank holidays don't.</p>
+    <p class="hint">Tap a date to mark it, or tap <b>Select days</b> to mark several at once. Only <b>Absent</b> days reduce the monthly pay; paid leave and bank holidays don't.</p>
   </section>
 
   <!-- ===================== PAYROLL SUMMARY ===================== -->
@@ -407,6 +422,7 @@
 
   // ---------- views ----------
   var selected = null;
+  var multi = false, sel = {};   // batch-marking: select several days, then one status for all
   function show(which) { ['home', 'person', 'summaryPage'].forEach(function (v) { $(v).hidden = v !== which; }); }
 
   function home() {
@@ -441,7 +457,7 @@
     function spanNet(txt, label) { var s = el('span'); var b = el('b', null, txt); s.appendChild(b); s.appendChild(document.createTextNode(label)); return s; }
   }
 
-  function open(i) { selected = i; show('person'); render(); }
+  function open(i) { selected = i; exitMulti(); show('person'); render(); }
 
   function render() {
     var e = employees[selected]; if (!e) { home(); return; }
@@ -481,11 +497,11 @@
       var s = e.days[k];
       var isWeekend = ((offset + d - 1) % 7) >= 5;
       var isToday = now.getFullYear() === view.getFullYear() && now.getMonth() === view.getMonth() && now.getDate() === d;
-      var b = el('button', 'day' + (isWeekend ? ' weekend' : '') + (isToday ? ' today' : ''));
+      var b = el('button', 'day' + (isWeekend ? ' weekend' : '') + (isToday ? ' today' : '') + (multi && sel[k] ? ' sel' : ''));
       b.appendChild(el('span', 'num', String(d)));
       if (s) b.appendChild(el('span', 'mark ' + s, STATUS[s].sym));
-      b.setAttribute('aria-label', new Date(view.getFullYear(), view.getMonth(), d).toLocaleDateString('en-GB', { dateStyle: 'full' }) + ', ' + (s ? STATUS[s].label : 'Unmarked'));
-      (function (key) { b.onclick = function () { pick(key); }; })(k);
+      b.setAttribute('aria-label', new Date(view.getFullYear(), view.getMonth(), d).toLocaleDateString('en-GB', { dateStyle: 'full' }) + ', ' + (s ? STATUS[s].label : 'Unmarked') + (multi ? (sel[k] ? ', selected' : ', not selected') : ''));
+      (function (key) { b.onclick = function () { multi ? toggleSel(key) : pick(key); }; })(k);
       grid.appendChild(b);
     }
   }
@@ -513,6 +529,38 @@
     save(); $('picker').close(); render();
   }
   $('clearDay').onclick = function () { mark(null); };
+
+  // ---------- batch marking (select several days, one status for all) ----------
+  function selCount() { var n = 0; for (var k in sel) if (sel[k]) n++; return n; }
+  function toggleSel(k) { if (sel[k]) delete sel[k]; else sel[k] = true; updateMulti(); buildGrid(employees[selected]); }
+  function enterMulti() { multi = true; sel = {}; updateMulti(); $('multiBtn').textContent = 'Cancel'; buildGrid(employees[selected]); }
+  function exitMulti() { multi = false; sel = {}; if ($('multiBar')) { $('multiBar').hidden = true; $('multiBtn').textContent = 'Select days'; } }
+  function applyMulti(s) {
+    var n = selCount(); if (!n) { return; }
+    var e = employees[selected];
+    for (var k in sel) { if (!sel[k]) continue; if (s) e.days[k] = s; else delete e.days[k]; }
+    save(); sel = {}; updateMulti(); render();
+  }
+  function updateMulti() {
+    var bar = $('multiBar'); if (!bar) return;
+    bar.hidden = !multi;
+    if (!multi) return;
+    var n = selCount();
+    $('multiCount').textContent = n + (n === 1 ? ' day selected' : ' days selected');
+    var box = $('multiActions'); clear(box);
+    ORDER.forEach(function (s) {
+      var b = el('button', 'btn');
+      b.appendChild(el('span', 'mark ' + s, STATUS[s].sym));
+      b.appendChild(document.createTextNode(STATUS[s].label));
+      b.disabled = !n;
+      b.onclick = function () { applyMulti(s); };
+      box.appendChild(b);
+    });
+    var c = el('button', 'btn ghost', 'Clear');
+    c.disabled = !n; c.onclick = function () { applyMulti(null); };
+    box.appendChild(c);
+  }
+  $('multiBtn').onclick = function () { if (multi) exitMulti(); else enterMulti(); };
 
   // ---------- employee add / edit ----------
   var editingId = null;
@@ -572,10 +620,12 @@
   $('back').onclick = home;
 
   // ---------- month navigation ----------
-  $('prev').onclick = function () { view.setMonth(view.getMonth() - 1); render(); };
-  $('next').onclick = function () { view.setMonth(view.getMonth() + 1); render(); };
-  $('today').onclick = function () { var n = new Date(); view = new Date(n.getFullYear(), n.getMonth(), 1); render(); };
-  $('jump').onchange = function () { var v = $('jump').value.split('-').map(Number); if (v[0] >= 1900 && v[1] >= 1 && v[1] <= 12) { view = new Date(v[0], v[1] - 1, 1); render(); } };
+  // Changing month clears any in-progress selection (its dates are off-screen).
+  function monthChanged() { if (multi) { sel = {}; updateMulti(); } render(); }
+  $('prev').onclick = function () { view.setMonth(view.getMonth() - 1); monthChanged(); };
+  $('next').onclick = function () { view.setMonth(view.getMonth() + 1); monthChanged(); };
+  $('today').onclick = function () { var n = new Date(); view = new Date(n.getFullYear(), n.getMonth(), 1); monthChanged(); };
+  $('jump').onchange = function () { var v = $('jump').value.split('-').map(Number); if (v[0] >= 1900 && v[1] >= 1 && v[1] <= 12) { view = new Date(v[0], v[1] - 1, 1); monthChanged(); } };
 
   // ---------- payroll summary ----------
   var range = { from: '', to: '' };
