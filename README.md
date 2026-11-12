@@ -145,7 +145,10 @@ growing set of household tools:
   **Bank holiday** or **Day off**; tapping a date changes it. Each employee's
   page shows that month's counts and the **net pay** — only Absent days are
   deducted (net = that month's salary − absent × daily, + any bonus); paid leave
-  and bank holidays are paid. Each month also takes a one-off **bonus** (added on
+  and bank holidays are paid. Under it, **Paydays this month** splits the pay in
+  two: 1st–15th (paid on the 15th) and 16th–end (paid on the last day), each half
+  the salary less that half's absences (a part first month counts only the days
+  worked; the bonus goes with the end-of-month pay). Each month also takes a one-off **bonus** (added on
   top of the net, and not counted as salary) and a free-text **note** (advances,
   lateness — anything worth remembering), both added from the employee's page.
   **Payroll summary** totals a filterable range of months (quick buttons for the

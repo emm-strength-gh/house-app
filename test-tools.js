@@ -253,6 +253,13 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
     /25,000/.test(ed.getElementById("netLine").textContent), ed.getElementById("netLine").textContent);
   check("paid leave does not reduce pay (one absent, one leave → one day deducted)",
     /1 absent/.test(ed.getElementById("netLine").textContent) && !/2 absent/.test(ed.getElementById("netLine").textContent));
+  {
+    const rows = [...ed.querySelectorAll("#paySched .ps-row")].map(r => r.textContent);
+    check("paydays: 1–15 is half the salary less that half's absence, paid on the 15th",
+      rows.length === 2 && /^1–15/.test(rows[0]) && /1 absent × ₱1,000/.test(rows[0]) && /₱12,000/.test(rows[0]) && /Payday 15/.test(rows[0]), rows.join(" | "));
+    check("paydays: 16–end is the other half with no absences, paid on the last day",
+      /^16–/.test(rows[1]) && /no absences/.test(rows[1]) && /₱13,000/.test(rows[1]), rows[1]);
+  }
   ed.getElementById("back").click();
   ed.getElementById("addEmp").click();
   ed.getElementById("eName").value = "Added Here";

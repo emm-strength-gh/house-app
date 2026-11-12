@@ -118,6 +118,15 @@
   .stat.net .n { color: var(--accent); }
   .stat .n.worked{color:var(--worked)} .stat .n.absent{color:var(--absent)} .stat .n.leave{color:var(--leave)}
   .net-line { font-size: 13px; color: var(--ink-2); margin: 2px 0 4px; }
+  .paysched { padding: 12px 16px; margin-top: 12px; }
+  .ps-h { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .4px; font-weight: 650; margin-bottom: 4px; }
+  .ps-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border); }
+  .ps-h + .ps-row { border-top: 0; }
+  .ps-t { font-weight: 650; }
+  .ps-d { font-size: 12.5px; color: var(--ink-2); }
+  .ps-r { text-align: right; white-space: nowrap; }
+  .ps-n { font-size: 18px; font-weight: 750; color: var(--accent); }
+  .ps-pd { font-size: 11.5px; color: var(--ink-3); }
 
   .calendar { padding: 20px; margin-top: 16px; }
   .monthbar { margin-bottom: 14px; }
@@ -336,6 +345,7 @@
 
     <div class="summary" id="personSummary"></div>
     <div class="net-line" id="netLine"></div>
+    <div class="card paysched" id="paySched"></div>
 
     <div class="card calendar">
       <div class="row between monthbar">
@@ -679,6 +689,33 @@
     var ded = c.absent * daily;
     return { c: c, ded: ded, gross: gross, bonus: bonus, net: gross - ded + bonus, monthly: monthly, daily: daily, pre: false, partial: partial };
   }
+  // The two paydays of a month: 1st–15th paid on the 15th, 16th–end paid on the
+  // last day. Each half is half the month's salary less that half's absences;
+  // a part first month puts the days actually worked in the half they fall in,
+  // and the bonus goes with the end-of-month pay.
+  function halves(e, prefix) {
+    var m = monthNet(e, prefix), start = startOf(e);
+    var parts = prefix.split('-').map(Number);
+    var dim = new Date(parts[0], parts[1], 0).getDate();
+    var ab = [0, 0], p = prefix + '-';
+    if (!m.pre) for (var k in e.days) {
+      if (!e.days.hasOwnProperty(k) || k.indexOf(p) !== 0 || e.days[k] !== 'absent') continue;
+      if (start && k < start) continue;
+      ab[Number(k.slice(8, 10)) <= 15 ? 0 : 1]++;
+    }
+    var g1, g2, sd = (start && start.slice(0, 7) === prefix) ? Number(start.slice(8, 10)) : 1;
+    if (m.pre) { g1 = 0; g2 = 0; }
+    else if (sd > 15) { g1 = 0; g2 = m.gross; }
+    else if (m.partial) { g2 = Math.round(m.monthly / 2); g1 = Math.max(0, m.gross - g2); }
+    else { g1 = Math.round(m.monthly / 2); g2 = m.gross - g1; }
+    function half(from, to, g, a, bonus, started) {
+      var ded = a * m.daily;
+      return { from: from, to: to, payDay: to, gross: g, absent: a, ded: ded, bonus: bonus, daily: m.daily,
+        net: g - ded + bonus, started: started };
+    }
+    return [half(1, 15, g1, ab[0], 0, !m.pre && sd <= 15), half(16, dim, g2, ab[1], m.pre ? 0 : m.bonus, !m.pre)];
+  }
+
   function fmtDay(iso) { var p = iso.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
 
   // 13th month pay: the basic salary over the window that starts at `startYm`
@@ -788,6 +825,29 @@
     }
     if (m.bonus) line += '  +  ' + peso(m.bonus) + ' bonus  =  ' + peso(m.net);
     $('netLine').textContent = line;
+
+    // the 15th and end-of-month paydays
+    var ps = $('paySched'); clear(ps);
+    var mon = new Date(Number(prefix.slice(0, 4)), Number(prefix.slice(5, 7)) - 1, 1).toLocaleDateString('en-GB', { month: 'short' });
+    ps.appendChild(el('div', 'ps-h', 'Paydays this month'));
+    halves(e, prefix).forEach(function (h) {
+      var row = el('div', 'ps-row');
+      var left = el('div', 'ps-l');
+      left.appendChild(el('div', 'ps-t', h.from + '–' + h.to + ' ' + mon));
+      var d;
+      if (!h.started) d = 'Not started yet';
+      else {
+        d = peso(h.gross) + (h.absent ? ' − ' + h.absent + ' absent × ' + peso(h.daily) : ' · no absences');
+        if (h.bonus) d += ' + ' + peso(h.bonus) + ' bonus';
+      }
+      left.appendChild(el('div', 'ps-d', d));
+      row.appendChild(left);
+      var right = el('div', 'ps-r');
+      right.appendChild(el('div', 'ps-n', peso(h.net)));
+      right.appendChild(el('div', 'ps-pd', 'Payday ' + h.payDay + ' ' + mon));
+      row.appendChild(right);
+      ps.appendChild(row);
+    });
 
     $('monthTitle').textContent = monthName;
     $('jump').value = prefix;
