@@ -807,7 +807,6 @@
     sum.appendChild(stat(m.c.worked, 'Worked', 'worked'));
     sum.appendChild(stat(m.c.absent, 'Absent', 'absent'));
     sum.appendChild(stat(m.c.leave, 'Paid leave', 'leave'));
-    sum.appendChild(stat(m.c.holiday, 'Holiday', ''));
     if (m.bonus) sum.appendChild(stat(peso(m.bonus), 'Bonus', 'bonus'));
     var net = el('div', 'stat net'); net.appendChild(el('div', 'n', peso(m.net))); net.appendChild(el('div', 'l', 'Net this month')); sum.appendChild(net);
 
