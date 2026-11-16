@@ -356,6 +356,13 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   check("Print / PDF builds a report for the filtered employee with a month table and the 13th-month figure",
     /Payroll report/.test(pr) && /Ana/.test(pr) && !/Added Here/.test(pr)
     && /Net total/.test(pr) && !!ed.querySelector("#printReport table.pr-table") && /13th month pay/.test(pr));
+  check("the printed totals show absent days with the pay taken off, and extra days",
+    /1 \(−₱1,000\)Absent/.test(pr) && /0Extra days/.test(pr), pr.slice(0, 400));
+  ed.getElementById("empFilter").value = "all";
+  ed.getElementById("empFilter").dispatchEvent(new page.w.Event("change", { bubbles: true }));
+  ed.getElementById("printBtn").click();
+  check("the printed grand total shows absent and extra days for everyone",
+    /Grand total \(net\).*\d+ absent.*\d+ extra days?/.test(ed.getElementById("printReport").textContent));
 
   console.log("\nGrocery");
   srv = server();

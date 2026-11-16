@@ -288,6 +288,7 @@
     #printReport .pr-table tr.pre td { color: #999; }
     #printReport .pr-h3 { font-size: 12px; margin: 10px 0 3px; }
     #printReport .pr-note { font-size: 11px; margin: 2px 0; }
+    #printReport .pr-gsub { font-size: 12px; font-weight: 400; margin-top: 3px; }
     #printReport .pr-grand { margin-top: 14px; font-size: 15px; font-weight: 700; border-top: 2px solid #000; padding-top: 8px; }
     @page { margin: 14mm; }
   }
@@ -1371,7 +1372,7 @@
     host.appendChild(head);
     if (!list.length) { host.appendChild(el('p', null, 'No employees.')); return; }
 
-    var m13s = m13Start || m13Default(), grand = 0;
+    var m13s = m13Start || m13Default(), grand = 0, gAbs = 0, gAbsAmt = 0, gEx = 0, gExAmt = 0;
     list.forEach(function (e) {
       var sec = el('section', 'pr-emp');
       sec.appendChild(el('h2', 'pr-name', e.name));
@@ -1383,15 +1384,18 @@
         sec.appendChild(el('div', 'pr-sal', 'Salary history: ' + sh));
       }
 
-      var net = 0, absent = 0, leave = 0, bonus = 0, paidMonths = 0, extra = 0;
-      months.forEach(function (ym) { var m = monthNet(e, ym); net += m.net; absent += m.c.absent; leave += m.c.leave; extra += m.c.extra; bonus += m.bonus; if (!m.pre) paidMonths++; });
-      grand += net;
+      var net = 0, absent = 0, leave = 0, bonus = 0, paidMonths = 0, extra = 0, absAmt = 0, exAmt = 0;
+      months.forEach(function (ym) {
+        var m = monthNet(e, ym); net += m.net; leave += m.c.leave; bonus += m.bonus; if (!m.pre) paidMonths++;
+        if (!m.pre) { absent += m.c.absent; absAmt += m.ded; extra += m.c.extra; exAmt += m.add; }
+      });
+      grand += net; gAbs += absent; gAbsAmt += absAmt; gEx += extra; gExAmt += exAmt;
       var tot = el('div', 'pr-tot');
       tot.appendChild(prStat(peso(net), 'Net total'));
       tot.appendChild(prStat(String(paidMonths), 'Months paid'));
-      tot.appendChild(prStat(String(absent), 'Absent'));
+      tot.appendChild(prStat(absent + (absAmt ? ' (−' + peso(absAmt) + ')' : ''), 'Absent'));
       tot.appendChild(prStat(String(leave), 'Paid leave'));
-      tot.appendChild(prStat(String(extra), 'Extra days'));
+      tot.appendChild(prStat(extra + (exAmt ? ' (+' + peso(exAmt) + ')' : ''), 'Extra days'));
       if (bonus) tot.appendChild(prStat(peso(bonus), 'Bonuses'));
       sec.appendChild(tot);
 
@@ -1427,7 +1431,12 @@
       }
       host.appendChild(sec);
     });
-    if (list.length > 1) host.appendChild(el('div', 'pr-grand', 'Grand total (net): ' + peso(grand)));
+    if (list.length > 1) {
+      var pg = el('div', 'pr-grand', 'Grand total (net): ' + peso(grand));
+      pg.appendChild(el('div', 'pr-gsub', gAbs + ' absent' + (gAbsAmt ? ' (−' + peso(gAbsAmt) + ')' : '') + '  ·  ' +
+        gEx + ' extra day' + (gEx === 1 ? '' : 's') + (gExAmt ? ' (+' + peso(gExAmt) + ')' : '')));
+      host.appendChild(pg);
+    }
     function prStat(v, l) { var d = el('div', 'pr-s'); d.appendChild(el('div', 'pr-sv', v)); d.appendChild(el('div', 'pr-sl', l)); return d; }
   }
   $('printBtn').onclick = function () { buildPrintReport(); window.print(); };
