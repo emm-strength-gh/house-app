@@ -144,7 +144,8 @@ growing set of household tools:
   A month calendar marks each day **Worked**, **Absent**, **Paid leave**,
   **Bank holiday** or **Day off**; tapping a date changes it. Each employee's
   page shows that month's counts and the **net pay** — only Absent days are
-  deducted (net = that month's salary − absent × daily, + any bonus); paid leave
+  deducted and each **Extra day** (an extra paid shift) adds a day's pay (net =
+  that month's salary − absent × daily + extra days × daily, + any bonus); paid leave
   and bank holidays are paid. Under it, **Paydays this month** splits the pay in
   two: 1st–15th (paid on the 15th) and 16th–end (paid on the last day), each half
   the salary less that half's absences (a part first month counts only the days

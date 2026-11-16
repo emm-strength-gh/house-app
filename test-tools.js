@@ -259,6 +259,15 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
       rows.length === 2 && /^1–15/.test(rows[0]) && /1 absent × ₱1,000/.test(rows[0]) && /₱12,000/.test(rows[0]) && /Payday 15/.test(rows[0]), rows.join(" | "));
     check("paydays: 16–end is the other half with no absences, paid on the last day",
       /^16–/.test(rows[1]) && /no absences/.test(rows[1]) && /₱13,000/.test(rows[1]), rows[1]);
+    // mark the 3rd as an Extra day (an extra paid shift): +₱1,000 in the first half
+    [...ed.querySelectorAll("#grid button")].find(b => /\b3 [A-Z]/.test(b.getAttribute("aria-label") || "")).click();
+    [...ed.querySelectorAll("#choices button")].find(b => /Extra day/.test(b.textContent)).click();
+    const r2 = [...ed.querySelectorAll("#paySched .ps-row")].map(r => r.textContent);
+    check("an Extra day adds a day's pay to its half (₱13,000 − 1 absent + 1 extra × ₱1,000 = ₱13,000)",
+      /1 extra day × ₱1,000/.test(r2[0]) && /₱13,000Payday 15/.test(r2[0]) && /26,000/.test(ed.getElementById("netLine").textContent), r2[0] + " | " + ed.getElementById("netLine").textContent);
+    check("an Extra day is saved on the employee", Object.values(page.get("employer.employees.v1")[0].days).includes("extra"));
+    [...ed.querySelectorAll("#grid button")].find(b => /\b3 [A-Z]/.test(b.getAttribute("aria-label") || "")).click();
+    ed.getElementById("clearDay").click();   // back to the plain month for the checks below
   }
   ed.getElementById("back").click();
   ed.getElementById("addEmp").click();
