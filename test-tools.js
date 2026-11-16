@@ -336,6 +336,11 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   // 13th month pay card + payment history (filter to Ana for a deterministic read)
   ed.getElementById("empFilter").value = "e1";
   ed.getElementById("empFilter").dispatchEvent(new page.w.Event("change", { bubbles: true }));
+  {
+    const chips = [...ed.querySelectorAll("#sumTotals .tchip")].map(c => c.textContent);
+    check("the summary totals show absent days with what they took off, and extra days",
+      chips.some(t => /^1 absent · −₱1,000$/.test(t)) && chips.some(t => /^0 extra days$/.test(t)), chips.join(" | "));
+  }
   check("the summary has a 13th month pay card averaging the salary (₱26,000)",
     /13th month pay/.test(ed.getElementById("sum13").textContent) && /₱26,000/.test(ed.getElementById("sum13").textContent));
   ed.querySelector("#sum13 .m13-emp .btn").click();           // Record payment → dialog prefilled

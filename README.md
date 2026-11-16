@@ -153,8 +153,9 @@ growing set of household tools:
   top of the net, and not counted as salary) and a free-text **note** (advances,
   lateness — anything worth remembering), both added from the employee's page.
   **Payroll summary** totals a filterable range of months (quick buttons for the
-  last 12 months or this year): per-employee totals with absences and paid leave,
-  a grand total, a card per month (marking salary changes and bonuses), a
+  last 12 months or this year): per-employee totals with paid leave and
+  absent / extra days (with the pay each took off or added), a grand total with
+  the same, a card per month (marking salary changes and bonuses), a
   **📝 Monthly notes** button opening a read-only list of every note in the
   range, and a **13th month pay** card — pick a period start and it sums the
   salary over up to 12 months from there and divides by the months counted
