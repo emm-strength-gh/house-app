@@ -248,6 +248,7 @@ const today = () => { const d = new Date(), p = n => (n < 10 ? "0" : "") + n; re
   await page.sync();
   const ed = page.w.document;
   check("an employee added elsewhere appears", /Remote Ben/.test(ed.getElementById("empList").textContent));
+  check("the list cards show this month's extra days", /0extra days/.test(ed.querySelector("#empList .emp .mini").textContent), ed.querySelector("#empList .emp .mini").textContent);
   ed.querySelector("#empList .emp").click();  // open Ana (first)
   check("net = monthly minus the daily rate per absent (6×/wk → ₱26,000 ÷ 26 = ₱1,000/day)",
     /25,000/.test(ed.getElementById("netLine").textContent), ed.getElementById("netLine").textContent);
